@@ -1,0 +1,23 @@
+{
+  "supplier": {
+    "raw_name": "בשר הצפון",
+    "normalized_name": "בשר הצפון"
+  },
+  "invoice": {
+    "number": "10492",
+    "date": "2026-06-01",
+    "subtotal": 1090.0,
+    "tax": 185.3,
+    "total": 1275.3
+  },
+  "items": [
+    {
+      "raw_name": "אנטריקוט טרי מיוחד",
+      "quantity": 10,
+      "unit": "ק\"ג",
+      "unit_price": 109.0,
+      "total_price": 1090.0,
+      "confidence": 0.95
+    }
+  ]
+}

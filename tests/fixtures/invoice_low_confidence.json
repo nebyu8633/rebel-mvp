@@ -1,0 +1,23 @@
+{
+  "supplier": {
+    "raw_name": "ירקות השוק",
+    "normalized_name": "ירקות השוק"
+  },
+  "invoice": {
+    "number": "555",
+    "date": "2026-06-20",
+    "subtotal": 300.0,
+    "tax": 51.0,
+    "total": 351.0
+  },
+  "items": [
+    {
+      "raw_name": "עגבניות שרי",
+      "quantity": 20,
+      "unit": "ק\"ג",
+      "unit_price": 15.0,
+      "total_price": 300.0,
+      "confidence": 0.4
+    }
+  ]
+}
