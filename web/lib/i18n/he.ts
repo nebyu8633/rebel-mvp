@@ -269,6 +269,14 @@ export const he = {
     deleteConfirm: "מחק חשבונית",
     deleted: "החשבונית נמחקה",
     itemsTitle: "שורות בחשבונית",
+    itemColumns: {
+      product: "מוצר",
+      quantity: "כמות",
+      unitPrice: "מחיר ליחידה",
+      total: "סה״כ",
+      confidence: "רמת ודאות",
+    },
+    totalLabel: "סה״כ חשבונית",
   },
 
   products: {

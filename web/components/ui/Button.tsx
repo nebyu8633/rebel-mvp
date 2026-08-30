@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import Link from "next/link";
 
 import { cn } from "@/lib/cn";
@@ -38,10 +38,17 @@ export function Button({
   size = "md",
   className,
   children,
+  ref,
   ...props
-}: CommonProps & ButtonHTMLAttributes<HTMLButtonElement>) {
+}: CommonProps &
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    // React 19 passes `ref` to function components as an ordinary prop, so no
+    // forwardRef wrapper is needed — it just has to be declared.
+    ref?: Ref<HTMLButtonElement>;
+  }) {
   return (
     <button
+      ref={ref}
       className={cn(BASE, VARIANTS[variant], SIZES[size], className)}
       {...props}
     >
