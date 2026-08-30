@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_phone_number_id: str = ""
     whatsapp_verify_token: str = ""
+    # Meta app secret, used to verify the X-Hub-Signature-256 header on
+    # inbound webhooks. Without it the endpoint would accept any request.
+    whatsapp_app_secret: str = ""
     whatsapp_api_base_url: str = "https://graph.facebook.com/v20.0"
 
     # Price Guard configuration

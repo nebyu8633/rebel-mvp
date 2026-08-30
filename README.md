@@ -138,6 +138,7 @@ cp .env.example .env
 | `WHATSAPP_ACCESS_TOKEN` | WhatsApp Business Cloud API access token. |
 | `WHATSAPP_PHONE_NUMBER_ID` | Your WhatsApp Business phone number ID. |
 | `WHATSAPP_VERIFY_TOKEN` | Any string you choose; must match the "Verify token" configured in the Meta webhook screen. |
+| `WHATSAPP_APP_SECRET` | **Required.** Meta app secret, used to verify the `X-Hub-Signature-256` on inbound webhooks. Without it every inbound webhook is rejected. |
 | `PRICE_ALERT_THRESHOLD` | Fraction above historical average that triggers an alert (default `0.03` = 3%). |
 | `PRICE_ALERT_CRITICAL_THRESHOLD` | Fraction above which severity becomes "critical" instead of "warning" (default `0.10` = 10%). |
 | `MIN_CONFIDENCE` | Minimum extraction confidence (0-1) required before an item can trigger an automatic alert (default `0.85`). |
@@ -183,7 +184,7 @@ source .venv/bin/activate
 pytest
 ```
 
-The suite (41 tests) runs entirely against an in-memory SQLite database and
+The suite (47 tests) runs entirely against an in-memory SQLite database and
 never calls the real Vision LLM or WhatsApp API - the Vision LLM call is
 monkeypatched with real invoice fixtures from `tests/fixtures/`, so the
 whole extract -> match -> price-guard -> WhatsApp-message pipeline is
@@ -192,7 +193,9 @@ exercised end-to-end, including a full webhook request via FastAPI's
 validation, supplier/product matching (including restaurant isolation),
 first-price/previous-price/average-price comparisons, threshold and
 severity logic, estimated-impact math, duplicate invoice detection, and
-low-confidence items being excluded from automatic alerts.
+low-confidence items being excluded from automatic alerts, and webhook
+signature verification (valid, wrong-secret, tampered-body, malformed
+header and unset-secret cases, each asserting no rows are written).
 
 ## WhatsApp Webhook Setup
 
@@ -201,14 +204,22 @@ low-confidence items being excluded from automatic alerts.
 2. Under WhatsApp -> API Setup, copy the **temporary access token** and
    **phone number ID** into `WHATSAPP_ACCESS_TOKEN` and
    `WHATSAPP_PHONE_NUMBER_ID` in `.env`.
-3. Expose your local server publicly (e.g. `ngrok http 8000`) since Meta
+3. Under **Settings -> Basic**, reveal the **App Secret** and copy it into
+   `WHATSAPP_APP_SECRET`. Inbound webhooks are rejected without it — this is
+   what proves a delivery actually came from Meta rather than from anyone who
+   guessed the URL.
+4. Expose your local server publicly (e.g. `ngrok http 8000`) since Meta
    needs a public HTTPS URL to call your webhook.
-4. Under WhatsApp -> Configuration, set the webhook URL to
+5. Under WhatsApp -> Configuration, set the webhook URL to
    `https://<your-public-url>/webhook/whatsapp` and the verify token to
    whatever you set as `WHATSAPP_VERIFY_TOKEN` in `.env`.
-5. Subscribe to the `messages` webhook field.
-6. Add your own WhatsApp number as a test recipient (in Meta's sandbox,
+6. Subscribe to the `messages` webhook field.
+7. Add your own WhatsApp number as a test recipient (in Meta's sandbox,
    only verified test numbers can message the app).
+
+If messages are delivered but nothing happens, check the logs for
+`Rejected WhatsApp webhook with missing or invalid signature` — that means
+`WHATSAPP_APP_SECRET` is unset or does not match the app sending the events.
 
 A restaurant is looked up (or auto-created on first contact) by the sending
 WhatsApp phone number (`restaurants.whatsapp_phone`).
@@ -241,6 +252,16 @@ in `tests/fixtures/`).
 
 ## MVP Limitations
 
+- **Inbound webhooks require `WHATSAPP_APP_SECRET`.** Every `POST` is verified
+  against Meta's `X-Hub-Signature-256` header before the body is parsed, and the
+  endpoint **fails closed**: with the secret unset, all inbound webhooks are
+  rejected with 403 and an error is logged. This is deliberate — the endpoint
+  writes to a restaurant's price history, so an unconfigured deployment must not
+  accept unauthenticated requests. Set it from
+  *App Dashboard → Settings → Basic → App Secret*.
+- **No rate limiting.** A validly-signed flood would still trigger one paid
+  vision call per message. Meta's own delivery limits are the only ceiling
+  today.
 - **Product matching is exact-normalized-name only.** No fuzzy matching.
   "חזה עוף 5 ק"ג", "עוף חזה 5KG" and "חזה עוף טרי" are treated as three
   different products on purpose - the system never guesses that two

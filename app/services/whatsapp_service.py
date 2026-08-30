@@ -2,6 +2,8 @@
 payloads, downloading media, sending text replies, and verifying the
 webhook handshake. No business logic lives here - only transport.
 """
+import hashlib
+import hmac
 import logging
 from dataclasses import dataclass
 
@@ -20,6 +22,45 @@ class IncomingMessage:
     kind: str  # "image" | "pdf" | "unsupported"
     media_id: str | None
     mime_type: str | None
+
+
+SIGNATURE_HEADER = "X-Hub-Signature-256"
+_SIGNATURE_PREFIX = "sha256="
+
+
+def verify_signature(raw_body: bytes, signature_header: str | None, settings: Settings) -> bool:
+    """Verify Meta's X-Hub-Signature-256 over the raw request body.
+
+    Meta signs every webhook delivery with HMAC-SHA256 of the exact bytes it
+    sent, keyed by the app secret. The check must run against the raw body:
+    parsing and re-serializing the JSON changes whitespace and key order, so
+    the digest would never match.
+
+    Returns False when the app secret is unset. That is deliberate - an
+    unconfigured deployment must reject inbound webhooks rather than silently
+    accept unauthenticated ones, because this endpoint can write to a
+    restaurant's price history.
+    """
+    if not settings.whatsapp_app_secret:
+        logger.error(
+            "WHATSAPP_APP_SECRET is not set; rejecting inbound webhook. "
+            "Set it to the Meta app secret to enable signature verification."
+        )
+        return False
+
+    if not signature_header or not signature_header.startswith(_SIGNATURE_PREFIX):
+        return False
+
+    expected = hmac.new(
+        settings.whatsapp_app_secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+
+    provided = signature_header[len(_SIGNATURE_PREFIX):]
+
+    # Constant-time compare so a timing side channel cannot leak the digest.
+    return hmac.compare_digest(expected, provided)
 
 
 def verify_webhook(mode: str | None, token: str | None, challenge: str | None, settings: Settings) -> str | None:

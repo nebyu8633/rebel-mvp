@@ -5,9 +5,11 @@ POST /webhook/whatsapp  - inbound messages. Image/PDF invoices are handed
                           off to a background task so the webhook responds
                           immediately (WhatsApp expects a fast 200 OK).
 """
+import json
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response
+from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.db.database import SessionLocal
@@ -39,15 +41,37 @@ async def verify_whatsapp_webhook(request: Request) -> Response:
 
 
 @router.post("/webhook/whatsapp")
-async def receive_whatsapp_webhook(request: Request, background_tasks: BackgroundTasks) -> dict:
-    payload = await request.json()
+async def receive_whatsapp_webhook(
+    request: Request, background_tasks: BackgroundTasks
+) -> Response:
+    settings = get_settings()
+
+    # Read the raw bytes and verify the signature BEFORE parsing. Meta signs
+    # exactly what it sent; parsing and re-serializing would change the bytes
+    # and the digest would never match.
+    #
+    # This check is what stops an unauthenticated caller from writing to a
+    # restaurant's price history: without it, anyone who knows this URL could
+    # post a payload naming any phone number and inject fabricated invoices.
+    raw_body = await request.body()
+    signature = request.headers.get(whatsapp_service.SIGNATURE_HEADER)
+
+    if not whatsapp_service.verify_signature(raw_body, signature, settings):
+        logger.warning("Rejected WhatsApp webhook with missing or invalid signature")
+        return JSONResponse({"status": "forbidden"}, status_code=403)
+
+    try:
+        payload = json.loads(raw_body)
+    except json.JSONDecodeError:
+        return JSONResponse({"status": "bad_request"}, status_code=400)
+
     message = whatsapp_service.parse_incoming_message(payload)
 
     if message is None:
-        return {"status": "ignored"}
+        return JSONResponse({"status": "ignored"})
 
     background_tasks.add_task(_handle_incoming_message, message)
-    return {"status": "received"}
+    return JSONResponse({"status": "received"})
 
 
 def _handle_incoming_message(message: IncomingMessage) -> None:

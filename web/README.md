@@ -373,6 +373,19 @@ Before going live:
 - **No billing.** Settings has no subscription management.
 - **Analytics has no sink.** `lib/analytics/track.ts` defines the event
   vocabulary and call sites; wiring a provider is one function body.
+- **No rate limiting on `POST /api/analyses`.** Anonymous sign-in is enabled by
+  design so the analyse-before-signup flow works, which also means anyone can
+  mint a session freely and submit 10 files, each firing a paid vision call, on
+  a route with `maxDuration = 300`. There is no ceiling of any kind. Add
+  per-user and per-IP limits (with a tighter cap for anonymous users) before
+  exposing this publicly.
+- **Anonymous users are never cleaned up.** Every visitor to `/analyze` gets a
+  permanent `auth.users` row and a `businesses` row, and nothing removes them.
+  Combined with the point above, that is trivially amplifiable. A scheduled job
+  should delete anonymous users older than N days that own no invoices.
+- **Peak upload memory is ~100MB per request.** Files are validated by size
+  before buffering, but all of them are held in memory until the pipeline
+  starts. Streaming each straight to storage would fix it.
 - **`react-hooks/exhaustive-deps` is not enforced.** The standard Next.js lint
   config cannot run here — `typescript-eslint` hard-throws on TypeScript 7 —
   so linting uses oxlint, which does not implement that rule. See

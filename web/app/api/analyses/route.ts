@@ -59,8 +59,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: check.errorKey }, { status: 400 });
     }
 
-    // One file at a time on purpose: buffering ten 10MB uploads concurrently
-    // would hold 100MB in memory for a single request.
+    /*
+     * Read one file at a time. This bounds concurrent *reads*, not total
+     * retention: every buffer is kept in `files` until the pipeline starts, so
+     * peak memory is still up to MAX_FILES_PER_ANALYSIS x MAX_FILE_SIZE_BYTES
+     * (~100MB) per request. Streaming each file straight to storage and
+     * keeping only its path would remove that ceiling.
+     */
     // oxlint-disable-next-line no-await-in-loop
     const bytes = new Uint8Array(await upload.arrayBuffer());
     if (bytes.byteLength > MAX_FILE_SIZE_BYTES) {
