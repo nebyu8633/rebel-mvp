@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { MobileNav, Sidebar } from "@/components/dashboard/DashboardNav";
+import { SetupNotice } from "@/components/ui/SetupNotice";
 import { getCurrentUser, isAnonymous } from "@/lib/auth/session";
+import { isSupabaseConfigured } from "@/lib/config/env";
 
 /**
  * Dashboard shell.
@@ -13,6 +15,19 @@ import { getCurrentUser, isAnonymous } from "@/lib/auth/session";
  * unprotected.
  */
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  // Checked before touching auth: without a project there is no session to
+  // read, and the redirect below would send the user to a login page that
+  // cannot work either.
+  if (!isSupabaseConfigured()) {
+    // The notice is the only heading on this screen, so it carries the h1 and
+    // the page keeps a valid document outline.
+    return (
+      <main className="mx-auto max-w-2xl px-6 py-20">
+        <SetupNotice headingLevel="h1" />
+      </main>
+    );
+  }
+
   const user = await getCurrentUser();
 
   if (user === null) redirect("/login?redirect=/dashboard");

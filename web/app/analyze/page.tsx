@@ -1,7 +1,9 @@
 import { Lightbulb } from "lucide-react";
 import type { Metadata } from "next";
 
+import { SetupNotice } from "@/components/ui/SetupNotice";
 import { UploadForm } from "@/components/upload/UploadForm";
+import { isSupabaseConfigured } from "@/lib/config/env";
 import { getDictionary } from "@/lib/i18n";
 
 const dict = getDictionary();
@@ -32,7 +34,9 @@ export default function AnalyzePage() {
       </p>
 
       <div className="mt-10">
-        <UploadForm />
+        {/* Without a Supabase project there is nowhere to store an upload, so
+            say what is missing instead of failing at submit time. */}
+        {isSupabaseConfigured() ? <UploadForm /> : <SetupNotice />}
       </div>
     </main>
   );

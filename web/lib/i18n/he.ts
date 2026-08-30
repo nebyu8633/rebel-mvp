@@ -319,6 +319,24 @@ export const he = {
     saveFailed: "שמירת ההגדרות נכשלה",
   },
 
+  /*
+   * Split into fragments around the Latin paths rather than one string: a
+   * path embedded in Hebrew flow text gets reordered by the bidi algorithm
+   * (".env.local" renders as "env.local."), so each one is isolated in the
+   * component instead.
+   */
+  setup: {
+    title: "המערכת עדיין לא מחוברת למסד הנתונים",
+    step1: "צור פרויקט ב-Supabase.",
+    step2Before: "הרץ את קובץ ההגדרה",
+    step2Path: "supabase/migrations/0001_init.sql",
+    step3Before: "הגדר את משתני הסביבה בקובץ",
+    step3Path: ".env.local",
+    envTitle: "משתני הסביבה הנדרשים",
+    readmeNote: "ההוראות המלאות נמצאות בקובץ ה-README.",
+    missingAi: "מפתח ה-AI חסר. בלעדיו לא ניתן לקרוא חשבוניות.",
+  },
+
   errors: {
     generic: "משהו השתבש. נסה שוב.",
     network: "אין חיבור לרשת. בדוק את החיבור ונסה שוב.",
