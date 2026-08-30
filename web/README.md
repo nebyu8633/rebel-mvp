@@ -208,6 +208,31 @@ service-role key and the AI key are only reachable from modules that import
 
 ---
 
+## Working in VS Code
+
+This app lives in `web/` inside a repo that also holds a Python service at the
+root. Open the multi-root workspace from the repo root so both get the right
+tooling context — opening `web/` alone hides the Python code, and opening the
+root alone gives the TypeScript server the wrong working directory:
+
+```bash
+code rebel-mvp.code-workspace
+```
+
+Accept the recommended-extensions prompt. The ones that matter here:
+
+- **oxc.oxc-vscode** — inline lint errors from oxlint (see [LINTING.md](LINTING.md))
+- **bradlc.vscode-tailwindcss** — class completions. Tailwind v4 is CSS-first
+  with no `tailwind.config.js`, so `.vscode/settings.json` points the extension
+  at `web/app/globals.css`; without that it offers nothing.
+
+**Run and Debug** carries *Web: Next.js dev server* (with Chrome auto-attach),
+*Web: attach Chrome to :3000* and *Web: current Vitest file*.
+**Tasks: Run Task** carries `web: dev`, `web: demo mode`, `web: build`,
+`web: typecheck`, `web: lint` and `web: test`.
+
+---
+
 ## Local development
 
 ```bash
@@ -221,6 +246,7 @@ Other scripts:
 npm run build          # production build
 npm run start          # serve the production build
 npm run typecheck      # tsc --noEmit
+npm run lint           # oxlint — see LINTING.md
 npm test               # vitest
 ```
 
@@ -347,6 +373,11 @@ Before going live:
 - **No billing.** Settings has no subscription management.
 - **Analytics has no sink.** `lib/analytics/track.ts` defines the event
   vocabulary and call sites; wiring a provider is one function body.
+- **`react-hooks/exhaustive-deps` is not enforced.** The standard Next.js lint
+  config cannot run here — `typescript-eslint` hard-throws on TypeScript 7 —
+  so linting uses oxlint, which does not implement that rule. See
+  [LINTING.md](LINTING.md) for the details and what to do when it is fixed
+  upstream.
 
 ---
 

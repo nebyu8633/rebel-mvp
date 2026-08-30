@@ -59,6 +59,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: check.errorKey }, { status: 400 });
     }
 
+    // One file at a time on purpose: buffering ten 10MB uploads concurrently
+    // would hold 100MB in memory for a single request.
+    // oxlint-disable-next-line no-await-in-loop
     const bytes = new Uint8Array(await upload.arrayBuffer());
     if (bytes.byteLength > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json({ error: "tooLarge" }, { status: 400 });

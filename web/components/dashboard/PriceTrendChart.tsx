@@ -37,11 +37,12 @@ export function PriceTrendChart({
   // renders through the middle instead of collapsing.
   const range = max - min === 0 ? Math.max(1, max * 0.1) : max - min;
 
+  // observedAt rides along as a stable, data-derived key for the dots below.
   const coordinates = points.map((point, index) => {
     const x = padding + (index / (points.length - 1)) * (width - padding * 2);
     const y =
       height - padding - ((point.unitPrice - min) / range) * (height - padding * 2);
-    return { x, y };
+    return { x, y, observedAt: point.observedAt };
   });
 
   const path = coordinates
@@ -74,6 +75,9 @@ export function PriceTrendChart({
         viewBox={`0 0 ${width} ${height}`}
         className="mt-3 h-[90px] w-full"
         preserveAspectRatio="none"
+        // role="img" with aria-label is the standard accessible pattern for an
+        // inline SVG; an <img> tag would require an external asset.
+        // oxlint-disable-next-line prefer-tag-over-role
         role="img"
         aria-label={`${productName}: ${formatMonthYear(first!.observedAt)} – ${formatMonthYear(last!.observedAt)}`}
       >
@@ -86,8 +90,14 @@ export function PriceTrendChart({
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
         />
-        {coordinates.map((c, index) => (
-          <circle key={index} cx={c.x} cy={c.y} r="2.5" fill="var(--color-accent)" />
+        {coordinates.map((c) => (
+          <circle
+            key={c.observedAt}
+            cx={c.x}
+            cy={c.y}
+            r="2.5"
+            fill="var(--color-accent)"
+          />
         ))}
       </svg>
 

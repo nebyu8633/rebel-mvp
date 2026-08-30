@@ -1,3 +1,13 @@
+/*
+ * Sequential awaits in this file are deliberate, so the rule that flags them is
+ * off for the whole module rather than annotated nine times:
+ *  - each document extraction calls the vision model, and firing ten
+ *    concurrent calls would hit rate limits;
+ *  - supplier and product resolution must be serialized, or two concurrent
+ *    inserts race on the unique index.
+ */
+/* oxlint-disable no-await-in-loop */
+
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";

@@ -1,0 +1,42 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"],
+
+  "oxc.enable": true,
+  "oxc.path": "${workspaceFolder}/web/node_modules/.bin/oxlint",
+  "oxc.configPath": "web/.oxlintrc.json",
+
+  "tailwindCSS.experimental.configFile": "web/app/globals.css",
+  "tailwindCSS.includeLanguages": {
+    "typescriptreact": "javascript"
+  },
+
+  "typescript.tsdk": "web/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "search.exclude": {
+    "**/.next": true,
+    "**/.venv": true,
+    "**/node_modules": true,
+    "**/package-lock.json": true
+  },
+  "files.watcherExclude": {
+    "**/.next/**": true,
+    "**/.venv/**": true,
+    "**/node_modules/**": true
+  },
+
+  "[python]": {
+    "editor.defaultFormatter": null
+  },
+  "editor.rulers": [88],
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}

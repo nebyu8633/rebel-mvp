@@ -99,13 +99,12 @@ export function SettingsForm({
         </Button>
 
         {saved && (
-          <span
-            role="status"
-            className="flex items-center gap-1.5 text-sm text-accent"
-          >
+          // <output> carries an implicit role="status", so assistive tech
+          // announces the confirmation without a redundant role attribute.
+          <output className="flex items-center gap-1.5 text-sm text-accent">
             <Check className="size-4" aria-hidden="true" />
             {dict.settings.saved}
-          </span>
+          </output>
         )}
       </div>
     </form>

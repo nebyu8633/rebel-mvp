@@ -71,6 +71,9 @@ export function DeleteInvoiceButton({ invoiceId }: { invoiceId: string }) {
 
       {isOpen && (
         <div
+          // Same as the product detail panel: a native <dialog> is only modal
+          // when opened with showModal(), and this one renders conditionally.
+          // oxlint-disable-next-line prefer-tag-over-role
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-invoice-title"

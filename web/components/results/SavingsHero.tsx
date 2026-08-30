@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { useIsomorphicLayoutEffect } from "@/hooks/useIsomorphicLayoutEffect";
 import { formatAgorot } from "@/lib/format/currency";
 import { getDictionary } from "@/lib/i18n";
 
@@ -18,17 +19,27 @@ const COUNT_UP_DURATION_MS = 1100;
  * is rendered immediately in that case rather than being withheld.
  */
 export function SavingsHero({ annualAgorot }: { annualAgorot: number }) {
+  /*
+   * Initialized to the real figure, not to zero, so the server-rendered HTML
+   * carries the actual number — it is the most important thing on the page and
+   * must survive slow hydration or no JavaScript at all.
+   */
   const [displayed, setDisplayed] = useState(annualAgorot);
 
-  useEffect(() => {
+  /*
+   * A layout effect, not a plain effect. The count-up has to rewind the value
+   * to zero before the browser paints; in a passive effect the user sees the
+   * final figure flash, drop to zero, and climb back — on the one element that
+   * matters most.
+   */
+  useIsomorphicLayoutEffect(() => {
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
 
-    if (prefersReducedMotion || annualAgorot === 0) {
-      setDisplayed(annualAgorot);
-      return;
-    }
+    // Nothing to animate: state already holds the final value, so there is no
+    // update to make here.
+    if (prefersReducedMotion || annualAgorot === 0) return;
 
     setDisplayed(0);
     let frame: number;

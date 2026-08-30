@@ -92,7 +92,9 @@ export function FloatingData({ reduced }: { reduced: boolean }) {
     <>
       {tokens.map((token, index) => (
         <Float
-          key={index}
+          // Position is unique per token and fixed, so it keys the list
+          // stably without depending on array order.
+          key={token.position.join(",")}
           speed={1.1 + (index % 3) * 0.25}
           rotationIntensity={reduced ? 0.15 : 0.4}
           floatIntensity={reduced ? 0.3 : 0.7}

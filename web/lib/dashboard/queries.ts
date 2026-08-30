@@ -190,6 +190,21 @@ export interface PricePoint {
   unitPrice: number;
 }
 
+/** What PostgREST may return for an embedded relation: object, array, or null. */
+type EmbeddedProduct = Array<{ canonical_name: string }> | { canonical_name: string } | null;
+
+/**
+ * Reads the product name out of an embedded relation.
+ *
+ * PostgREST returns the relation as an array unless it can prove the
+ * relationship is one-to-one, so both shapes have to be handled.
+ */
+function embeddedProductName(products: EmbeddedProduct): string {
+  if (products === null) return "—";
+  if (Array.isArray(products)) return products[0]?.canonical_name ?? "—";
+  return products.canonical_name;
+}
+
 /**
  * Price history for products that have enough of it to plot.
  *
@@ -207,24 +222,13 @@ export async function getPriceTrends(
     .select("product_id, normalized_unit_price, observed_at, base_unit, products(canonical_name)")
     .order("observed_at", { ascending: true });
 
-  /*
-   * PostgREST returns an embedded relation as an array unless it can prove the
-   * relationship is one-to-one, so `products` is typed as an array here and
-   * narrowed below rather than being asserted into an object shape.
-   */
   const rows = (data ?? []) as unknown as Array<{
     product_id: string;
     normalized_unit_price: number;
     observed_at: string;
     base_unit: string;
-    products: Array<{ canonical_name: string }> | { canonical_name: string } | null;
+    products: EmbeddedProduct;
   }>;
-
-  const productName = (products: (typeof rows)[number]["products"]): string => {
-    if (products === null) return "—";
-    if (Array.isArray(products)) return products[0]?.canonical_name ?? "—";
-    return products.canonical_name;
-  };
 
   const grouped = new Map<
     string,
@@ -233,7 +237,7 @@ export async function getPriceTrends(
 
   for (const row of rows) {
     const existing = grouped.get(row.product_id) ?? {
-      productName: productName(row.products),
+      productName: embeddedProductName(row.products),
       baseUnit: row.base_unit,
       points: [],
     };

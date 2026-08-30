@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "Invoice Guard (Python API)",
+      "path": "."
+    },
+    {
+      "name": "Purchasing Intelligence (Web)",
+      "path": "web"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "web": true
+    }
+  }
+}

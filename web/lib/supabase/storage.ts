@@ -12,7 +12,12 @@ const SIGNED_URL_TTL_SECONDS = 60 * 5;
  * source stays readable and the class cannot be mistaken for the characters
  * it spans (a literal range here reads as "space to hyphen", which would
  * strip spaces out of Hebrew filenames).
+ *
+ * Matching control characters is the whole point here — stripping them out of
+ * an uploaded filename before it becomes a storage key — so the rule that
+ * flags them is disabled for this line only, not project-wide.
  */
+// oxlint-disable-next-line no-control-regex
 const CONTROL_CHARS = new RegExp("[\\u0000-\\u001f\\u007f]", "g");
 
 /** Characters that are illegal or awkward in an object key. */

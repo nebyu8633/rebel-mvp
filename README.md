@@ -1,4 +1,54 @@
-# Invoice Guard
+# rebel-mvp
+
+This repository holds **two separate products** for restaurant purchasing.
+They share a domain but not a stack, and neither depends on the other.
+
+| | Where | Stack | Interface |
+|---|---|---|---|
+| **Invoice Guard** | `/` (this README) | Python 3.11 · FastAPI · PostgreSQL | WhatsApp bot |
+| **Restaurant Purchasing Intelligence** | [`/web`](web/README.md) | Next.js 16 · TypeScript · Three.js · Supabase | Hebrew-first web app |
+
+Both read supplier invoices with a vision LLM and compare prices against
+purchase history. Invoice Guard replies over WhatsApp; the web app is a
+browser SaaS with a 3D landing experience, upload flow, results screen and
+dashboard.
+
+### Working in VS Code
+
+Open the multi-root workspace rather than the plain folder, so both stacks get
+the right tooling context at once:
+
+```bash
+code rebel-mvp.code-workspace
+```
+
+Setup for both, from a fresh clone:
+
+```bash
+# Python side (repo root)
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+
+# Web side
+cd web && npm install && cp .env.example .env.local && cd ..
+```
+
+Then accept the recommended-extensions prompt, and run
+`Ctrl/Cmd+Shift+P → Python: Select Interpreter → ./.venv`.
+
+The workspace ships debug configurations for the Next.js dev server, Chrome,
+Vitest, uvicorn and pytest (**Run and Debug** panel), plus tasks for the common
+commands (`Ctrl/Cmd+Shift+P → Tasks: Run Task`).
+
+Neither `.env` needs real keys just to look around: `pytest` runs on SQLite, and
+the web app shows a Hebrew setup notice instead of crashing when Supabase is
+unconfigured. For the full web UI with no backend at all, run the
+**web: demo mode** task and open `/demo`.
+
+---
+
+## Invoice Guard (this directory)
 
 Invoice Guard is a B2B tool for restaurants that automatically detects
 supplier price anomalies from invoices sent over WhatsApp.

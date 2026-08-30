@@ -45,6 +45,10 @@ export function ProductDetailPanel({
   const unit = baseUnitLabel(row.baseUnit);
 
   return (
+    // A native <dialog> only behaves as a modal when opened imperatively with
+    // showModal(); this panel is rendered conditionally, so role + aria-modal
+    // is the correct pattern here.
+    // oxlint-disable-next-line prefer-tag-over-role
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label={dict.productDetail.title}>
       <button
         type="button"
