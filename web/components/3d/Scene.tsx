@@ -73,15 +73,19 @@ export function Scene({ reduced }: { reduced: boolean }) {
          * the headline and the subtitle stops being readable — the scene has
          * to support the copy, not compete with it (spec §8, §11).
          */}
-        <group
-          // On a narrow screen the same offset crops the sheet against the
-          // edge, so it moves back and in rather than being cut off.
-          position={reduced ? [0.9, -0.6, -3.4] : [1.9, -0.15, -2.2]}
-          scale={reduced ? 0.55 : 0.72}
-          rotation={[0, -0.28, 0.04]}
-        >
-          <InvoiceDocument reduced={reduced} />
-        </group>
+        {/*
+         * Desktop only. A 375px screen has one column, and the centred
+         * headline, subtitle and two buttons occupy all of it — wherever the
+         * sheet is placed it ends up crossing one of them, which reads as a
+         * rendering fault rather than as depth. The ambient particles and the
+         * scrim's glow carry the scene there instead, and the phone renders
+         * one fewer object for it.
+         */}
+        {!reduced && (
+          <group position={[1.9, -0.15, -2.2]} scale={0.72} rotation={[0, -0.28, 0.04]}>
+            <InvoiceDocument reduced={reduced} />
+          </group>
+        )}
         <FloatingData reduced={reduced} />
       </ParallaxRig>
     </Canvas>

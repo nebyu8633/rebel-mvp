@@ -14,7 +14,15 @@
 
   --color-content: #f4f5f7;
   --color-content-muted: #9aa1ad;
-  --color-content-subtle: #6b7280;
+  /*
+   * Raised from #6b7280, which scored 3.78:1 on --color-surface and so failed
+   * WCAG AA for text. The token carries real content in ~30 places — file
+   * sizes, units, step numbers — not just decoration, so the fix belongs here
+   * rather than at each call site. 5.00:1 on surface, 4.61:1 on surface-2, and
+   * still clearly dimmer than --color-content-muted, so the three-tier
+   * hierarchy is intact.
+   */
+  --color-content-subtle: #7f8694;
 
   --color-accent: #10b981;
   --color-accent-strong: #34d399;

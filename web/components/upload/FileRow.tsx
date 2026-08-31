@@ -73,10 +73,15 @@ export function FileRow({
         <Check className="size-4 shrink-0 text-accent" aria-hidden="true" />
       )}
 
+      {/*
+       * size-11 is 44px. The icon stays small; the target around it does not,
+       * because on a phone this sits directly beside the next row's control
+       * and a 28px box is a mis-tap waiting to happen.
+       */}
       <button
         type="button"
         onClick={() => onRemove(item.id)}
-        className="shrink-0 rounded-md p-1.5 text-content-subtle transition-colors hover:bg-surface-2 hover:text-content"
+        className="flex size-11 shrink-0 items-center justify-center rounded-md text-content-subtle transition-colors hover:bg-surface-2 hover:text-content"
         aria-label={`${dict.analyze.removeFile}: ${item.file.name}`}
       >
         <X className="size-4" aria-hidden="true" />

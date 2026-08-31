@@ -6,13 +6,42 @@ import { useCallback, useState } from "react";
 
 import { Dropzone } from "@/components/upload/Dropzone";
 import { FileRow, type SelectedFile } from "@/components/upload/FileRow";
+import { UploadCounter } from "@/components/upload/UploadCounter";
 import { Button } from "@/components/ui/Button";
 import { track } from "@/lib/analytics/track";
 import { ensureAnonymousSession } from "@/lib/auth/actions";
 import { getDictionary } from "@/lib/i18n";
-import { MAX_FILES_PER_ANALYSIS, validateFile } from "@/lib/invoices/validateFile";
+import {
+  MAX_FILES_PER_ANALYSIS,
+  validateBatchSize,
+  validateFile,
+} from "@/lib/invoices/validateFile";
 
 const dict = getDictionary();
+
+/**
+ * Turns a rejected upload into Hebrew the person can act on.
+ *
+ * The route handler re-runs the same validation the browser did and answers
+ * with the same error keys, so a rejection that the client's own checks missed
+ * still comes back as a specific reason rather than "the upload failed".
+ */
+async function describeFailure(response: Response): Promise<string> {
+  if (response.status === 401) return dict.errors.unauthorized;
+
+  try {
+    const body = (await response.json()) as { error?: string };
+    const key = body.error;
+    if (key !== undefined && key in dict.validation) {
+      return dict.validation[key as keyof typeof dict.validation];
+    }
+  } catch {
+    // A non-JSON body (a proxy error page, a truncated response) tells us
+    // nothing specific; fall through to the generic message.
+  }
+
+  return dict.analyze.uploadFailed;
+}
 
 /**
  * The upload screen's interactive half.
@@ -50,10 +79,20 @@ export function UploadForm() {
   }, []);
 
   const validFiles = files.filter((item) => item.status !== "error");
-  const canSubmit = validFiles.length > 0 && !isSubmitting;
+  const batch = validateBatchSize(validFiles.length);
+  const canSubmit = batch.ok && !isSubmitting;
 
   async function handleSubmit() {
-    if (!canSubmit) return;
+    /*
+     * The button stays enabled below the minimum and explains the shortfall
+     * here instead. A greyed-out control gives no reason, and the reason is
+     * the only thing that gets the person to five files.
+     */
+    if (!batch.ok) {
+      setSubmitError(dict.validation[batch.errorKey ?? "tooFew"]);
+      return;
+    }
+    if (isSubmitting) return;
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -77,9 +116,7 @@ export function UploadForm() {
       });
 
       if (!response.ok) {
-        setSubmitError(
-          response.status === 401 ? dict.errors.unauthorized : dict.analyze.uploadFailed,
-        );
+        setSubmitError(await describeFailure(response));
         return;
       }
 
@@ -122,27 +159,37 @@ export function UploadForm() {
         </p>
       )}
 
-      {validFiles.length > 0 && (
-        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-content-muted">
-            {validFiles.length} {dict.analyze.filesReady}
-          </p>
+      <UploadCounter count={validFiles.length} />
 
-          <Button size="lg" onClick={handleSubmit} disabled={!canSubmit}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                {dict.analyze.uploading}
-              </>
-            ) : (
-              <>
-                {dict.analyze.startAnalysis}
-                <ArrowLeft className="size-4" aria-hidden="true" />
-              </>
-            )}
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-content-muted">{dict.analyze.whyFiveBody}</p>
+
+        {/*
+         * Disabled only while the request is in flight — never for having too
+         * few files. Below the minimum the button still responds and names
+         * what is missing; the counter above already says how many are left.
+         */}
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          aria-disabled={!canSubmit}
+          className="sm:shrink-0"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              {dict.analyze.uploading}
+            </>
+          ) : (
+            <>
+              {dict.analyze.startAnalysis}
+              {/* The page is RTL, so "forward" points left. */}
+              <ArrowLeft className="size-4" aria-hidden="true" />
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

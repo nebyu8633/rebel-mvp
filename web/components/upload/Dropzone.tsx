@@ -104,7 +104,10 @@ export function Dropzone({
           type="button"
           onClick={openPicker}
           disabled={disabled}
-          className="mt-5 rounded-lg text-base font-semibold text-content transition-colors hover:text-accent"
+          // min-h-11 is 44px: this is the control that opens the file picker
+          // on a phone, so it has to be a comfortable target rather than a
+          // line of text with a tap handler.
+          className="mt-4 inline-flex min-h-11 items-center rounded-lg px-4 text-base font-semibold text-content transition-colors hover:text-accent"
         >
           {/* The desktop wording mentions dragging; the mobile one does not,
               because there is nothing to drag on a phone. */}
@@ -112,11 +115,23 @@ export function Dropzone({
           <span className="sm:hidden">{dict.analyze.dropzoneMobile}</span>
         </button>
 
-        <p className="mt-2 text-sm text-content-muted">
-          {/* Latin format names and the size cap stay LTR inside the RTL line. */}
-          <span dir="ltr" style={{ unicodeBidi: "isolate" }}>
-            {dict.analyze.dropzoneHint}
-          </span>
+        {/*
+         * Each constraint is its own isolated segment. The paragraph stays
+         * RTL: putting `dir="ltr"` on the whole line lays the Hebrew out
+         * backwards, and running the segments together lets the bidi algorithm
+         * merge "10MB" with the digits in "מ-5".
+         */}
+        <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-content-muted">
+          {dict.analyze.dropzoneHints.map((hint, index) => (
+            <span key={hint} className="flex items-center gap-x-2">
+              {index > 0 && (
+                <span className="text-content-subtle" aria-hidden="true">
+                  ·
+                </span>
+              )}
+              <span style={{ unicodeBidi: "isolate" }}>{hint}</span>
+            </span>
+          ))}
         </p>
       </div>
     </div>

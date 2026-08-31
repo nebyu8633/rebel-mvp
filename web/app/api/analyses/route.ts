@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import { runAnalysis, type PipelineFile } from "@/lib/invoices/pipeline";
 import {
-  MAX_FILES_PER_ANALYSIS,
   MAX_FILE_SIZE_BYTES,
   sniffMimeType,
+  validateBatchSize,
   validateFile,
 } from "@/lib/invoices/validateFile";
 import { ensureBusiness } from "@/lib/auth/session";
@@ -40,11 +40,15 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const uploads = formData.getAll("files").filter((entry): entry is File => entry instanceof File);
 
-  if (uploads.length === 0) {
-    return NextResponse.json({ error: "no_files" }, { status: 400 });
-  }
-  if (uploads.length > MAX_FILES_PER_ANALYSIS) {
-    return NextResponse.json({ error: "too_many_files" }, { status: 400 });
+  /*
+   * The batch-size rule is enforced here, not only in the browser. This
+   * handler accepts an ordinary multipart POST, so the upload screen's counter
+   * is a convenience for the person using it and nothing more — anything that
+   * must actually hold has to hold on this side.
+   */
+  const batch = validateBatchSize(uploads.length);
+  if (!batch.ok) {
+    return NextResponse.json({ error: batch.errorKey }, { status: 400 });
   }
 
   const files: PipelineFile[] = [];

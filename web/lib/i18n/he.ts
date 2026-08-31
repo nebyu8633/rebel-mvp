@@ -60,6 +60,20 @@ export const he = {
     primaryCta: "בדיקת החיסכון שלי",
     secondaryCta: "איך זה עובד",
     howItWorksTitle: "איך זה עובד",
+
+    // The 3D card on the home screen. Its illustration is deliberately free of
+    // numbers: a made-up price on the front page would be exactly the kind of
+    // fabricated figure the product exists to catch.
+    card3d: {
+      eyebrow: "חשבונית ספק",
+      title: "מצאת את המחירים שמשאירים כסף על השולחן",
+      body: "אותו מוצר, אותו ספק, מחיר אחר. הפרש שקשה לראות בעין נעשה ברור כשמשווים שורה מול שורה.",
+      lineFlagged: "השורה שהתייקרה",
+      lineOther: "שורות ללא שינוי",
+      primaryCta: "בדיקת החיסכון שלי",
+      secondaryCta: "העלאת חשבוניות",
+    },
+
     steps: [
       {
         title: "מעלים חשבוניות",
@@ -87,12 +101,34 @@ export const he = {
     multiPeriodHint:
       "טיפ: העלה חשבוניות מכמה חודשים שונים בבת אחת — כך נוכל להשוות מחירים ולזהות התייקרויות כבר בניתוח הראשון.",
     dropzoneTitle: "גרור לכאן חשבוניות או לחץ לבחירה",
-    dropzoneHint: "PDF, JPG או PNG · עד 10MB לקובץ · עד 10 קבצים",
+    /*
+     * One constraint per entry. They are rendered as separate bidi-isolated
+     * segments: joined into a single string, the Latin "10MB" and the digits
+     * in "מ-5" end up adjacent and the bidi algorithm reorders them into
+     * something that reads as a range it is not.
+     */
+    dropzoneHints: [
+      "PDF, JPG או PNG",
+      "עד 10MB לקובץ",
+      "מ-5 עד 10 חשבוניות",
+    ],
     dropzoneMobile: "צלם חשבונית או בחר קובץ",
-    filesReady: "מוכן לניתוח",
     startAnalysis: "נתח את החשבוניות שלי",
     emptyTitle: "עדיין לא נבחרו קבצים",
-    emptyBody: "התחל בהעלאת חשבונית אחת לפחות.",
+    emptyBody: "כדי להתחיל צריך 5 חשבוניות לפחות.",
+
+    // The 5-invoice counter. Shown from the moment the screen loads, so the
+    // requirement is visible before the first file is chosen rather than
+    // arriving as a refusal after it.
+    counterLabel: "חשבוניות שנבחרו",
+    counterReady: "אפשר להתחיל בניתוח",
+    /** Rendered as `${remainingPrefix} ${n} ${remainingSuffixOne|Many}`. */
+    remainingPrefix: "עוד",
+    remainingSuffixOne: "חשבונית כדי להתחיל",
+    remainingSuffixMany: "חשבוניות כדי להתחיל",
+    whyFiveTitle: "למה 5 חשבוניות?",
+    whyFiveBody:
+      "השוואת מחיר דורשת לראות את אותו מוצר יותר מפעם אחת. מחשבונית בודדת אין למה להשוות, ולכן הניתוח יחזור ריק.",
     removeFile: "הסרת הקובץ",
     uploading: "מעלה…",
     uploadFailed: "ההעלאה נכשלה",
@@ -103,6 +139,7 @@ export const he = {
     wrongType: "סוג קובץ לא נתמך. אפשר להעלות PDF, JPG או PNG בלבד.",
     executable: "קבצי הרצה אינם מותרים.",
     tooMany: "אפשר להעלות עד 10 קבצים בניתוח אחד.",
+    tooFew: "צריך 5 חשבוניות לפחות כדי להתחיל ניתוח.",
     empty: "הקובץ ריק או פגום.",
     noFiles: "יש לבחור לפחות קובץ אחד.",
   },

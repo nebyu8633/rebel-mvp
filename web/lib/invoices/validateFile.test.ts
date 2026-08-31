@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_FILES_PER_ANALYSIS,
   MAX_FILE_SIZE_BYTES,
+  MIN_FILES_PER_ANALYSIS,
   formatFileSize,
   sniffMimeType,
+  validateBatchSize,
   validateFile,
 } from "./validateFile";
 
@@ -89,5 +91,34 @@ describe("formatFileSize", () => {
     expect(formatFileSize(500)).toBe("500B");
     expect(formatFileSize(2048)).toBe("2KB");
     expect(formatFileSize(2.5 * 1024 * 1024)).toBe("2.5MB");
+  });
+});
+
+describe("validateBatchSize", () => {
+  it("rejects a batch below the minimum", () => {
+    for (let count = 0; count < MIN_FILES_PER_ANALYSIS; count += 1) {
+      expect(validateBatchSize(count)).toEqual({ ok: false, errorKey: "tooFew" });
+    }
+  });
+
+  it("accepts a batch exactly at the minimum", () => {
+    expect(validateBatchSize(MIN_FILES_PER_ANALYSIS)).toEqual({ ok: true });
+  });
+
+  it("accepts a batch exactly at the maximum", () => {
+    expect(validateBatchSize(MAX_FILES_PER_ANALYSIS)).toEqual({ ok: true });
+  });
+
+  it("rejects a batch above the maximum", () => {
+    expect(validateBatchSize(MAX_FILES_PER_ANALYSIS + 1)).toEqual({
+      ok: false,
+      errorKey: "tooMany",
+    });
+  });
+
+  it("leaves room between the two bounds", () => {
+    // A minimum at or above the maximum would make every batch invalid, and
+    // the two constants are edited independently.
+    expect(MIN_FILES_PER_ANALYSIS).toBeLessThan(MAX_FILES_PER_ANALYSIS);
   });
 });

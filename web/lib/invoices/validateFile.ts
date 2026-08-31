@@ -9,6 +9,16 @@
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_FILES_PER_ANALYSIS = 10;
 
+/**
+ * The smallest batch that can produce a meaningful comparison.
+ *
+ * A price change needs at least two observations of the same product, and one
+ * invoice rarely repeats a line. Below five documents the analysis reliably
+ * comes back empty, which reads as a broken product rather than as a shortage
+ * of data — so the requirement is stated up front instead.
+ */
+export const MIN_FILES_PER_ANALYSIS = 5;
+
 export const ACCEPTED_MIME_TYPES = [
   "application/pdf",
   "image/jpeg",
@@ -34,6 +44,7 @@ export type FileValidationError =
   | "wrongType"
   | "executable"
   | "tooMany"
+  | "tooFew"
   | "empty";
 
 export interface FileValidationResult {
@@ -73,6 +84,24 @@ export function validateFile(
   if (file.size <= 0) return { ok: false, errorKey: "empty" };
   if (file.size > MAX_FILE_SIZE_BYTES) return { ok: false, errorKey: "tooLarge" };
 
+  return { ok: true };
+}
+
+/**
+ * Validates the size of the batch as a whole.
+ *
+ * Deliberately separate from `validateFile`, which answers "is this document
+ * acceptable?" about one file. How many files there are is a property of the
+ * selection, not of any file in it — folding it into the per-file check would
+ * mean the fifth file is valid and the first four are not, which is nonsense
+ * to render.
+ *
+ * Both the browser and the route handler call this, so the rule has one
+ * definition and the two sides cannot drift apart.
+ */
+export function validateBatchSize(count: number): FileValidationResult {
+  if (count < MIN_FILES_PER_ANALYSIS) return { ok: false, errorKey: "tooFew" };
+  if (count > MAX_FILES_PER_ANALYSIS) return { ok: false, errorKey: "tooMany" };
   return { ok: true };
 }
 
