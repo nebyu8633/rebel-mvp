@@ -9,6 +9,8 @@
 
 Braze היא פלטפורמת customer engagement ארגונית, real-time ו-cross-channel (push, in-app, email, SMS, WhatsApp, web), שמשרתת בעיקר מותגי B2C דיגיטליים/מובייל. ב-Q2 FY2027 (הרבעון שהסתיים ב-31.7.2026) היו לה 2,789 לקוחות ו-361 לקוחות עם ARR של $500K ומעלה, שאחראים ל-65% מה-ARR. ההכנסות צמחו ב-26.2% ל-$227.2M, ו-91% מהן ממנויים. ה-DBNR (dollar-based net retention) נשחק מ-114% (7/2024) לשפל של 108% (7–10/2025), ומאז התאושש בהדרגה ל-110% (112% אצל הלקוחות הגדולים). הצמיחה האורגנית הואצה במשך ארבעה רבעונים ברציפות, לפי החברה. מכאן שהחפיר (moat) **יציב עם סימני התחזקות מתונים** מאז אמצע 2025, אבל לא במגמת התחזקות מובהקת. ה-DBNR עדיין רחוק מרמות העבר (מעל 115%). הטענה ש-AI הוא רוח גבית (OfferFit/Decisioning Studio, BrazeAI Agents) נתמכת בנתוני אימוץ: בערך שליש מהלקוחות הגדולים משלמים על מוצרי AI. עם זאת, המונטיזציה עדיין קטנה (Decisioning Studio תרם $5.7M ברבעון Q1 FY27). הסיכון המרכזי לטווח ארוך הוא AI agentic/LLM שמוריד את ערך שכבת ה-orchestration, וקונסולידציה של תקציבים לטובת Salesforce/Adobe. הסיכון הזה **לא הוכח בנתונים עד כה**, אבל הוא מכביד על המכפיל.
 
+**עדכון מ-2026-10-20:** Salesforce הסכימה לרכוש את Braze תמורת $47.50 למניה במזומן (EV של כ-$5.66B, פרמיה של כ-58%). מבחינה תחרותית, העסקה מאשרת את איכות המוצר: Marketing Cloud ממלאת דרכה פער ב-real-time/mobile ומסירה מתחרה צומח. עם זאת, מחיר מתחת ל-IPO ומכפיל של כ-5.7x NTM sales משקפים לחץ קונסולידציה על point solutions. לבעלי המניות, תיק ההשקעה עובר בעיקר להערכת סיכון ההסגרה, כולל סקירת antitrust על החפיפה הישירה עם SFMC. ראו סעיף 11.
+
 ---
 
 ## ממצאים לפי שאלה
@@ -218,6 +220,9 @@ Braze היא פלטפורמת customer engagement ארגונית, real-time ו-c
 | מחיר רכישת OfferFit | $325M (מזומן ומניות) | הוכרז 27.3.2025 | 2025-03-27 | https://www.braze.com/press-releases/braze-announces-agreement-to-acquire-offerfit | מדווח | משני (תקציר של מקור ראשוני) |
 | TAM (IDC, IPO) | כ-$15B | 2021 | 2021-11 | https://vivid.money/feed/brazes-ipo-is-today-heres-what-you-need-to-know | מוערך (צד ג' שמצוטט בתשקיף) | משני |
 | שוק customer engagement solutions | $23.5B (2025), עד $43.9B (2030) | 2025–2030 | לא ידוע | https://www.thebusinessresearchcompany.com/report/customer-engagement-solution-global-market-report | מוערך | משני |
+| מחיר רכישה על ידי Salesforce | $47.50 למניה במזומן, EV של כ-$5.66B | הוכרז 2026-10-20 | 2026-10-20 | https://www.sec.gov/Archives/edgar/data/0001676238/000095010326015850/dp254600_ex9902.htm | מדווח | ראשוני (8-K; לא נקרא ישירות, אושר על ידי המתאם ובחיפוש) |
+| פרמיית העסקה | כ-58% על $30.04 (19.10.2026) | 2026-10 | 2026-10-20 | https://ppc.land/salesforce-agrees-to-buy-braze-for-5-66bn-in-cash/ | מחושב/מדווח | משני |
+| דמי ביטול | $300M (Salesforce) / $191.4M (Braze) | 2026-10 | 2026-10-20 | https://letsdatascience.com/news/salesforce-agrees-to-acquire-braze-for-566-billion-9d3d8c86 | מדווח | משני |
 | ARR ממוצע ללקוח מעל $500K | כ-$1.4M ומעלה | Q2 FY27 | – | חישוב: 65% × $800M ומעלה ÷ 361 | מחושב (מקורב) | – |
 | צמיחת לקוחות מעל $500K, 8 רבעונים | +62.6% (222 עד 361) | 7/2024 עד 7/2026 | – | חישוב מנתוני הטבלה | מחושב | – |
 
@@ -233,6 +238,7 @@ Braze היא פלטפורמת customer engagement ארגונית, real-time ו-c
 7. **Decisioning Studio:** עתיר שירותים, ולא ידוע אם המרווח שלו יגיע לרמת ה-SaaS הרגילה.
 8. **סקירת Gartner 2026:** מבוססת על דיווח עצמי של Braze. מיקום המתחרים לא אומת.
 9. **Q3 FY27:** תוצאות הרבעון שהסתיים ב-31.10.2026 טרם פורסמו.
+10. **עסקת Salesforce:** סיכון ההסגרה (antitrust בארה"ב וב-EU, הצבעת בעלי המניות) לא ידוע. לא ידוע גם איך יטופלו מניות Class B. לא נמצאה פרשנות antitrust מקצועית.
 
 ---
 
@@ -285,3 +291,12 @@ Braze היא פלטפורמת customer engagement ארגונית, real-time ו-c
 - https://www.reportprime.com/customer-engagement-platform-r14509
 - https://www.thebusinessresearchcompany.com/report/customer-engagement-solution-global-market-report
 - https://www.researchnester.com/reports/customer-engagement-solutions-market/6286
+- https://www.sec.gov/Archives/edgar/data/0001676238/000095010326015850/dp254600_ex9902.htm (סופק על ידי המתאם; אושר בחיפוש)
+- https://www.sec.gov/Archives/edgar/data/0001676238/000095010326015851/dp255272_ex9902.htm
+- https://ppc.land/salesforce-agrees-to-buy-braze-for-5-66bn-in-cash/
+- https://www.cmswire.com/customer-experience/why-is-salesforce-buying-braze-and-what-happens-to-marketing-cloud/
+- https://letsdatascience.com/news/salesforce-agrees-to-acquire-braze-for-566-billion-9d3d8c86
+- https://www.davispolk.com/experience/braze-5-7-billion-sale-salesforce
+- https://dealroom.co/news/164306-salesforce-to-buy-braze-for-5-66b-a-58-premium-but-below-brazes-2021-ipo/
+- https://www.cio.com/article/4239043/salesforce-to-buy-braze-for-5-7-billion-to-boost-real-time-customer-engagement.html
+- https://www.benzinga.com/node/62496813
