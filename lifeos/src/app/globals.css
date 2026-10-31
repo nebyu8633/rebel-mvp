@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-heebo), "Heebo", "Segoe UI", "Arial Hebrew", system-ui, sans-serif;
+  --color-accent-50: #effaf8;
+  --color-accent-100: #d6f2ed;
+  --color-accent-200: #ade4da;
+  --color-accent-500: #1f9e8c;
+  --color-accent-600: #13806f;
+  --color-accent-700: #11665a;
+  --color-accent-800: #11524a;
+}
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --border: #e7e5e0;
+  /* validated categorical chart slots (dataviz reference palette) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111312;
+    --surface: #1a1d1c;
+    --border: #2a2e2c;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+  }
+}
+
+html,
+body {
+  background: var(--bg);
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+.surface {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.hairline {
+  border-color: var(--border);
+}
+
+/* subtle entrance */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-in {
+  animation: fade-up 0.22s ease-out both;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.animate-sheet {
+  animation: sheet-up 0.2s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-sheet {
+    animation: none;
+  }
+}
+
+/* numbers/latin inside RTL text keep their own direction */
+.ltr-nums {
+  unicode-bidi: plaintext;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+input[type="date"],
+input[type="time"] {
+  min-height: 2.5rem;
+}
