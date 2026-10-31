@@ -1,0 +1,8 @@
+### 2026-10-31T21:44:18Z $ python3 /home/user/rebel-mvp/.claude/skills/trader-scanner/scan.py daily --symbols BRZE
+Fetching daily closes for 1 symbols (1 spark requests)...
+Daily scan, Sat 2026-10-31 17:44 ET, closes through nothing (Yahoo spark, daily closes only).
+Fetched 0 of 1 charts (1 failed or had no data). 0 passed the liquidity filter ($5+ and 1,000,000+ shares); 0 scanned.
+No setups.
+Wrote trader/watchlist.json (mode daily, 0 hits).
+A scan is a list of charts that match a rule, not a list of stocks to buy. Next: pick one chart, then /trader-news TICKER.
+exit=1
