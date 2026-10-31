@@ -262,4 +262,29 @@ for w in (0.085, 0.09, 0.10, 0.11, 0.12):
 
 print("\n6d. Base DCF (FCF-SBC) at basic vs FD shares: "
       f"basic ${results['base']['basic']['dcf_sbc']:.2f}, FD ${results['base']['FD']['dcf_sbc']:.2f}")
+
+section("7. DEAL FRAMEWORK (coordinator-verified terms: $47.50 cash, EV ~$5.66B, 8-K ex.99.2)")
+import datetime as _dt
+VAL = _dt.date(2026, 10, 30)
+gross = DEAL_PRICE / PRICE - 1
+print(f"Gross spread ${DEAL_PRICE-PRICE:.2f} = {gross:.2%}")
+for d in (_dt.date(2027, 3, 31), _dt.date(2027, 6, 30), _dt.date(2027, 9, 30), _dt.date(2028, 1, 31)):
+    t = (d - VAL).days / 365.25
+    print(f"  close {d}: {t:4.2f}y  annualised (compound) {(1+gross)**(1/t)-1:6.2%}  simple {gross/t:6.2%}")
+print("Implied break probability = (deal - price)/(deal - standalone)  [undiscounted]")
+for lab, sv in (("undisturbed $30.04", UNDISTURBED), ("bear blend", results["bear"]["blend"]),
+                ("base blend", results["base"]["blend"]), ("prob-wtd standalone", pw),
+                ("peer growth-adj (FD) $31.09", 31.09)):
+    print(f"  standalone {lab:28s} ${sv:6.2f}: P(break) {(DEAL_PRICE-PRICE)/(DEAL_PRICE-sv):6.1%}")
+print(f"Offer vs base standalone: {DEAL_PRICE/results['base']['blend']-1:+.1%}; vs prob-weighted {DEAL_PRICE/pw-1:+.1%};"
+      f" vs bull {DEAL_PRICE/results['bull']['blend']-1:+.1%}")
+print("Payoff: deal closes +${:.2f}; breaks to base ${:.2f} ({:+.1%}), to $30.04 ({:+.1%}), to bear ({:+.1%})".format(
+    DEAL_PRICE-PRICE, results['base']['blend'], results['base']['blend']/PRICE-1, UNDISTURBED/PRICE-1,
+    results['bear']['blend']/PRICE-1))
+print("Cross-check share count / net cash vs deal EV 5660:")
+eq_basic = DEAL_PRICE * BASIC_SHARES
+print(f"  basic equity at $47.50 = {eq_basic:.0f}; minus cash 413.9 -> EV {eq_basic-CASH:.0f};"
+      f" gap to 5660 = {DEAL_EV-(eq_basic-CASH):.0f} -> {(DEAL_EV-(eq_basic-CASH))/DEAL_PRICE:.1f}M extra FD shares (RSU/options) if net cash=413.9")
+print(f"  if FD shares were the 114.2M non-GAAP diluted count, deal EV 5660 implies net cash {DEAL_PRICE*WAVG_DILUTED_NG-DEAL_EV:.0f}"
+      " (implausible: < 0 while Braze has ~414 cash, no debt) -> FD count must be well above 114M")
 print("\nDone.")
