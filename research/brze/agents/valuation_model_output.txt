@@ -1,0 +1,136 @@
+
+==============================================================================
+1. INPUTS & DERIVED
+==============================================================================
+Price (2026-10-30 close)                 45.75
+Deal price / spread to price             47.50  spread  3.83%
+Basic shares (2026-09-01)              113.584M
+Non-GAAP diluted wavg Q2 FY27          114.200M
+Deal-implied FD shares (calc)          127.872M  =(5660+413.9)/47.50
+Cash & mkt sec (2026-07-31)              413.9   debt 0.0
+FY26 revenue (sum of quarters)           738.2
+TTM revenue (Q3FY26-Q2FY27)              834.2
+Implied Q4 FY27 rev (guide mid)          243.8  y/y 18.81%
+FY27 guide midpoint                      911.5  y/y 23.48%
+NTM revenue est (Q3FY27-Q2FY28)         1007.9  (Q1-Q2 FY28 at +22%)
+TTM GAAP gross profit (est @66.8%)       557.2
+TTM FCF                                   80.2  margin  9.61%
+FY26 SBC / revenue                      19.63%   Q2FY27 SBC/rev 15.71%
+TTM FCF - SBC (SBC est: FY26 H2 ~72 + Q1 ~36 + Q2 35.7)
+   TTM SBC est 144.2; FCF-SBC -64.0 (-7.7%)
+
+==============================================================================
+2. MULTIPLES AT MARKET PRICE (two share counts)
+==============================================================================
+[basic 113.6M] MktCap     5196  EV     4783
+   EV/TTM rev  5.73x | EV/FY27 guide  5.25x | EV/NTM  4.75x | EV/TTM GP  8.58x | P/S TTM  6.23x | EV/TTM FCF  59.6x | EV/FY27 NG EBIT  62.9x
+[deal-FD 127.9M] MktCap     5850  EV     5436
+   EV/TTM rev  6.52x | EV/FY27 guide  5.96x | EV/NTM  5.39x | EV/TTM GP  9.76x | P/S TTM  7.01x | EV/TTM FCF  67.8x | EV/FY27 NG EBIT  71.5x
+Deal (EV 5660): EV/TTM 6.78x  EV/FY27 6.21x  EV/NTM 5.62x  EV/TTM GP 10.16x
+Undisturbed $30.04: EV 2998-3427, EV/NTM 2.97-3.40x
+Implied multiple by price (deal-FD shares):
+   $ 30.00: EV    3422  EV/TTM 4.10x  EV/NTM 3.40x
+   $ 35.00: EV    4062  EV/TTM 4.87x  EV/NTM 4.03x
+   $ 40.00: EV    4701  EV/TTM 5.64x  EV/NTM 4.66x
+   $ 45.75: EV    5436  EV/TTM 6.52x  EV/NTM 5.39x
+   $ 47.50: EV    5660  EV/TTM 6.78x  EV/NTM 5.62x
+   $ 55.00: EV    6619  EV/TTM 7.93x  EV/NTM 6.57x
+
+==============================================================================
+3. PEERS: growth-adjusted EV/NTM revenue
+==============================================================================
+KVYO  EV/NTM 2.80x growth 21.3%  EV/NTM/g 0.131  [Scalar Aug-2026]
+HUBS  EV/NTM 2.80x growth 16.5%  EV/NTM/g 0.170  [Scalar Aug-2026 (TIKR ~Oct-20: 2.70x)]
+TWLO  EV/NTM 4.80x growth 12.6%  EV/NTM/g 0.381  [Scalar Aug-2026]
+CXM   EV/NTM 1.30x growth  n/a   EV/NTM/g   n/a  [Scalar Aug-2026 (growth n/a)]
+ADBE  EV/NTM 3.43x growth  n/a   EV/NTM/g   n/a  [TIKR ~Oct-2026 fwd (growth n/a)]
+BRZE  EV/NTM 5.39x growth 20.8% EV/NTM/g 0.259 (at market, deal-FD)
+BRZE undisturbed EV/NTM 3.40x  EV/NTM/g 0.163
+Peer median growth-adj (3 names) 0.170 -> BRZE at that ratio: EV/NTM 3.53x -> per share 31.09 (FD) / 35.00 (basic)
+
+==============================================================================
+4. SCENARIOS (FY27 base = guide midpoint 911.5)
+==============================================================================
+
+--- BEAR --- rev CAGR FY27-32 13.2%; WACC/ke 11.0%; tg 3.0%; exit 2.5x NTM rev; dilution 3.0%/yr
+           FY28     FY29     FY30     FY31     FY32
+Rev        1066     1226     1386     1538     1692
+g         17.0%    15.0%    13.0%    11.0%    10.0%
+FCF%      11.0%    13.0%    15.0%    17.0%    18.0%
+SBC%      16.0%    15.0%    14.0%    13.0%    12.0%
+FCF         117      159      208      262      305
+F-SBC       -53      -25       14       62      102
+DCF (FCF-SBC) EV 800 (TV 94% of EV)
+  [FD   ] DCF FCF-SBC $  9.49 | DCF FCF(no SBC deduction) $ 26.91 | same, dilution-adj $ 23.21 | Exit-multiple PV $ 23.70 (FY32 value $40.99; exit EV 4611; cum FCF 1051)
+  [basic] DCF FCF-SBC $ 10.69 | DCF FCF(no SBC deduction) $ 30.29 | same, dilution-adj $ 26.13 | Exit-multiple PV $ 26.68 (FY32 value $46.14; exit EV 4611; cum FCF 1051)
+  Blend (50% DCF FCF-SBC + 50% exit, FD) $16.59  vs price -63.7%  vs deal -65.1%
+
+--- BASE --- rev CAGR FY27-32 17.0%; WACC/ke 10.0%; tg 3.5%; exit 4.0x NTM rev; dilution 2.5%/yr
+           FY28     FY29     FY30     FY31     FY32
+Rev        1103     1312     1536     1766     1995
+g         21.0%    19.0%    17.0%    15.0%    13.0%
+FCF%      12.0%    15.5%    19.0%    22.0%    25.0%
+SBC%      15.0%    13.5%    12.0%    10.5%     9.0%
+FCF         132      203      292      389      499
+F-SBC       -33       26      107      203      319
+DCF (FCF-SBC) EV 3502 (TV 88% of EV)
+  [FD   ] DCF FCF-SBC $ 30.62 | DCF FCF(no SBC deduction) $ 49.57 | same, dilution-adj $ 43.82 | Exit-multiple PV $ 45.55 (FY32 value $75.12; exit EV 8940; cum FCF 1515)
+  [basic] DCF FCF-SBC $ 34.47 | DCF FCF(no SBC deduction) $ 55.81 | same, dilution-adj $ 49.33 | Exit-multiple PV $ 51.28 (FY32 value $84.57; exit EV 8940; cum FCF 1515)
+  Blend (50% DCF FCF-SBC + 50% exit, FD) $38.08  vs price -16.8%  vs deal -19.8%
+
+--- BULL --- rev CAGR FY27-32 21.0%; WACC/ke 9.5%; tg 4.0%; exit 5.5x NTM rev; dilution 2.0%/yr
+           FY28     FY29     FY30     FY31     FY32
+Rev        1139     1401     1696     2018     2361
+g         25.0%    23.0%    21.0%    19.0%    17.0%
+FCF%      13.0%    17.0%    21.0%    25.0%    29.0%
+SBC%      14.0%    12.0%    10.5%     9.0%     8.0%
+FCF         148      238      356      504      685
+F-SBC       -11       70      178      323      496
+DCF (FCF-SBC) EV 6562 (TV 89% of EV)
+  [FD   ] DCF FCF-SBC $ 54.55 | DCF FCF(no SBC deduction) $ 77.24 | same, dilution-adj $ 69.96 | Exit-multiple PV $ 76.57 (FY32 value $123.31; exit EV 15063; cum FCF 1932)
+  [basic] DCF FCF-SBC $ 61.41 | DCF FCF(no SBC deduction) $ 86.95 | same, dilution-adj $ 78.76 | Exit-multiple PV $ 86.20 (FY32 value $138.82; exit EV 15063; cum FCF 1932)
+  Blend (50% DCF FCF-SBC + 50% exit, FD) $65.56  vs price +43.3%  vs deal +38.0%
+
+Probability-weighted standalone (25/50/25) $39.58  vs price -13.5%
+
+==============================================================================
+5. MERGER-ARB VIEW
+==============================================================================
+Fallback undisturbed $30.04   $ 30.04 -> market-implied close prob  96.2%
+Fallback standalone base      $ 38.08 -> market-implied close prob  93.0%
+Fallback standalone bear      $ 16.59 -> market-implied close prob  97.9%
+Gross spread 3.83%; annualised at 0.6y 6.5%
+  P(close)=85%, fallback 30.04: expected PV $43.84 vs price -4.2%
+  P(close)=90%, fallback 30.04: expected PV $44.69 vs price -2.3%
+  P(close)=95%, fallback 30.04: expected PV $45.54 vs price -0.5%
+
+==============================================================================
+6. SENSITIVITIES (base case, deal-FD shares)
+==============================================================================
+6a. DCF (FCF-SBC) $/share: rows = rev CAGR FY27-32 (decelerating path), cols = terminal FCF margin (pre-SBC)
+CAGR\FCF      18%     21%     25%     28%     31%
+  10.0%     14.31   18.19   23.37   27.25   31.13
+  13.0%     15.90   20.33   26.22   30.65   35.07
+  16.0%     17.67   22.70   29.40   34.42   39.44
+  19.0%     19.63   25.32   32.91   38.60   44.29
+  22.0%     21.80   28.23   36.79   43.21   49.64
+
+6b. DCF (FCF-SBC) $/share: rows = WACC, cols = terminal growth
+WACC\g      2.5%    3.0%    3.5%    4.0%    4.5%
+  8.5%     34.50   37.18   40.39   44.31   49.21
+  9.0%     31.69   33.91   36.53   39.68   43.52
+ 10.0%     27.20   28.79   30.62   32.76   35.28
+ 11.0%     23.80   24.98   26.32   27.84   29.60
+ 12.0%     21.14   22.04   23.05   24.18   25.47
+
+6c. Exit-multiple PV $/share: rows = discount rate, cols = exit EV/NTM rev
+ke\mult      2.5x     3.0x     4.0x     5.0x     6.0x
+  8.5%      33.85    38.89    48.95    59.02    69.09
+  9.0%      33.05    37.96    47.79    57.61    67.44
+ 10.0%      31.50    36.18    45.55    54.91    64.28
+ 11.0%      30.04    34.50    43.43    52.37    61.30
+ 12.0%      28.66    32.92    41.44    49.96    58.48
+
+6d. Base DCF (FCF-SBC) at basic vs FD shares: basic $34.47, FD $30.62
+
+Done.
