@@ -1,0 +1,7 @@
+### 2026-11-01T12:40:32Z $ python3 /home/user/rebel-mvp/.claude/skills/trader-news/news.py --tickers SNPS --hours 720
+Nothing new.
+note: SEC filings skipped: set sec_user_agent in trader/config.json or SEC_USER_AGENT ("Your Name you@example.com") to include them
+note: headlines for SNPS: could not reach https://feeds.finance.yahoo.com/rss/2.0/headline?s=SNPS&region=US&lang=en-US: Tunnel connection failed: 403 Forbidden
+note: price for SNPS: could not reach https://query2.finance.yahoo.com/v8/finance/chart/SNPS?range=1d&interval=5m: Tunnel connection failed: 403 Forbidden
+Checked 2026-11-01 07:40 ET. Headlines are leads, not facts; open the story before acting. Not financial advice.
+exit=1

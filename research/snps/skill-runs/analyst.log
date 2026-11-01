@@ -1,0 +1,3 @@
+### 2026-11-01T12:40:32Z $ python3 /home/user/rebel-mvp/.claude/skills/trader-analyst/facts.py SNPS --quarters 8 --user-agent Placeholder Researcher placeholder@example.invalid
+facts: could not reach https://www.sec.gov/files/company_tickers.json: Tunnel connection failed: 403 Forbidden
+exit=2
