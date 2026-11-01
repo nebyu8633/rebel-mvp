@@ -72,7 +72,7 @@ Implied SNPS price at CDNS-like 40-50x FY27 non-GAAP EPS: $763-$954 (CDNS warran
 ==============================================================================
 
 --- BEAR --- FY27 misses guide (9%); Ansys revenue synergies largely fail; China/export & IP weakness; margin peaks 45% (vs 50% target); SBC stays ~9%
-WACC 9.5% | terminal g 3.0% | exit EV/non-GAAP EBIT 15.0x
+WACC 9.5% | terminal g 3.0% | exit EV/(EBIT-SBC) 14.0x
    FY     Rev    g%  OpM%   EBIT   uFCF   SBC uFCF-SBC FCF-SBC m%
  2027   10.59   9.0  42.0   4.45   3.11  1.01     2.11       19.9
  2028   11.44   8.0  43.0   4.92   3.44  1.09     2.36       20.6
@@ -84,16 +84,16 @@ WACC 9.5% | terminal g 3.0% | exit EV/non-GAAP EBIT 15.0x
  2034   15.99   4.5  45.0   7.20   5.04  1.44     3.60       22.5
  2035   16.63   4.0  45.0   7.48   5.24  1.50     3.74       22.5
  2036   17.21   3.5  45.0   7.75   5.42  1.55     3.87       22.5
-Revenue CAGR FY26-FY30: 9.2% | FY30 rev $13.03bn
+Revenue CAGR FY26-FY30: 7.6% | FY30 rev $13.03bn
   A Gordon, FCF-SBC (primary)                   EV $   44.2bn | TV share   56% | equity $   37.8bn | $    196/sh | vs price   -58%
-  B Exit multiple, FCF-SBC flows                EV $   66.3bn | TV share   71% | equity $   59.9bn | $    311/sh | vs price   -33%
+  B Exit multiple, FCF-SBC flows                EV $   54.4bn | TV share   64% | equity $   48.0bn | $    249/sh | vs price   -47%
   C Gordon, FCF pre-SBC, 1.5%/yr dilution       EV $   62.3bn | TV share   56% | equity $   55.8bn | $    250/sh | vs price   -47%
   D Gordon, FCF pre-SBC, no dilution (NOT used) EV $   62.3bn | TV share   56% | equity $   55.8bn | $    290/sh | vs price   -38%
-  Blended (A+B)/2: $254/sh  vs price -46%
-  Gordon TV implies 7.9x FY36 non-GAAP EBIT
+  Blended (A+B)/2: $223/sh  vs price -52%
+  Gordon TV implies 7.9x FY36 non-GAAP EBIT; 9.9x FY36 (EBIT-SBC)
 
 --- BASE --- FY27 = guidance; ~$0.4bn Ansys revenue synergies phased in by FY30 within 11-13% growth; cost synergies get margin to ~49% (just below 50% FY30 target); SBC fades 9%->7%
-WACC 9.0% | terminal g 3.5% | exit EV/non-GAAP EBIT 19.0x
+WACC 9.0% | terminal g 3.5% | exit EV/(EBIT-SBC) 18.0x
    FY     Rev    g%  OpM%   EBIT   uFCF   SBC uFCF-SBC FCF-SBC m%
  2027   11.15  14.8  44.0   4.91   3.48  1.00     2.48       22.2
  2028   12.60  13.0  46.0   5.80   4.14  1.11     3.04       24.1
@@ -105,16 +105,16 @@ WACC 9.0% | terminal g 3.5% | exit EV/non-GAAP EBIT 19.0x
  2034   21.71   7.0  49.0  10.64   7.88  1.62     6.27       28.9
  2035   23.01   6.0  49.0  11.28   8.41  1.66     6.74       29.3
  2036   24.28   5.5  49.0  11.90   8.92  1.70     7.22       29.8
-Revenue CAGR FY26-FY30: 15.4% | FY30 rev $15.67bn
+Revenue CAGR FY26-FY30: 12.7% | FY30 rev $15.67bn
   A Gordon, FCF-SBC (primary)                   EV $   88.0bn | TV share   65% | equity $   81.6bn | $    424/sh | vs price    -9%
-  B Exit multiple, FCF-SBC flows                EV $  126.1bn | TV share   76% | equity $  119.6bn | $    622/sh | vs price   +33%
+  B Exit multiple, FCF-SBC flows                EV $  108.1bn | TV share   72% | equity $  101.7bn | $    528/sh | vs price   +13%
   C Gordon, FCF pre-SBC, 1.5%/yr dilution       EV $  110.5bn | TV share   64% | equity $  104.1bn | $    466/sh | vs price    -0%
   D Gordon, FCF pre-SBC, no dilution (NOT used) EV $  110.5bn | TV share   64% | equity $  104.1bn | $    541/sh | vs price   +16%
-  Blended (A+B)/2: $523/sh  vs price +12%
-  Gordon TV implies 11.4x FY36 non-GAAP EBIT
+  Blended (A+B)/2: $476/sh  vs price +2%
+  Gordon TV implies 11.4x FY36 non-GAAP EBIT; 13.3x FY36 (EBIT-SBC)
 
 --- BULL --- AI-driven chip design demand + full synergy capture; beats 50% margin target; SBC fades to 6.5%
-WACC 8.5% | terminal g 4.0% | exit EV/non-GAAP EBIT 23.0x
+WACC 8.5% | terminal g 4.0% | exit EV/(EBIT-SBC) 22.0x
    FY     Rev    g%  OpM%   EBIT   uFCF   SBC uFCF-SBC FCF-SBC m%
  2027   11.27  16.0  44.5   5.01   3.61  1.01     2.60       23.0
  2028   13.07  16.0  47.0   6.14   4.46  1.14     3.32       25.4
@@ -126,15 +126,15 @@ WACC 8.5% | terminal g 4.0% | exit EV/non-GAAP EBIT 23.0x
  2034   25.55   9.0  52.0  13.28  10.08  1.80     8.28       32.4
  2035   27.59   8.0  52.0  14.35  10.97  1.87     9.10       33.0
  2036   29.52   7.0  52.0  15.35  11.82  1.92     9.90       33.5
-Revenue CAGR FY26-FY30: 18.6% | FY30 rev $17.14bn
+Revenue CAGR FY26-FY30: 15.2% | FY30 rev $17.14bn
   A Gordon, FCF-SBC (primary)                   EV $  140.1bn | TV share   72% | equity $  133.7bn | $    695/sh | vs price   +49%
-  B Exit multiple, FCF-SBC flows                EV $  195.1bn | TV share   80% | equity $  188.6bn | $    980/sh | vs price  +110%
+  B Exit multiple, FCF-SBC flows                EV $  169.6bn | TV share   77% | equity $  163.2bn | $    848/sh | vs price   +81%
   C Gordon, FCF pre-SBC, 1.5%/yr dilution       EV $  169.7bn | TV share   71% | equity $  163.3bn | $    731/sh | vs price   +56%
   D Gordon, FCF pre-SBC, no dilution (NOT used) EV $  169.7bn | TV share   71% | equity $  163.3bn | $    848/sh | vs price   +81%
-  Blended (A+B)/2: $837/sh  vs price +79%
-  Gordon TV implies 14.9x FY36 non-GAAP EBIT
+  Blended (A+B)/2: $771/sh  vs price +65%
+  Gordon TV implies 14.9x FY36 non-GAAP EBIT; 17.0x FY36 (EBIT-SBC)
 
-Probability-weighted (25/50/25) blended value: $534/sh vs price +14%
+Probability-weighted (25/50/25) blended value: $487/sh vs price +4%
 
 ==============================================================================
 5. SENSITIVITIES (per-share, FCF-SBC basis, base scenario unless noted)
@@ -157,21 +157,21 @@ Probability-weighted (25/50/25) blended value: $534/sh vs price +14%
   10.0%      316      331      349      369      393
   10.5%      292      305      319      336      356
 
-5c. Exit EV/non-GAAP EBIT multiple (FY36) x discount rate (base cash flows)
+5c. Exit EV/(non-GAAP EBIT - SBC) multiple (FY36) x discount rate (base cash flows)
    WACC      13x      16x      19x      22x      25x
-   8.0%      506      592      677      763      849
-   8.5%      485      567      649      731      813
-   9.0%      465      543      622      700      778
-   9.5%      446      521      596      671      745
-  10.0%      428      500      571      642      714
-  10.5%      411      479      547      616      684
+   8.0%      453      526      600      673      747
+   8.5%      434      504      575      645      715
+   9.0%      417      484      551      618      685
+   9.5%      400      464      528      592      656
+  10.0%      384      445      506      568      629
+  10.5%      369      427      486      544      603
 
 5d. Price-implied check (NOT used to set assumptions): uniform growth shift that makes base Gordon = price
    growth shift +1.2pp/yr -> 10y revenue CAGR 10.8% (base path CAGR 9.6%)
 
 5e. Per-share base value vs alternative prices (in case price data is disputed)
-   price $ 420.00: EV $  87.3bn | FY27 P/E 22.0x | FY27 EV/EBIT 17.8x | base blend gap +24%
-   price $ 450.00: EV $  93.0bn | FY27 P/E 23.6x | FY27 EV/EBIT 19.0x | base blend gap +16%
-   price $ 467.61: EV $  96.4bn | FY27 P/E 24.5x | FY27 EV/EBIT 19.7x | base blend gap +12%
-   price $ 490.00: EV $ 100.7bn | FY27 P/E 25.7x | FY27 EV/EBIT 20.5x | base blend gap +7%
-   price $ 520.00: EV $ 106.5bn | FY27 P/E 27.3x | FY27 EV/EBIT 21.7x | base blend gap +1%
+   price $ 420.00: EV $  87.3bn | FY27 P/E 22.0x | FY27 EV/EBIT 17.8x | base blend gap +13%
+   price $ 450.00: EV $  93.0bn | FY27 P/E 23.6x | FY27 EV/EBIT 19.0x | base blend gap +6%
+   price $ 467.61: EV $  96.4bn | FY27 P/E 24.5x | FY27 EV/EBIT 19.7x | base blend gap +2%
+   price $ 490.00: EV $ 100.7bn | FY27 P/E 25.7x | FY27 EV/EBIT 20.5x | base blend gap -3%
+   price $ 520.00: EV $ 106.5bn | FY27 P/E 27.3x | FY27 EV/EBIT 21.7x | base blend gap -8%

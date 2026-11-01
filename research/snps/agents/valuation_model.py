@@ -200,7 +200,7 @@ SCEN = {
         margin=[0.42, 0.43, 0.44, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45, 0.45],
         sbc=[0.095] * 3 + [0.09] * 7,
         conv=[0.70] * 10,
-        wacc=0.095, g=0.03, exit_ebit=15.0,
+        wacc=0.095, g=0.03, exit_ebit=14.0,
         note="FY27 misses guide (9%); Ansys revenue synergies largely fail; China/export & IP weakness; "
              "margin peaks 45% (vs 50% target); SBC stays ~9%"),
     "base": dict(
@@ -208,7 +208,7 @@ SCEN = {
         margin=[0.44, 0.46, 0.475, 0.49, 0.49, 0.49, 0.49, 0.49, 0.49, 0.49],
         sbc=interp(0.09, 0.07, 10),
         conv=interp(0.71, 0.75, 10),
-        wacc=0.09, g=0.035, exit_ebit=19.0,
+        wacc=0.09, g=0.035, exit_ebit=18.0,
         note="FY27 = guidance; ~$0.4bn Ansys revenue synergies phased in by FY30 within 11-13% growth; "
              "cost synergies get margin to ~49% (just below 50% FY30 target); SBC fades 9%->7%"),
     "bull": dict(
@@ -216,7 +216,7 @@ SCEN = {
         margin=[0.445, 0.47, 0.49, 0.51, 0.52, 0.52, 0.52, 0.52, 0.52, 0.52],
         sbc=interp(0.09, 0.065, 10),
         conv=interp(0.72, 0.77, 10),
-        wacc=0.085, g=0.04, exit_ebit=23.0,
+        wacc=0.085, g=0.04, exit_ebit=22.0,
         note="AI-driven chip design demand + full synergy capture; beats 50% margin target; SBC fades to 6.5%"),
 }
 
@@ -234,9 +234,8 @@ def dcf(rows, wacc, g, net_debt=NET_DEBT, shares=DIL_SHARES, use_sbc=True,
     if exit_mult is None:
         tv = last[key] * (1 + g) / (wacc - g)
     else:
-        tv = last["ebit"] * exit_mult
-        if use_sbc:
-            pass  # exit multiple applied to non-GAAP EBIT is the market's (SBC-inclusive) convention
+        # exit multiple applied to SBC-adjusted EBIT (non-GAAP EBIT - SBC) for GAAP/SBC consistency
+        tv = (last["ebit"] - last["sbc"]) * exit_mult
     pv_tv = tv / (1 + wacc) ** n
     ev_ = pv + pv_tv
     eq = ev_ - net_debt
@@ -252,12 +251,12 @@ for name, s in SCEN.items():
     rows = build(s["growth"], s["margin"], s["sbc"], s["conv"])
     s["rows"] = rows
     print(f"\n--- {name.upper()} --- {s['note']}")
-    print(f"WACC {s['wacc']*100:.1f}% | terminal g {s['g']*100:.1f}% | exit EV/non-GAAP EBIT {s['exit_ebit']}x")
+    print(f"WACC {s['wacc']*100:.1f}% | terminal g {s['g']*100:.1f}% | exit EV/(EBIT-SBC) {s['exit_ebit']}x")
     print(f"{'FY':>5}{'Rev':>8}{'g%':>6}{'OpM%':>6}{'EBIT':>7}{'uFCF':>7}{'SBC':>6}{'uFCF-SBC':>9}{'FCF-SBC m%':>11}")
     for r in rows:
         print(f"{r['y']:>5}{r['rev']:>8.2f}{r['g']*100:>6.1f}{r['m']*100:>6.1f}{r['ebit']:>7.2f}"
               f"{r['ufcf']:>7.2f}{r['sbc']:>6.2f}{r['ufcf_sbc']:>9.2f}{r['ufcf_sbc']/r['rev']*100:>11.1f}")
-    rev_cagr = (rows[4]["rev"] / BASE_REV) ** (1 / 4) - 1
+    rev_cagr = (rows[3]["rev"] / BASE_REV) ** (1 / 4) - 1
     print(f"Revenue CAGR FY26-FY30: {rev_cagr*100:.1f}% | FY30 rev ${rows[3]['rev']:.2f}bn")
     a = dcf(rows, s["wacc"], s["g"])                                   # Gordon, FCF-SBC
     b = dcf(rows, s["wacc"], s["g"], exit_mult=s["exit_ebit"])         # exit multiple, FCF-SBC flows
@@ -270,9 +269,9 @@ for name, s in SCEN.items():
               f" | ${r['ps']:7.0f}/sh | vs price {(r['ps']/PRICE-1)*100:+5.0f}%")
     blend = (a["ps"] + b["ps"]) / 2
     print(f"  Blended (A+B)/2: ${blend:.0f}/sh  vs price {(blend/PRICE-1)*100:+.0f}%")
-    implied_g = (a["ev"] * 0 + 0)  # placeholder
     tv_impl_mult = a["pv_tv"] * (1 + s["wacc"]) ** 10 / rows[-1]["ebit"]
-    print(f"  Gordon TV implies {tv_impl_mult:.1f}x FY36 non-GAAP EBIT")
+    print(f"  Gordon TV implies {tv_impl_mult:.1f}x FY36 non-GAAP EBIT; "
+          f"{a['pv_tv']*(1+s['wacc'])**10/(rows[-1]['ebit']-rows[-1]['sbc']):.1f}x FY36 (EBIT-SBC)")
     results[name] = dict(A=a["ps"], B=b["ps"], C=c["ps"], blend=blend)
 
 pw = {"bear": 0.25, "base": 0.5, "bull": 0.25}
@@ -302,7 +301,7 @@ print(f"{'WACC':>7}" + "".join(f"{g*100:>8.1f}%" for g in gs))
 for w in waccs:
     print(f"{w*100:>6.1f}%" + "".join(f"{dcf(base['rows'], w, g)['ps']:>9.0f}" for g in gs))
 
-print("\n5c. Exit EV/non-GAAP EBIT multiple (FY36) x discount rate (base cash flows)")
+print("\n5c. Exit EV/(non-GAAP EBIT - SBC) multiple (FY36) x discount rate (base cash flows)")
 mults = [13, 16, 19, 22, 25]
 print(f"{'WACC':>7}" + "".join(f"{m:>8d}x" for m in mults))
 for w in waccs:
