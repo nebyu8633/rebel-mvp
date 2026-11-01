@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { PlanProposal, type PlanInput } from "../planner/schema";
 import { AIError, type AIContext, type AIProvider } from "./provider";
+import { GoalTurnOutput, type GoalTurnInput, type GoalPlanInput } from "../goalplan/ai-schema";
+import { GoalPlan } from "../goalplan/schema";
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 
@@ -26,6 +28,37 @@ Only use the data in the provided JSON snapshot of the user's own account. If so
 Never fabricate progress, finances, schedule or health information. Never guarantee investment returns or weight outcomes.
 When reorganizing missed tasks, propose a realistic spread over the coming days within the user's availability — not everything tomorrow — and note that the "תוכנית התאוששות" button in the app can apply it.
 When asked for a grocery list, base it only on the approved meal plan in the snapshot and mention the app can generate the checklist automatically.`;
+
+const GOAL_TURN_SYSTEM = `You run a guided, professional goal-planning conversation inside LifeOS (Hebrew UI).
+All user-facing text MUST be natural Hebrew.
+
+Each turn:
+- Read the known facts and the user's latest message. Extract any facts the user stated (factUpdates).
+  kind "confirmed" ONLY for things the user explicitly said; "estimate" when they said it approximately ("בערך", "בסביבות").
+  Never turn your own assumption into a confirmed fact. Put assumptions in the reply text, clearly labelled as assumptions.
+- Ask exactly ONE next question (question), only if it materially affects the plan, never one already answered or skipped.
+  Prefer selectable options (single/multi), currency/number/date inputs when relevant; allowCustom true for open answers.
+- Progress through stages (1 הגדרת המטרה, 2 נקודת התחלה, 3 יעד ומדדי הצלחה, 4 מגבלות ומשאבים, 5 אסטרטגיה, 6 אבני דרך, 7 לוח זמנים, 8 בדיקה ואישור), skipping irrelevant ones.
+- Needed overall (only what is relevant to this goal): desired outcome, target date, starting point, measurable success criteria,
+  weekly time available, money/other constraints, resources, existing routines, obstacles, dependencies, preferred days/time of day, how progress is measured.
+- Flag contradictions with the known facts in contradictions.
+- If the user described several distinct goals, list them in separateGoals and do not plan them together.
+- Set readyForPlan=true and question=null when enough is known to build a realistic plan.
+- Health: no extreme diets or guarantees; suggest a qualified professional when relevant. Finance: never guarantee returns.
+- Never claim you saved, scheduled or changed anything — the application does that after user approval.
+Use these profile keys when they fit: outcome, baseline, targetDate, weeklyHours, preferredDays (0=Sunday..6, list), preferredTime (morning|noon|evening|flexible), reviewDay (0-6), obstacles, budget,
+currentWeight, targetChange, currentValue, targetValue, monthlyContribution, item, model, price, savedSoFar, monthlySaving, hasLicense, currentIncome, targetIncome, incomePath, subject, currentLevel, targetLevel, method, metric, metricTarget.`;
+
+const GOAL_PLAN_SYSTEM = `${PLAN_SYSTEM}
+
+Produce a structured goal plan for LifeOS. Use the known facts only; anything else goes to assumptions (kind "assumption") or unresolved.
+- Choose the level of detail that fits the goal; do not invent milestones to fill sections.
+- tasks: one-off actions with stable short keys, milestoneKey or null, durationMinutes, deadline, priority, rationale, dependsOn keys, date/startTime null (the app schedules), reminderMinutes null unless asked, excluded=false, userEdited=false, notes "".
+- routines: recurring work (e.g. study sessions, training, monthly finance update). byWeekday uses 0=Sunday..6=Saturday from the user's preferred days.
+  backupWeekday is an ALTERNATIVE day for a missed session (not an extra one), null if none. startTime null unless the user gave a time.
+- metrics: outcome metrics (actual goal achievement) separate from activity metrics (effort). Task completion is NOT goal achievement.
+- review: weekly on the user's review day (or Friday as an assumption).
+- When revising (currentPlan + changeRequest): change only what the request requires, keep keys of unchanged items, and never change or drop tasks listed in completedKeys.`;
 
 function mapError(e: unknown): AIError {
   if (e instanceof Anthropic.RateLimitError) {
@@ -83,6 +116,69 @@ export class AnthropicProvider implements AIProvider {
     }
   }
 
+  async goalTurn(input: GoalTurnInput) {
+    try {
+      const content = [
+        `today: ${input.today}`,
+        `goal: ${input.goal.title} (kind: ${input.goal.kind}); phase: ${input.phase}`,
+        `known facts:\n${factsAsText(input)}`,
+        `skipped keys: ${input.skipped.join(", ") || "none"}`,
+        `user availability (settings): ${input.availability}`,
+        `recent conversation:\n${input.messages.map((m) => `${m.role}: ${m.text}`).join("\n")}`,
+        `<user_message>\n${input.userMessage}\n</user_message>`,
+      ].join("\n\n");
+      const res = await this.client.beta.messages.parse({
+        model: this.model,
+        max_tokens: 8000,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        thinking: { type: "adaptive" },
+        output_config: { effort: "low", format: betaZodOutputFormat(GoalTurnOutput) },
+        system: GOAL_TURN_SYSTEM,
+        messages: [{ role: "user", content }],
+      });
+      if (res.stop_reason === "refusal") throw new AIError("refused", "שירות ה-AI סירב לבקשה.");
+      if (!res.parsed_output) throw new AIError("invalid_output", "שירות ה-AI החזיר תשובה במבנה לא תקין.");
+      return res.parsed_output;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  async goalPlan(input: GoalPlanInput) {
+    try {
+      const res = await this.client.beta.messages.parse({
+        model: this.model,
+        max_tokens: 24000,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        thinking: { type: "adaptive" },
+        output_config: { effort: "medium", format: betaZodOutputFormat(GoalPlan) },
+        system: GOAL_PLAN_SYSTEM,
+        messages: [
+          {
+            role: "user",
+            content: [
+              `today: ${input.today}`,
+              `goal: ${input.goal.title} (kind: ${input.goal.kind})`,
+              `known facts:\n${factsAsText(input)}`,
+              `unresolved: ${input.unresolved.join("; ") || "none"}`,
+              input.currentPlan ? `current plan JSON:\n${JSON.stringify(input.currentPlan)}` : "",
+              input.changeRequest ? `<change_request>\n${input.changeRequest}\n</change_request>` : "",
+              input.completedKeys.length ? `completed task keys (keep unchanged): ${input.completedKeys.join(", ")}` : "",
+            ].filter(Boolean).join("\n\n"),
+          },
+        ],
+      });
+      if (res.stop_reason === "refusal") throw new AIError("refused", "שירות ה-AI סירב לבקשה.");
+      if (res.stop_reason === "max_tokens") throw new AIError("invalid_output", "תשובת ה-AI נקטעה.");
+      if (!res.parsed_output) throw new AIError("invalid_output", "שירות ה-AI החזיר תוכנית במבנה לא תקין.");
+      return res.parsed_output;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
   async ask(question: string, context: AIContext) {
     try {
       const res = await this.client.beta.messages.create({
@@ -112,6 +208,10 @@ export class AnthropicProvider implements AIProvider {
       throw mapError(e);
     }
   }
+}
+
+export function factsAsText(input: { facts: GoalTurnInput["facts"] }) {
+  return input.facts.map((f) => `${f.key} (${f.label}) = ${f.display} [${f.kind}]`).join("\n") || "(none yet)";
 }
 
 export function getProvider(): AIProvider | null {

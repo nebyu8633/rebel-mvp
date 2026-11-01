@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CollectionName, EntityOf } from "../types";
-import { camelToSnake, COLLECTION_ORDER, fieldsOf, hydrate, snakeToCamel, TABLES, type Repository } from "./repo";
+import { camelToSnake, COLLECTION_ORDER, fieldsOf, hydrate, snakeToCamel, TABLES, type BatchOp, type Repository } from "./repo";
 
 /** Rows ↔ entities: camelCase fields map 1:1 to snake_case columns; user_id is added server-side by default + RLS. */
 export function toRow(collection: CollectionName, entity: Record<string, unknown>, userId: string) {
@@ -60,6 +60,17 @@ export class SupabaseRepository implements Repository {
     const { error } = await this.sb
       .from(TABLES[collection])
       .upsert(toRow(collection, entity as Record<string, unknown>, this.userId), { onConflict: "user_id,id" });
+    if (error) throw friendly(error);
+  }
+
+  /** One Postgres transaction via the apply_batch RPC (see migrations); RLS still applies. */
+  async applyBatch(ops: BatchOp[]) {
+    const payload = ops.map((o) =>
+      o.op === "put"
+        ? { op: "upsert", table: TABLES[o.collection], row: toRow(o.collection, o.entity, this.userId) }
+        : { op: "delete", table: TABLES[o.collection], id: o.id },
+    );
+    const { error } = await this.sb.rpc("apply_batch", { ops: payload });
     if (error) throw friendly(error);
   }
 

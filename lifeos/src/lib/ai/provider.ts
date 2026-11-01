@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { PlanInput, PlanProposal } from "../planner/schema";
+import type { GoalTurnInput, GoalTurnOutput, GoalPlanInput } from "../goalplan/ai-schema";
+import type { GoalPlan } from "../goalplan/schema";
 
 /** Compact, user-scoped snapshot the client sends with a question. Bounded in size. */
 export const AIContext = z.object({
@@ -40,4 +42,6 @@ export interface AIProvider {
   readonly name: string;
   plan(input: PlanInput, today: string): Promise<PlanProposal>;
   ask(question: string, context: AIContext): Promise<string>;
+  goalTurn(input: GoalTurnInput): Promise<GoalTurnOutput>;
+  goalPlan(input: GoalPlanInput): Promise<GoalPlan>;
 }

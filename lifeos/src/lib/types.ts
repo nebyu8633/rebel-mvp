@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GoalPlan, ProfileFact, Question } from "./goalplan/schema";
 
 /** Calendar date in the user's time zone, "YYYY-MM-DD". */
 export const DateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "תאריך לא תקין");
@@ -36,7 +37,7 @@ export const RecurrenceRule = z.object({
 export type RecurrenceRule = z.infer<typeof RecurrenceRule>;
 
 // ───────────────────────── Goals ─────────────────────────
-export const GoalKind = z.enum(["motorcycle", "weight", "portfolio", "custom"]);
+export const GoalKind = z.enum(["motorcycle", "weight", "portfolio", "purchase", "income", "learning", "custom"]);
 export type GoalKind = z.infer<typeof GoalKind>;
 
 export const MotorcycleInfo = z.object({
@@ -83,6 +84,7 @@ export const Milestone = z.object({
   targetDate: DateStr.nullable().default(null),
   status: z.enum(["pending", "active", "done"]),
   order: z.number().default(0),
+  planVersionId: z.string().nullable().default(null),
   ...timestamps,
 });
 export type Milestone = z.infer<typeof Milestone>;
@@ -139,6 +141,8 @@ export const Task = z.object({
   source: z.enum(["user", "planner", "ai", "seed"]).default("user"),
   completedAt: z.string().nullable().default(null),
   history: z.array(HistoryEntry).default([]),
+  /** Approved plan version that created/last updated this task (null = created by hand). */
+  planVersionId: z.string().nullable().default(null),
   ...timestamps,
 });
 export type Task = z.infer<typeof Task>;
@@ -339,6 +343,84 @@ export const Settings = z.object({
 });
 export type Settings = z.infer<typeof Settings>;
 
+// ───────────────────────── Conversational goal planning ─────────────────────────
+export const GoalConversation = z.object({
+  /** One conversation per goal: id = goalId. */
+  id,
+  goalId: id,
+  mode: z.enum(["basic", "ai"]).default("basic"),
+  /** discovery → plan_draft → active → revising */
+  phase: z.enum(["discovery", "plan_draft", "active", "revising"]),
+  stage: z.number().int().min(1).max(8),
+  /** Question currently awaiting an answer (null = none). */
+  pending: Question.nullable().default(null),
+  /** Keys the user explicitly skipped ("לא יודע/ת"). */
+  skipped: z.array(z.string()).default([]),
+  ...timestamps,
+});
+export type GoalConversation = z.infer<typeof GoalConversation>;
+
+export const ConversationMessage = z.object({
+  id,
+  goalId: id,
+  role: z.enum(["user", "assistant", "system"]),
+  text: z.string().max(8000),
+  /** Structured question shown with this assistant message. */
+  question: Question.nullable().default(null),
+  /** For user messages: which question/key this answers. */
+  answerKey: z.string().nullable().default(null),
+  source: z.enum(["basic", "ai", "app"]).default("basic"),
+  ...timestamps,
+});
+export type ConversationMessage = z.infer<typeof ConversationMessage>;
+
+export const GoalProfile = z.object({
+  /** id = goalId */
+  id,
+  goalId: id,
+  facts: z.record(z.string(), ProfileFact).default({}),
+  unresolved: z.array(z.string()).default([]),
+  ...timestamps,
+});
+export type GoalProfile = z.infer<typeof GoalProfile>;
+
+export const PlanVersion = z.object({
+  id,
+  goalId: id,
+  version: z.number().int().min(1),
+  /** draft: editable; approved: immutable snapshot; superseded: older approved version. */
+  status: z.enum(["draft", "approved", "superseded", "discarded"]),
+  plan: GoalPlan,
+  basedOnVersionId: z.string().nullable().default(null),
+  approvedAt: z.string().nullable().default(null),
+  ...timestamps,
+});
+export type PlanVersion = z.infer<typeof PlanVersion>;
+
+export const Reminder = z.object({
+  id,
+  taskId: id,
+  /** before_start: N minutes before the start time; before_deadline: N minutes before 09:00 on the deadline day; at: absolute date+time. */
+  kind: z.enum(["before_start", "before_deadline", "at"]),
+  minutes: z.number().int().min(0).max(60 * 24 * 14).nullable().default(null),
+  date: DateStr.nullable().default(null),
+  time: TimeStr.nullable().default(null),
+  enabled: z.boolean().default(true),
+  ...timestamps,
+});
+export type Reminder = z.infer<typeof Reminder>;
+
+export const ProgressRecord = z.object({
+  id,
+  goalId: id,
+  metricKey: z.string().default("main"),
+  date: DateStr,
+  value: z.number(),
+  note: z.string().max(300).default(""),
+  ...timestamps,
+});
+export type ProgressRecord = z.infer<typeof ProgressRecord>;
+
 // ───────────────────────── Database shape ─────────────────────────
 export const COLLECTIONS = {
   goals: Goal,
@@ -358,6 +440,12 @@ export const COLLECTIONS = {
   financeEntries: FinanceEntry,
   weightLogs: WeightLog,
   settings: Settings,
+  conversations: GoalConversation,
+  messages: ConversationMessage,
+  profiles: GoalProfile,
+  planVersions: PlanVersion,
+  reminders: Reminder,
+  progressRecords: ProgressRecord,
 } as const;
 
 export type CollectionName = keyof typeof COLLECTIONS;

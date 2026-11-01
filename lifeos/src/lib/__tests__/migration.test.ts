@@ -15,6 +15,7 @@ function columnsOf(table: string): Set<string> {
     const c = line.trim().match(/^"?([a-z_]+)"?\s+(text|uuid|date|boolean|numeric|integer|smallint|double|jsonb|timestamptz)/);
     if (c) cols.add(c[1]);
   }
+  for (const a of sql.matchAll(new RegExp(`alter table public\\.${table} add column "?([a-z_]+)"?`, "g"))) cols.add(a[1]);
   return cols;
 }
 

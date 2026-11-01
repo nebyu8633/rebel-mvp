@@ -6,6 +6,27 @@ import { dueReminders, remindersForDate } from "@/lib/reminders";
 import { nowInZone } from "@/lib/dates";
 
 const SENT_KEY = "lifeos:notified:v1";
+const SNOOZE_KEY = "lifeos:snoozed:v1";
+
+interface Snoozed {
+  key: string;
+  at: number; // epoch ms
+  title: string;
+  body: string;
+  href: string;
+}
+function loadSnoozed(): Snoozed[] {
+  try {
+    return JSON.parse(localStorage.getItem(SNOOZE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+export function snooze(r: { key: string; title: string; body: string; href: string }, minutes = 10) {
+  const list = loadSnoozed().filter((s) => s.key !== r.key);
+  list.push({ ...r, at: Date.now() + minutes * 60_000 });
+  localStorage.setItem(SNOOZE_KEY, JSON.stringify(list));
+}
 
 function loadSent(): Record<string, number> {
   try {
@@ -35,7 +56,14 @@ export function ReminderEngine() {
       const now = nowInZone(settings.timezone);
       const sentLog = loadSent();
       const all = remindersForDate(db, now.date);
-      const due = dueReminders(all, now.minutes, new Set(Object.keys(sentLog)));
+      const due: Array<{ key: string; title: string; body: string; href: string }> = dueReminders(all, now.minutes, new Set(Object.keys(sentLog)));
+      // snoozed reminders whose time has come (same device)
+      const snoozed = loadSnoozed();
+      const ready = snoozed.filter((x) => x.at <= Date.now());
+      if (ready.length) {
+        localStorage.setItem(SNOOZE_KEY, JSON.stringify(snoozed.filter((x) => x.at > Date.now())));
+        for (const x of ready) if (Date.now() - x.at < 30 * 60_000) due.push({ ...x, key: `${x.key}:snz${x.at}` });
+      }
       if (!due.length) return;
       const ts = Date.now();
       // claim before showing so a second tab can't fire the same reminder
@@ -43,7 +71,8 @@ export function ReminderEngine() {
       for (const [k, v] of Object.entries(sentLog)) if (ts - v > 3 * 86_400_000) delete sentLog[k];
       localStorage.setItem(SENT_KEY, JSON.stringify(sentLog));
       for (const r of due) {
-        if (settings.notifyInApp) toast(`⏰ ${r.title} — ${r.body}`, "info", { label: "פתיחה", run: () => routerRef.current.push(r.href) });
+        if (settings.notifyInApp)
+          toast(`⏰ ${r.title} — ${r.body}`, "info", { label: "פתיחה", run: () => routerRef.current.push(r.href) }, { label: "נודניק 10 דק׳", run: () => snooze({ ...r, key: r.key.split(":snz")[0] }) });
         if (settings.notifyBrowser && typeof Notification !== "undefined" && Notification.permission === "granted") {
           try {
             const n = new Notification(r.title, { body: r.body, tag: r.key, lang: "he", dir: "rtl" });

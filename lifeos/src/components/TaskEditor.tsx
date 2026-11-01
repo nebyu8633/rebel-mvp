@@ -9,6 +9,7 @@ import { Button, Field, Input, Modal, Segmented, Select, Textarea, Toggle, confi
 import { RecurrenceEditor, defaultRule } from "./RecurrenceEditor";
 import { formatHebDate } from "@/lib/dates";
 import { blockingDependencies } from "@/lib/tasks";
+import { RemindersEditor } from "./RemindersEditor";
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   planned: "מתוכנן",
@@ -298,11 +299,15 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
             )}
 
             <button type="button" className="text-sm font-medium text-accent-700 dark:text-accent-200" onClick={() => setShowMore((s) => !s)} aria-expanded={showMore}>
-              {showMore ? "פחות פרטים" : "עוד פרטים: דדליין, הערות, תלויות"}
+              {showMore ? "פחות פרטים" : "עוד פרטים: תזכורות, דדליין, הערות, תלויות"}
             </button>
 
             {showMore && (
               <div className="space-y-4">
+                <div>
+                  <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">תזכורות נוספות</span>
+                  {isNew ? <p className="text-xs text-stone-500">אפשר להוסיף תזכורות נוספות אחרי השמירה.</p> : <RemindersEditor taskId={form.id} />}
+                </div>
                 <Field label="דדליין (רשות)" error={errors.deadline}>
                   <Input type="date" value={form.deadline ?? ""} onChange={(e) => set({ deadline: e.target.value || null })} />
                 </Field>

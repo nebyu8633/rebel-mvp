@@ -41,6 +41,17 @@ function Toasts() {
           )}
         >
           <span className="flex-1">{t.message}</span>
+          {t.secondary && (
+            <button
+              className="font-semibold underline-offset-2 opacity-80 hover:underline"
+              onClick={() => {
+                t.secondary!.run();
+                dismiss(t.id);
+              }}
+            >
+              {t.secondary.label}
+            </button>
+          )}
           {t.action && (
             <button
               className="font-semibold underline-offset-2 hover:underline"

@@ -168,7 +168,7 @@ export default function GoalDetail({ params }: { params: Promise<{ id: string }>
         <SectionTitle
           action={
             <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setMsEdit({ id: uid(), goalId: id, title: "", description: "", targetDate: null, status: "pending", order: milestones.length, createdAt: nowIso(), updatedAt: nowIso() })}>
+              <Button size="sm" variant="ghost" onClick={() => setMsEdit({ id: uid(), goalId: id, title: "", description: "", targetDate: null, status: "pending", order: milestones.length, planVersionId: null, createdAt: nowIso(), updatedAt: nowIso() })}>
                 <Plus size={14} /> ידני
               </Button>
               {plannerBlocked ? (

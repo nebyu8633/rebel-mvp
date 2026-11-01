@@ -1,10 +1,16 @@
 import { COLLECTIONS, emptyDB, type CollectionName, type DB, type EntityOf } from "../types";
 
+export type BatchOp =
+  | { op: "put"; collection: CollectionName; entity: { id: string } & Record<string, unknown> }
+  | { op: "remove"; collection: CollectionName; id: string };
+
 export interface Repository {
   readonly mode: "local" | "supabase";
   load(): Promise<{ db: DB; quarantined: number }>;
   put<C extends CollectionName>(collection: C, entity: EntityOf<C>): Promise<void>;
   remove(collection: CollectionName, id: string): Promise<void>;
+  /** Apply all operations atomically: either every op is stored or none is. */
+  applyBatch(ops: BatchOp[]): Promise<void>;
   /** Subscribe to changes made elsewhere (other tab). Returns unsubscribe. */
   onExternalChange?(cb: () => void): () => void;
 }
@@ -28,6 +34,12 @@ export const TABLES: Record<CollectionName, string> = {
   financeEntries: "finance_entries",
   weightLogs: "weight_logs",
   settings: "user_settings",
+  conversations: "goal_conversations",
+  messages: "conversation_messages",
+  profiles: "goal_profiles",
+  planVersions: "goal_plan_versions",
+  reminders: "reminders",
+  progressRecords: "goal_progress_records",
 };
 
 /** Parent-first order, used when loading and when bulk-writing to satisfy foreign keys. */
@@ -49,6 +61,12 @@ export const COLLECTION_ORDER: CollectionName[] = [
   "pantry",
   "financeEntries",
   "weightLogs",
+  "planVersions",
+  "conversations",
+  "messages",
+  "profiles",
+  "reminders",
+  "progressRecords",
 ];
 
 export const camelToSnake = (s: string) => s.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());

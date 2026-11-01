@@ -124,6 +124,7 @@ export function buildSeed(db: DB, today: string, timezone: string, nowIso: strin
     source: "seed" as const,
     completedAt: null,
     history: [],
+    planVersionId: null,
     ...ts,
   };
   const routines: Task[] = [

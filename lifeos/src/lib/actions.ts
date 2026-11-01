@@ -59,6 +59,7 @@ export function blankTask(partial: Partial<Task> = {}): Task {
     source: "user",
     completedAt: null,
     history: [{ at: n, action: "created" }],
+    planVersionId: null,
     createdAt: n,
     updatedAt: n,
     ...partial,
@@ -181,6 +182,7 @@ export async function deleteTask(taskId: string) {
   const db = S().db;
   const items: Array<[CollectionName, string]> = [["tasks", taskId]];
   for (const o of Object.values(db.occurrences)) if (o.taskId === taskId) items.push(["occurrences", o.id]);
+  for (const r of Object.values(db.reminders)) if (r.taskId === taskId) items.push(["reminders", r.id]);
   // remove dangling dependency references
   const dependents = Object.values(db.tasks).filter((t) => t.dependsOn.includes(taskId));
   for (const d of dependents) await saveTask({ ...d, dependsOn: d.dependsOn.filter((x) => x !== taskId) });
@@ -339,6 +341,7 @@ export async function approvePlan(a: PlanApproval): Promise<{ ok: boolean; warni
       targetDate: m.targetDate,
       status: idx === 0 && existingCount === 0 ? "active" : "pending",
       order: existingCount + idx,
+      planVersionId: null,
       createdAt: n,
       updatedAt: n,
     };

@@ -74,7 +74,7 @@ export function TaskRow({
             </span>
           )}
           {inst.movedToBackup && <Badge tone="amber">הועבר ליום הגיבוי</Badge>}
-          {t.reminderMinutes != null && inst.startTime && <Bell size={12} aria-label="יש תזכורת" />}
+          {((t.reminderMinutes != null && inst.startTime) || Object.values(db.reminders).some((r) => r.taskId === t.id && r.enabled)) && <Bell size={12} aria-label="יש תזכורת" />}
           {goal && !compact && (
             <span className={cx("inline-flex items-center gap-1", c!.text)}>
               <span className={cx("h-1.5 w-1.5 rounded-full", c!.dot)} />

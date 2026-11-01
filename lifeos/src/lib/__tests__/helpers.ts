@@ -23,6 +23,7 @@ export function task(p: Partial<Task> & { id: string }): Task {
     source: "user",
     completedAt: null,
     history: [],
+    planVersionId: null,
     createdAt: T0,
     updatedAt: T0,
     ...p,

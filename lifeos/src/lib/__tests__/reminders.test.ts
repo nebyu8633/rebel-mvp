@@ -21,3 +21,18 @@ describe("reminders", () => {
     expect(dueReminders(all, 9 * 60 + 30, new Set())).toHaveLength(0); // too late — not shown retroactively
   });
 });
+
+describe("multiple reminders per task", () => {
+  it("before start, before deadline (previous day), at a time; disabled ones never fire", () => {
+    const db = dbWith([task({ id: "t", date: "2026-11-03", startTime: "10:00", deadline: "2026-11-04" })]);
+    const base = { taskId: "t", minutes: null, date: null, time: null, enabled: true, createdAt: "x", updatedAt: "x" };
+    db.reminders = {
+      a: { ...base, id: "a", kind: "before_start", minutes: 30 },
+      b: { ...base, id: "b", kind: "before_deadline", minutes: 24 * 60 },
+      c: { ...base, id: "c", kind: "at", date: "2026-11-02", time: "20:00" },
+      d: { ...base, id: "d", kind: "before_start", minutes: 5, enabled: false },
+    };
+    expect(remindersForDate(db, "2026-11-03").map((r) => r.time)).toEqual(["09:00", "09:30"]);
+    expect(remindersForDate(db, "2026-11-02").map((r) => r.time)).toEqual(["20:00"]);
+  });
+});

@@ -1,13 +1,14 @@
 "use client";
 import { create } from "zustand";
 import { COLLECTIONS, emptyDB, type CollectionName, type DB, type EntityOf, type Settings } from "../types";
-import type { Repository } from "./repo";
+import type { BatchOp, Repository } from "./repo";
 
 export interface Toast {
   id: number;
   kind: "info" | "success" | "error";
   message: string;
   action?: { label: string; run: () => void };
+  secondary?: { label: string; run: () => void };
 }
 
 interface StoreState {
@@ -25,7 +26,9 @@ interface StoreState {
   putMany(items: Array<[CollectionName, unknown]>): Promise<boolean>;
   remove(c: CollectionName, id: string): Promise<boolean>;
   removeMany(items: Array<[CollectionName, string]>): Promise<boolean>;
-  toast(message: string, kind?: Toast["kind"], action?: Toast["action"]): void;
+  /** Atomic multi-write. Resolves true only if everything was stored. */
+  applyBatch(ops: BatchOp[], opts?: { silent?: boolean }): Promise<{ ok: boolean; error?: string }>;
+  toast(message: string, kind?: Toast["kind"], action?: Toast["action"], secondary?: Toast["secondary"]): void;
   dismiss(id: number): void;
 }
 
@@ -140,10 +143,51 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  toast(message, kind = "info", action) {
+  async applyBatch(ops, opts) {
+    const repo = get().repo;
+    if (!repo) return { ok: false, error: "אין חיבור לאחסון" };
+    const validated: BatchOp[] = [];
+    for (const o of ops) {
+      if (o.op === "remove") {
+        validated.push(o);
+        continue;
+      }
+      const r = COLLECTIONS[o.collection].safeParse(o.entity);
+      if (!r.success) {
+        const error = `נתונים לא תקינים (${o.collection}): ${r.error.issues[0]?.message ?? ""}`;
+        if (!opts?.silent) get().toast(error, "error");
+        return { ok: false, error };
+      }
+      validated.push({ op: "put", collection: o.collection, entity: r.data as { id: string } });
+    }
+    const before = get().db;
+    let next = before;
+    for (const o of validated) next = setEntity(next, o.collection, o.op === "put" ? o.entity.id : o.id, o.op === "put" ? o.entity : undefined);
+    set({ db: next, saving: get().saving + 1 });
+    const job = queue.then(() => repo.applyBatch(validated));
+    queue = job.catch(() => undefined);
+    try {
+      await job;
+      return { ok: true };
+    } catch (err) {
+      let db = get().db;
+      for (const o of validated) {
+        const id = o.op === "put" ? o.entity.id : o.id;
+        db = setEntity(db, o.collection, id, (before[o.collection] as Record<string, unknown>)[id]);
+      }
+      set({ db });
+      const error = err instanceof Error ? err.message : "שגיאה";
+      if (!opts?.silent) get().toast(`השמירה נכשלה ולא בוצע שום שינוי: ${error}`, "error");
+      return { ok: false, error };
+    } finally {
+      set({ saving: get().saving - 1 });
+    }
+  },
+
+  toast(message, kind = "info", action, secondary) {
     const id = ++toastSeq;
-    set({ toasts: [...get().toasts, { id, kind, message, action }] });
-    setTimeout(() => get().dismiss(id), kind === "error" ? 8000 : action ? 6000 : 3500);
+    set({ toasts: [...get().toasts, { id, kind, message, action, secondary }] });
+    setTimeout(() => get().dismiss(id), kind === "error" ? 8000 : secondary ? 15000 : action ? 6000 : 3500);
   },
   dismiss(id) {
     set({ toasts: get().toasts.filter((t) => t.id !== id) });
