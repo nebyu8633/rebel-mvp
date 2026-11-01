@@ -79,7 +79,7 @@ export default function AssistantPage() {
 
   async function runAction(kind: BasicAnswer["actions"][number]["kind"]) {
     if (kind === "recovery") setRecovery(true);
-    else if (kind === "planner") router.push("/goals/plan");
+    else if (kind === "planner") router.push("/goals/new");
     else if (kind === "progress") router.push("/progress?review=1");
     else if (kind === "tasks") router.push("/tasks");
     else if (kind === "groceries") {

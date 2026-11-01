@@ -28,16 +28,10 @@ import {
   type TurnResult,
 } from "@/lib/goalplan/session";
 import { missingCritical, STAGES } from "@/lib/goalplan/interview";
-import type { FactKind } from "@/lib/goalplan/schema";
+import { FACT_KIND } from "@/components/goalchat/factKind";
 import { Badge, Button, Card, EmptyState, Input, Spinner, cx } from "@/components/ui";
 import { QuestionCard, type QuestionAnswer } from "@/components/goalchat/QuestionCard";
 
-export const FACT_KIND: Record<FactKind, { label: string; tone: "accent" | "amber" | "stone" | "indigo" }> = {
-  confirmed: { label: "אושר", tone: "accent" },
-  estimate: { label: "הערכה", tone: "amber" },
-  assumption: { label: "הנחה", tone: "stone" },
-  recommendation: { label: "המלצה", tone: "indigo" },
-};
 
 export default function GoalChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -156,7 +150,7 @@ export default function GoalChatPage({ params }: { params: Promise<{ id: string 
               if (m.role === "system")
                 return (
                   <div key={m.id} className="flex justify-center">
-                    <span className="rounded-full bg-accent-50 px-3 py-1 text-xs text-accent-800 dark:bg-accent-800/20 dark:text-accent-100">{m.text}</span>
+                    <span className="max-w-[90%] rounded-xl bg-accent-50 px-3 py-1.5 text-center text-xs text-accent-800 dark:bg-accent-800/20 dark:text-accent-100">{m.text}</span>
                   </div>
                 );
               return (

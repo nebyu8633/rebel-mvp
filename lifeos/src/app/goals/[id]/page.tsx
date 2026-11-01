@@ -7,8 +7,10 @@ import { useStore } from "@/lib/store/store";
 import { useUI } from "@/lib/store/ui";
 import { useToday } from "@/hooks/useToday";
 import { goalColor, goalProgress, milestoneCompletion, GOAL_STATUS } from "@/lib/goals";
-import { formatHebDate, MONTHS_HE, parseDate } from "@/lib/dates";
-import { singleInstance, instancesInRange } from "@/lib/tasks";
+import { addDays, formatHebDate, MONTHS_HE, parseDate } from "@/lib/dates";
+import { singleInstance, instancesInRange, overdueInstances, mostImportant, isOpen } from "@/lib/tasks";
+import { approvedOf, draftOf } from "@/lib/goalplan/session";
+import { RecoveryModal } from "@/components/RecoveryModal";
 import { deleteGoal, deleteMilestone, nowIso, uid } from "@/lib/actions";
 import { motorcycleCost } from "@/lib/finance";
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, PageHeader, ProgressBar, SectionTitle, Select, confirmDialog, cx } from "@/components/ui";
@@ -97,6 +99,8 @@ export default function GoalDetail({ params }: { params: Promise<{ id: string }>
         {goal.why && <p className="mt-2 text-sm">{goal.why}</p>}
       </Card>
 
+      <GoalPlanStatus goalId={id} />
+
       {goal.kind === "motorcycle" && (
         <>
           <Card>
@@ -171,20 +175,14 @@ export default function GoalDetail({ params }: { params: Promise<{ id: string }>
               <Button size="sm" variant="ghost" onClick={() => setMsEdit({ id: uid(), goalId: id, title: "", description: "", targetDate: null, status: "pending", order: milestones.length, planVersionId: null, createdAt: nowIso(), updatedAt: nowIso() })}>
                 <Plus size={14} /> ידני
               </Button>
-              {plannerBlocked ? (
-                <Button size="sm" disabled title="יש למלא דגם ומחיר קודם">
-                  <Sparkles size={14} /> תכנון
+              <Link href={`/goals/${id}/chat`}>
+                <Button size="sm" variant="primary">
+                  <Sparkles size={14} /> {milestones.length ? "שיחת תכנון" : "פירוק לתוכנית"}
                 </Button>
-              ) : (
-                <Link href={`/goals/plan?goal=${id}`}>
-                  <Button size="sm" variant="primary">
-                    <Sparkles size={14} /> {milestones.length ? "תכנון נוסף" : "פירוק לתוכנית"}
-                  </Button>
-                </Link>
-              )}
+              </Link>
             </div>
           }
-          hint={plannerBlocked ? "מלאו דגם, מחיר ופרטי חיסכון כדי לבנות אבני דרך" : undefined}
+          hint="אבני דרך נוצרות מתוכנית מאושרת, או ידנית"
         >
           אבני דרך
         </SectionTitle>
@@ -280,6 +278,112 @@ export default function GoalDetail({ params }: { params: Promise<{ id: string }>
 
       {editing && <GoalForm goal={goal} onClose={() => setEditing(false)} />}
       {msEdit && <MilestoneForm m={msEdit} onClose={() => setMsEdit(null)} />}
+    </div>
+  );
+}
+
+function GoalPlanStatus({ goalId }: { goalId: string }) {
+  const db = useStore((s) => s.db);
+  const today = useToday();
+  const goal = db.goals[goalId];
+  const [recovery, setRecovery] = useState(false);
+  const approved = approvedOf(db, goalId);
+  const draft = draftOf(db, goalId);
+  const tasks = Object.values(db.tasks).filter((t) => t.goalId === goalId);
+  const oneOff = tasks.filter((t) => !t.recurrence);
+  const done = oneOff.filter((t) => t.status === "completed").length;
+  const insts = instancesInRange(db, today, addDays(today, 60), today).filter((i) => i.task.goalId === goalId);
+  const overdue = overdueInstances(db, today).filter((i) => i.task.goalId === goalId);
+  const next = mostImportant(db, [...overdue, ...insts.filter((i) => i.date! <= addDays(today, 14))], today);
+  const review = insts.find((i) => i.task.id === `rv:${goalId}` && isOpen(i.status));
+  const manualMetric = goal && (goal.kind === "income" || goal.kind === "learning" || goal.kind === "custom");
+  return (
+    <Card>
+      <SectionTitle
+        action={
+          <div className="flex gap-2">
+            <Link href={`/goals/${goalId}/chat`}>
+              <Button size="sm">שיחת תכנון</Button>
+            </Link>
+            {(approved || draft) && (
+              <Link href={`/goals/${goalId}/plan`}>
+                <Button size="sm" variant="primary">
+                  {draft ? `טיוטה (גרסה ${draft.version})` : `תוכנית (גרסה ${approved!.version})`}
+                </Button>
+              </Link>
+            )}
+          </div>
+        }
+      >
+        תוכנית וביצוע
+      </SectionTitle>
+      {!approved && !draft ? (
+        <p className="text-sm text-stone-500">עדיין אין תוכנית. שיחת התכנון בונה טיוטה לאישורך.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <div className="text-xs text-stone-500">ביצוע משימות (לא זהה להשגת המטרה)</div>
+            <ProgressBar className="mt-1.5" value={oneOff.length ? done / oneOff.length : null} label="ביצוע משימות" />
+            <div className="mt-1 text-xs text-stone-500">
+              {done}/{oneOff.length} הושלמו{overdue.length ? ` · ${overdue.length} באיחור` : ""}
+            </div>
+            {overdue.length > 0 && (
+              <Button size="sm" variant="subtle" className="mt-2" onClick={() => setRecovery(true)}>
+                אפשרויות התאוששות
+              </Button>
+            )}
+          </div>
+          <div>
+            <div className="text-xs text-stone-500">הפעולה הבאה המומלצת</div>
+            <div className="mt-1 text-sm font-medium">{next ? next.title : "—"}</div>
+            {next?.date && <div className="text-xs text-stone-500">{formatHebDate(next.date, { weekday: true })}</div>}
+          </div>
+          <div>
+            <div className="text-xs text-stone-500">בדיקת ההתקדמות הבאה</div>
+            <div className="mt-1 text-sm font-medium">{review ? formatHebDate(review.date!, { weekday: true }) : "—"}</div>
+          </div>
+        </div>
+      )}
+      {manualMetric && goal.targetValue != null && <ProgressRecorder goalId={goalId} />}
+      {recovery && <RecoveryModal open onClose={() => setRecovery(false)} />}
+    </Card>
+  );
+}
+
+function ProgressRecorder({ goalId }: { goalId: string }) {
+  const db = useStore((s) => s.db);
+  const put = useStore((s) => s.put);
+  const today = useToday();
+  const goal = db.goals[goalId];
+  const [v, setV] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const recs = Object.values(db.progressRecords).filter((r) => r.goalId === goalId).sort((a, b) => (a.date < b.date ? -1 : 1));
+  return (
+    <div className="mt-4 border-t hairline pt-3">
+      <div className="mb-2 text-sm font-medium">עדכון המדד ({goal.unit || "ערך"})</div>
+      <div className="flex flex-wrap items-end gap-2">
+        <Input className="w-32" inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} aria-label="ערך נוכחי" placeholder="ערך נוכחי" />
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={async () => {
+            const n = Number(v.replace(/[,₪\s]/g, ""));
+            if (!v || !Number.isFinite(n)) return setErr("נא להזין מספר");
+            setErr(null);
+            const ts = nowIso();
+            if (await put("progressRecords", { id: uid(), goalId, metricKey: "main", date: today, value: n, note: "", createdAt: ts, updatedAt: ts })) setV("");
+          }}
+        >
+          רישום
+        </Button>
+        {err && <span className="text-xs text-rose-600">{err}</span>}
+      </div>
+      {recs.length >= 2 && (
+        <div className="mt-3">
+          <LineChart ariaLabel="היסטוריית המדד" series={[{ label: goal.unit || "ערך", color: "var(--series-1)", points: recs.map((r) => ({ x: r.date, y: r.value })) }]} />
+        </div>
+      )}
+      {recs.length > 0 && <p className="mt-1 text-xs text-stone-500">עדכון אחרון: {recs[recs.length - 1].value} ({formatHebDate(recs[recs.length - 1].date)})</p>}
     </div>
   );
 }

@@ -233,10 +233,30 @@ describe("activation", () => {
     expect(db.planVersions.v2.status).toBe("approved");
   });
 
+  it("revision keeps dates the user changed in the calendar", () => {
+    let { db } = setup();
+    const id = ids.task("g1", "l-materials");
+    db.tasks[id] = { ...db.tasks[id], date: "2026-12-24", startTime: "19:00" };
+    const v2 = { ...mkVersion("v2", 2, structuredClone(db.planVersions.v1.plan)), basedOnVersionId: "v1" };
+    db.planVersions.v2 = v2;
+    db = applyOps(db, buildActivation({ db, goal: db.goals.g1, version: v2, facts: f, today, now }).ops);
+    expect(db.tasks[id].date).toBe("2026-12-24");
+    expect(db.tasks[id].startTime).toBe("19:00");
+    expect(Object.values(db.tasks).filter((t) => t.id === id)).toHaveLength(1);
+  });
+
   it("does not touch tasks that belong to other goals or were created by hand", () => {
     let { db } = setup();
     db.tasks.manual = task({ id: "manual", goalId: "g1", date: today });
     db = applyOps(db, buildActivation({ db, goal: db.goals.g1, version: { ...db.planVersions.v1, id: "v3", version: 3 }, facts: f, today, now }).ops);
     expect(db.tasks.manual).toBeDefined();
+  });
+});
+
+describe("titles", () => {
+  it("keeps the infinitive intact", async () => {
+    const { suggestTitle } = await import("../goalplan/interview");
+    expect(suggestTitle("אני רוצה ללמוד ספרדית בתוך שנה.", "learning")).toBe("ללמוד ספרדית בתוך שנה");
+    expect(suggestTitle("אני רוצה לקנות אופנוע", "motorcycle")).toBe("לקנות אופנוע");
   });
 });

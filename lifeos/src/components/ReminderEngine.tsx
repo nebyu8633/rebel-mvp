@@ -73,7 +73,15 @@ export function ReminderEngine() {
       for (const r of due) {
         if (settings.notifyInApp)
           toast(`⏰ ${r.title} — ${r.body}`, "info", { label: "פתיחה", run: () => routerRef.current.push(r.href) }, { label: "נודניק 10 דק׳", run: () => snooze({ ...r, key: r.key.split(":snz")[0] }) });
-        if (settings.notifyBrowser && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        // when background push is on for this device the server sends the system notification — avoid a duplicate
+        const pushOn = (() => {
+          try {
+            return localStorage.getItem("lifeos:push:on") === "1";
+          } catch {
+            return false;
+          }
+        })();
+        if (!pushOn && settings.notifyBrowser && typeof Notification !== "undefined" && Notification.permission === "granted") {
           try {
             const n = new Notification(r.title, { body: r.body, tag: r.key, lang: "he", dir: "rtl" });
             n.onclick = () => {

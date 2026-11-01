@@ -171,7 +171,8 @@ export function buildActivation(args: {
     } else if (db.reminders[rid]) ops.push({ op: "remove", collection: "reminders", id: rid });
   };
 
-  for (const t of activeTasks) {
+  const prevApproved = Object.values(db.planVersions).find((v) => v.goalId === g && v.status === "approved" && v.id !== version.id) ?? null;
+  for (let t of activeTasks) {
     const id = taskIdByKey.get(t.key)!;
     wanted.add(id);
     const prev = db.tasks[id];
@@ -179,6 +180,10 @@ export function buildActivation(args: {
       summary.keptCompleted.push(prev.title);
       continue;
     }
+    // the user moved this task in the calendar after the last approval → keep their date/time
+    const oldPlanTask = prevApproved?.plan.tasks.find((x) => x.key === t.key);
+    const movedByUser = !!(prev && oldPlanTask && (prev.date !== oldPlanTask.date || prev.startTime !== oldPlanTask.startTime) && !t.userEdited);
+    if (movedByUser) t = { ...t, date: prev!.date, startTime: prev!.startTime };
     const next = taskFromPlan(prev ?? baseTask(id, now), t, { g, version, now, milestoneId: t.milestoneKey && !excludedMs.has(t.milestoneKey) ? ids.milestone(g, t.milestoneKey) : null, depIds: t.dependsOn.map((k) => taskIdByKey.get(k)).filter((x): x is string => !!x) });
     if (prev) {
       const ch = changesOf(prev, next);

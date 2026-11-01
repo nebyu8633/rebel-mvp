@@ -25,19 +25,17 @@ export default function GoalsPage() {
         subtitle="מטרות שנתיות ← אבני דרך ← יעדים חודשיים ושבועיים ← משימות יומיות"
         actions={
           <>
-            <Link href="/goals/plan">
-              <Button>
-                <Sparkles size={16} /> מתכנן מטרות
+            <Button onClick={() => setEditing(blankGoal(today))}>מטרה ידנית (בלי שיחה)</Button>
+            <Link href="/goals/new">
+              <Button variant="primary">
+                <Plus size={16} /> מטרה חדשה
               </Button>
             </Link>
-            <Button variant="primary" onClick={() => setEditing(blankGoal(today))}>
-              <Plus size={16} /> מטרה חדשה
-            </Button>
           </>
         }
       />
       {goals.length === 0 ? (
-        <EmptyState icon={<Target size={28} />} title="עדיין אין מטרות" action={<Button variant="primary" onClick={() => setEditing(blankGoal(today))}>הוספת מטרה</Button>} />
+        <EmptyState icon={<Target size={28} />} title="עדיין אין מטרות" action={<Link href="/goals/new"><Button variant="primary"><Sparkles size={16} /> מטרה חדשה</Button></Link>} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {goals.map((g) => {
@@ -57,7 +55,14 @@ export default function GoalsPage() {
                       </div>
                       {g.why && <p className="mt-0.5 text-sm text-stone-500">{g.why}</p>}
                     </div>
-                    <Badge tone={GOAL_STATUS[g.status].tone}>{GOAL_STATUS[g.status].label}</Badge>
+                    <span className="flex flex-col items-end gap-1">
+                      <Badge tone={GOAL_STATUS[g.status].tone}>{GOAL_STATUS[g.status].label}</Badge>
+                      {Object.values(db.planVersions).some((v) => v.goalId === g.id && v.status === "approved") ? (
+                        <Badge tone="accent">תוכנית פעילה</Badge>
+                      ) : Object.values(db.planVersions).some((v) => v.goalId === g.id && v.status === "draft") ? (
+                        <Badge tone="amber">טיוטת תוכנית</Badge>
+                      ) : null}
+                    </span>
                   </div>
                   <ProgressBar value={p.fraction} barClass={c.bar} label={g.title} />
                   <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-stone-500">

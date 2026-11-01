@@ -59,10 +59,12 @@ export function splitGoals(text: string): Array<{ text: string; kind: GoalKind }
 }
 
 export function suggestTitle(text: string, kind: GoalKind): string {
-  const t = text.replace(/^(אני )?(רוצה|רוצים|מתכנן|מתכננת|שואף|שואפת) ?(ל)?/, "").trim();
+  const t = text
+    .replace(/^\s*(אני\s+)?(רוצה|רוצים|מתכנן|מתכננת|שואף|שואפת|מקווה)\s+/, "")
+    .replace(/[.!]+$/, "")
+    .trim();
   const base = t.length >= 3 ? t : KIND_LABEL[kind];
-  const s = base.length > 60 ? base.slice(0, 57) + "…" : base;
-  return s.charAt(0) === "ל" || !t ? s : s;
+  return base.length > 60 ? base.slice(0, 57) + "…" : base;
 }
 
 function parseAmount(raw: string): number | null {

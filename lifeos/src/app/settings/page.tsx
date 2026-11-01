@@ -11,6 +11,7 @@ import { hydrate } from "@/lib/store/repo";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import type { CollectionName, MealReminder } from "@/lib/types";
 import { Badge, Button, Card, Field, Input, PageHeader, SectionTitle, Select, Toggle, confirmDialog } from "@/components/ui";
+import { PushToggle } from "@/components/PushToggle";
 
 export default function SettingsPage() {
   const settings = useSettings();
@@ -218,10 +219,11 @@ export default function SettingsPage() {
           <Input type="number" min={0} max={1440} defaultValue={settings.defaultReminderMinutes} onBlur={(e) => updateSettings({ defaultReminderMinutes: Math.max(0, Math.min(1440, Number(e.target.value) || 0)) })} />
         </Field>
         <div className="mt-3 rounded-xl bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 dark:bg-white/[0.03] dark:text-stone-300">
-          <b>חשוב לדעת:</b> התזכורות פועלות כל עוד LifeOS פתוח בלשונית כלשהי בדפדפן (גם ברקע). כשכל הלשוניות סגורות — לא תצא תזכורת, ותזכורת שהוחמצה ביותר מ-10 דקות לא תוצג בדיעבד. אין כרגע שרת Push, ולכן אין
-          התחייבות להתראות כשהאפליקציה סגורה. בטלפון: מומלץ ״הוספה למסך הבית״; ב-iOS התראות דפדפן נתמכות רק לאפליקציה שהותקנה למסך הבית. כל תזכורת נשלחת פעם אחת בלבד, גם אם פתוחות כמה לשוניות.
+          <b>חשוב לדעת:</b> תזכורות בתוך האפליקציה והתראות דפדפן רגילות פועלות כל עוד LifeOS פתוח בלשונית כלשהי. כשכל הלשוניות סגורות הן לא יוצאות, ותזכורת שהוחמצה ביותר מ-10 דקות לא תוצג בדיעבד.
+          התראות כשהאפליקציה סגורה אפשריות רק דרך Web Push (למטה), וגם אז רק כשהדפדפן עצמו רץ ושרת התזמון מוגדר. בטלפון: מומלץ ״הוספה למסך הבית״; ב-iOS התראות דפדפן נתמכות רק לאפליקציה שהותקנה למסך הבית. כל תזכורת נשלחת פעם אחת בלבד, גם אם פתוחות כמה לשוניות.
           {perm === "denied" && <div className="mt-1 text-rose-600">ההרשאה להתראות נחסמה בדפדפן — יש לאפשר אותה בהגדרות האתר.</div>}
         </div>
+        <PushToggle />
         {settings.notifyBrowser && perm === "granted" && (
           <Button size="sm" className="mt-3" onClick={() => new Notification("LifeOS", { body: "בדיקת התראה ✓", lang: "he", dir: "rtl" })}>
             שליחת התראת בדיקה
