@@ -53,7 +53,7 @@ PEG (FY27 P/E / assumed 20% LT EPS CAGR) : 1.23
 EV/non-GAAP EBIT FY27 / revenue growth 15% (x per pt): 1.31
 
 ==============================================================================
-3. PEERS (APPROXIMATE, UNVERIFIED AT VALUATION DATE - see md)
+3. PEERS - UNSOURCED ESTIMATES, NOT VERIFIED, DO NOT RELY (illustrative only; not used in any value)
 ==============================================================================
 Peer     fwdPE lo-hi   mid  growth  margin  PE/growth       lev
 CDNS        40-50       45     13%     44%       3.46  net cash

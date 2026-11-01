@@ -144,7 +144,7 @@ for lt_g in (0.15, 0.18, 0.20):
 print(f"EV/non-GAAP EBIT FY27 / revenue growth 15% (x per pt): {ev/FY27['ng_ebit']/15:.2f}")
 
 # ----------------------------------------------------------------------------
-hr("3. PEERS (APPROXIMATE, UNVERIFIED AT VALUATION DATE - see md)")
+hr("3. PEERS - UNSOURCED ESTIMATES, NOT VERIFIED, DO NOT RELY (illustrative only; not used in any value)")
 # Values are approximate ranges from analyst background knowledge (pre mid-2026), NOT
 # verified at 2026-10-30 because web-search budget was exhausted. Midpoints used only for
 # illustrative growth-adjusted comparison.
