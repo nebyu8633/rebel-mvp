@@ -113,6 +113,27 @@ Revenue CAGR FY26-FY30: 12.7% | FY30 rev $15.67bn
   Blended (A+B)/2: $476/sh  vs price +2%
   Gordon TV implies 11.4x FY36 non-GAAP EBIT; 13.3x FY36 (EBIT-SBC)
 
+--- ALT_BASE --- CROSS-EXAM ALT BASE: ~10% organic history (ex-Ansys organic ~2.8% FY25/~7% FY26; core EDA +8.5% Q3FY26; Ansys ~9%) => FY27 +11% fading to 5.5%; margin peaks ~46% FY30; all else = base
+WACC 9.0% | terminal g 3.5% | exit EV/(EBIT-SBC) 18.0x
+   FY     Rev    g%  OpM%   EBIT   uFCF   SBC uFCF-SBC FCF-SBC m%
+ 2027   10.78  11.0  43.0   4.64   3.29  0.97     2.32       21.5
+ 2028   11.86  10.0  44.0   5.22   3.73  1.04     2.69       22.7
+ 2029   12.93   9.0  45.0   5.82   4.18  1.11     3.08       23.8
+ 2030   13.96   8.0  46.0   6.42   4.65  1.16     3.48       24.9
+ 2031   15.01   7.5  46.0   6.91   5.03  1.22     3.81       25.4
+ 2032   16.06   7.0  46.0   7.39   5.41  1.27     4.14       25.8
+ 2033   17.11   6.5  46.0   7.87   5.80  1.31     4.49       26.2
+ 2034   18.13   6.0  46.0   8.34   6.18  1.35     4.83       26.6
+ 2035   19.13   5.5  46.0   8.80   6.56  1.38     5.18       27.1
+ 2036   20.18   5.5  46.0   9.28   6.96  1.41     5.55       27.5
+Revenue CAGR FY26-FY30: 9.5% | FY30 rev $13.96bn
+  A Gordon, FCF-SBC (primary)                   EV $   69.0bn | TV share   64% | equity $   62.5bn | $    325/sh | vs price   -31%
+  B Exit multiple, FCF-SBC flows                EV $   84.7bn | TV share   71% | equity $   78.3bn | $    407/sh | vs price   -13%
+  C Gordon, FCF pre-SBC, 1.5%/yr dilution       EV $   88.1bn | TV share   63% | equity $   81.7bn | $    366/sh | vs price   -22%
+  D Gordon, FCF pre-SBC, no dilution (NOT used) EV $   88.1bn | TV share   63% | equity $   81.7bn | $    425/sh | vs price    -9%
+  Blended (A+B)/2: $366/sh  vs price -22%
+  Gordon TV implies 11.2x FY36 non-GAAP EBIT; 13.3x FY36 (EBIT-SBC)
+
 --- BULL --- AI-driven chip design demand + full synergy capture; beats 50% margin target; SBC fades to 6.5%
 WACC 8.5% | terminal g 4.0% | exit EV/(EBIT-SBC) 22.0x
    FY     Rev    g%  OpM%   EBIT   uFCF   SBC uFCF-SBC FCF-SBC m%
@@ -135,6 +156,8 @@ Revenue CAGR FY26-FY30: 15.2% | FY30 rev $17.14bn
   Gordon TV implies 14.9x FY36 non-GAAP EBIT; 17.0x FY36 (EBIT-SBC)
 
 Probability-weighted (25/50/25) blended value: $487/sh vs price +4%
+Probability-weighted with ALT BASE as 50% case: $431/sh vs price -8%
+Equal-weight bear/base/alt_base/bull: $459/sh vs price -2%
 
 ==============================================================================
 5. SENSITIVITIES (per-share, FCF-SBC basis, base scenario unless noted)

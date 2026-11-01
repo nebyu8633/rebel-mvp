@@ -211,6 +211,14 @@ SCEN = {
         wacc=0.09, g=0.035, exit_ebit=18.0,
         note="FY27 = guidance; ~$0.4bn Ansys revenue synergies phased in by FY30 within 11-13% growth; "
              "cost synergies get margin to ~49% (just below 50% FY30 target); SBC fades 9%->7%"),
+    "alt_base": dict(
+        growth=[0.11, 0.10, 0.09, 0.08, 0.075, 0.07, 0.065, 0.06, 0.055, 0.055],
+        margin=[0.43, 0.44, 0.45, 0.46, 0.46, 0.46, 0.46, 0.46, 0.46, 0.46],
+        sbc=interp(0.09, 0.07, 10),
+        conv=interp(0.71, 0.75, 10),
+        wacc=0.09, g=0.035, exit_ebit=18.0,
+        note="CROSS-EXAM ALT BASE: ~10% organic history (ex-Ansys organic ~2.8% FY25/~7% FY26; core EDA +8.5% Q3FY26; "
+             "Ansys ~9%) => FY27 +11% fading to 5.5%; margin peaks ~46% FY30; all else = base"),
     "bull": dict(
         growth=[0.16, 0.16, 0.15, 0.14, 0.12, 0.11, 0.10, 0.09, 0.08, 0.07],
         margin=[0.445, 0.47, 0.49, 0.51, 0.52, 0.52, 0.52, 0.52, 0.52, 0.52],
@@ -276,7 +284,13 @@ for name, s in SCEN.items():
 
 pw = {"bear": 0.25, "base": 0.5, "bull": 0.25}
 pwv = sum(results[k]["blend"] * w for k, w in pw.items())
+pw2 = {"bear": 0.25, "alt_base": 0.5, "bull": 0.25}
+pwv2 = sum(results[k]["blend"] * w for k, w in pw2.items())
 print(f"\nProbability-weighted (25/50/25) blended value: ${pwv:.0f}/sh vs price {(pwv/PRICE-1)*100:+.0f}%")
+print(f"Probability-weighted with ALT BASE as 50% case: ${pwv2:.0f}/sh vs price {(pwv2/PRICE-1)*100:+.0f}%")
+pw3 = {"bear": 0.25, "base": 0.25, "alt_base": 0.25, "bull": 0.25}
+pwv3 = sum(results[k]["blend"] * w for k, w in pw3.items())
+print(f"Equal-weight bear/base/alt_base/bull: ${pwv3:.0f}/sh vs price {(pwv3/PRICE-1)*100:+.0f}%")
 
 # ----------------------------------------------------------------------------
 hr("5. SENSITIVITIES (per-share, FCF-SBC basis, base scenario unless noted)")
