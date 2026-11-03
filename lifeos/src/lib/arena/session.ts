@@ -120,6 +120,16 @@ export interface OnlineLink {
 const RESUME_KEY = "lifeos:arena:resume";
 const GUEST_KEY = "lifeos:arena:guest";
 
+/** A match this device was in recently (reload / closed tab) — the lobby reconnects automatically. */
+export function pendingResume(): boolean {
+  try {
+    const r = JSON.parse(localStorage.getItem(RESUME_KEY) || "null");
+    return !!r && Date.now() - (r.at ?? 0) < 60_000;
+  } catch {
+    return false;
+  }
+}
+
 export function arenaUrl(): string | null {
   const env = process.env.NEXT_PUBLIC_ARENA_URL;
   if (env) return env;
@@ -153,7 +163,7 @@ export function connectArena(o: { name: string; token: string | null }): OnlineL
       let resume: { matchId: string; key: string } | null = null;
       try {
         guestId = localStorage.getItem(GUEST_KEY);
-        resume = JSON.parse(sessionStorage.getItem(RESUME_KEY) || "null");
+        resume = JSON.parse(localStorage.getItem(RESUME_KEY) || "null");
       } catch {
         /* ignore */
       }
@@ -172,7 +182,7 @@ export function connectArena(o: { name: string; token: string | null }): OnlineL
       } else if (m.t === "queued") set({ phase: "queued", waiting: m.waiting, needed: m.needed });
       else if (m.t === "match") {
         try {
-          sessionStorage.setItem(RESUME_KEY, JSON.stringify({ matchId: m.matchId, key: m.key }));
+          localStorage.setItem(RESUME_KEY, JSON.stringify({ matchId: m.matchId, key: m.key, at: Date.now() }));
         } catch {
           /* ignore */
         }
@@ -181,7 +191,7 @@ export function connectArena(o: { name: string; token: string | null }): OnlineL
       } else if (m.t === "snap") sess?._push(m.s);
       else if (m.t === "end") {
         try {
-          sessionStorage.removeItem(RESUME_KEY);
+          localStorage.removeItem(RESUME_KEY);
         } catch {
           /* ignore */
         }

@@ -582,5 +582,7 @@ export function forfeit(st: MatchState, playerId: string) {
   p.eliminated = true;
   p.connected = false;
   for (const h of p.heroes) h.alive = false;
+  const left = [...new Set(st.players.filter((x) => !x.eliminated).map((x) => x.team))];
+  if (st.phase !== "ended" && left.length <= 1) return end(st, left[0] ?? null, "היריב עזב את המשחק");
   checkVictory(st);
 }

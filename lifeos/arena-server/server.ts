@@ -251,16 +251,17 @@ wss.on("connection", (ws) => {
       conn = { ws, playerId: id.playerId, name: cleanName(msg.name), guest: id.guest, owned: id.owned, matchId: null, inputs: [], alive: true };
       online.set(id.playerId, conn);
       send(conn, { t: "welcome", playerId: id.playerId, guest: id.guest, owned: id.owned, name: conn.name });
-      // reconnect into a running match
-      if (msg.resume) {
-        const room = rooms.get(msg.resume.matchId);
-        if (room && !room.ended && room.keys.get(id.playerId) === msg.resume.key) {
+      // reconnect into a running match: by resume key, or simply because this verified identity is in one
+      const byKey = msg.resume ? rooms.get(msg.resume.matchId) : null;
+      const room = byKey && byKey.keys.get(id.playerId) === msg.resume?.key ? byKey : [...rooms.values()].find((r) => !r.ended && r.keys.has(id.playerId) && !r.state.players.find((x) => x.id === id.playerId)?.eliminated);
+      {
+        if (room && !room.ended) {
           room.conns.set(id.playerId, conn);
           room.dropped.delete(id.playerId);
           const p = room.state.players.find((x) => x.id === id.playerId);
           if (p) p.connected = true;
           conn.matchId = room.state.id;
-          send(conn, { t: "match", matchId: room.state.id, key: msg.resume.key, mode: room.state.mode, mapId: room.state.mapId, you: id.playerId, players: room.state.players.map((x) => ({ id: x.id, name: x.name, team: x.team, heroes: x.heroes.map((h) => h.heroId), guest: room.guests.has(x.id) })) });
+          send(conn, { t: "match", matchId: room.state.id, key: room.keys.get(id.playerId)!, mode: room.state.mode, mapId: room.state.mapId, you: id.playerId, players: room.state.players.map((x) => ({ id: x.id, name: x.name, team: x.team, heroes: x.heroes.map((h) => h.heroId), guest: room.guests.has(x.id) })) });
         }
       }
       return;

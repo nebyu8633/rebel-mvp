@@ -7,7 +7,7 @@ import { HERO_BY_ID, HEROES, RARITY_LABEL, REGION_NAME, ROLE_LABEL, ROLE_STATS, 
 import { MAPS, MODES, MODE_BY_ID } from "@/lib/arena/maps";
 import { heroLevel, ownership } from "@/lib/arena/roster";
 import { analyzeTeam } from "@/lib/arena/team";
-import { connectArena, practiceSession, type EndInfo, type OnlineLink, type Session } from "@/lib/arena/session";
+import { connectArena, pendingResume, practiceSession, type EndInfo, type OnlineLink, type Session } from "@/lib/arena/session";
 import type { BotLevel } from "@/lib/arena/bot";
 import type { ModeId, Rarity } from "@/lib/arena/types";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -97,19 +97,27 @@ export default function ArenaPage() {
     setSession(practiceSession({ mode, mapId: chosen, heroes: team, name, level, botTeams, timeLimit: t }));
   };
 
+  const ensureLink = async () => {
+    if (link) return link;
+    let token: string | null = null;
+    if (useStore.getState().mode === "supabase") token = (await getBrowserSupabase()?.auth.getSession())?.data.session?.access_token ?? null;
+    const l = connectArena({ name, token });
+    setLink(l);
+    return l;
+  };
+  // back from a reload / closed tab during an online match → rejoin it
+  useEffect(() => {
+    if (pendingResume()) void ensureLink();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const goOnline = async () => {
-    let l = link;
-    if (!l) {
-      let token: string | null = null;
-      if (useStore.getState().mode === "supabase") token = (await getBrowserSupabase()?.auth.getSession())?.data.session?.access_token ?? null;
-      l = connectArena({ name, token });
-      setLink(l);
-    }
+    const l = await ensureLink();
     const unsub = l.subscribe(() => {
-      const st = l!.status();
-      if (st.phase === "ready" && !l!.session()) {
+      const st = l.status();
+      if (st.phase === "ready" && !l.session()) {
         unsub();
-        l!.queue(mode, team);
+        l.queue(mode, team);
       }
     });
     if (l.status().phase === "ready") {
