@@ -6,6 +6,7 @@ import { useToday } from "@/hooks/useToday";
 import { runGameSync, useCelebrations, type Celebration } from "@/lib/game/sync";
 import { playSound } from "@/lib/game/sound";
 import { profileOf } from "@/lib/game/engine";
+import { appendLog } from "@/lib/game/notifyLog";
 
 /** Keeps the ledger / milestones in sync with real data (debounced, idempotent) and queues celebrations. */
 export function GameSync() {
@@ -23,7 +24,10 @@ export function GameSync() {
         first.current = false;
         void runGameSync(today).then((c) => {
           // on the very first sync after loading, don't replay old history as celebrations
-          if (c.length && !initial) push(c);
+          if (c.length && !initial) {
+            push(c);
+            notifyInBackground(c);
+          }
         });
       },
       first.current ? 50 : 400,
@@ -31,6 +35,26 @@ export function GameSync() {
     return () => clearTimeout(t);
   }, [db, ready, today, push]);
   return null;
+}
+
+/** When the tab is in the background, big moments also go out as a browser notification (if allowed). */
+function notifyInBackground(list: Celebration[]) {
+  if (typeof document === "undefined" || !document.hidden) return;
+  const db = useStore.getState().db;
+  const settings = Object.values(db.settings)[0];
+  const cats = profileOf(db)?.notify.categories;
+  if (!settings?.notifyBrowser || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  for (const c of list) {
+    const cat = c.kind === "achievement" ? "achievement" : c.kind === "milestone" ? "milestone" : null;
+    if (!cat || (cats && !cats[cat])) continue;
+    const title = c.kind === "achievement" ? `הישג חדש: ${c.title}` : `אבן דרך הושלמה: ${c.title}`;
+    try {
+      new Notification(title, { body: c.xp ? `+${c.xp} XP` : "", tag: c.id, lang: "he", dir: "rtl" });
+      appendLog({ key: c.id, title, date: new Date().toISOString().slice(0, 10), time: new Date().toTimeString().slice(0, 5), deliveredAt: Date.now(), channels: ["browser"] });
+    } catch {
+      /* not allowed outside a service worker on this browser */
+    }
+  }
 }
 
 const ICON: Record<Celebration["kind"], typeof Sparkles> = {
@@ -73,7 +97,7 @@ export function CelebrationLayer() {
     );
   const Icon = ICON[c.kind];
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05080f]/70 backdrop-blur-sm" role="alertdialog" aria-label={HEAD[c.kind]} onClick={shift}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05080f]/85" role="alertdialog" aria-label={HEAD[c.kind]} onClick={shift}>
       <div key={c.id} className="animate-pop relative flex flex-col items-center px-8 text-center text-white">
         <div className="animate-rays pointer-events-none absolute -top-24 h-72 w-72 rounded-full opacity-60" style={{ background: "conic-gradient(from 0deg, transparent, rgba(243,212,136,.35), transparent 20%, rgba(243,212,136,.3), transparent 45%, rgba(243,212,136,.35), transparent 70%)" }} />
         <div className="gold-btn relative flex h-24 w-24 items-center justify-center rounded-full">

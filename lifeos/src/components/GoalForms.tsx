@@ -9,6 +9,7 @@ import { latestWeight } from "@/lib/goals";
 import { useToday } from "@/hooks/useToday";
 import { Button, Field, Input, Modal, Select, Textarea, cx } from "./ui";
 import { GOAL_COLORS } from "@/lib/goals";
+import { REGIONS, REGION_BY_ID, regionOfGoal } from "@/lib/game/regions";
 
 export function blankGoal(today: string): Goal {
   const n = nowIso();
@@ -122,6 +123,16 @@ export function GoalForm({ goal, onClose }: { goal: Goal; onClose: () => void })
             </Field>
           </div>
         )}
+        <Field label="אזור בעולם המשחק" hint="לאן זורם ה-XP של המטרה">
+          <Select value={f.region ?? ""} onChange={(e) => set({ region: (e.target.value || null) as Goal["region"] })}>
+            <option value="">אוטומטי ({REGION_BY_ID[regionOfGoal({ ...f, region: null })].name})</option>
+            {REGIONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="סטטוס">
             <Select value={f.status} onChange={(e) => set({ status: e.target.value as Goal["status"] })}>

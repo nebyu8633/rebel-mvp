@@ -82,8 +82,6 @@ function celebrationsFor(before: XpEvent[], after: XpEvent[], gained: XpEvent[],
   const sum = (l: XpEvent[]) => l.reduce((s, e) => s + e.amount, 0);
   const l0 = levelInfo(sum(before)).level;
   const l1 = levelInfo(sum(after)).level;
-  const plain = gained.filter((g) => g.kind === "task" || g.kind === "occurrence" || g.kind === "habit" || g.kind === "goal" || g.kind === "chest");
-  if (plain.length) out.push({ id: `xp:${plain.map((g) => g.id).join(",")}`, kind: "xp", title: "", xp: sum(plain) });
   for (const g of gained) {
     if (g.kind === "achievement") out.push({ id: g.id, kind: "achievement", title: g.title, xp: g.amount });
     else if (g.kind === "milestone" && milestonesDone.includes(g.refId)) out.push({ id: g.id, kind: "milestone", title: g.title, xp: g.amount });
@@ -98,5 +96,7 @@ function celebrationsFor(before: XpEvent[], after: XpEvent[], gained: XpEvent[],
     }
   }
   if (l1 > l0) out.push({ id: `lvl:${l1}`, kind: "level", title: `רמה ${l1}` });
+  const plain = gained.filter((g) => g.kind === "task" || g.kind === "occurrence" || g.kind === "habit" || g.kind === "goal" || g.kind === "chest");
+  if (plain.length) out.push({ id: `xp:${plain.map((g) => g.id).join(",")}`, kind: "xp", title: "", xp: sum(plain) });
   return out;
 }

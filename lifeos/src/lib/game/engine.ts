@@ -135,12 +135,14 @@ export function questFor(db: DB, goal: Goal): Quest {
   const all = milestones.flatMap((m) => m.tasks);
   const doneTasks = milestones.reduce((s, m) => s + m.done, 0);
   const progress = milestones.length ? milestones.filter((m) => m.state === "completed").length / milestones.length : all.length ? doneTasks / all.length : 0;
+  const goalTasks = Object.values(db.tasks).filter((t) => t.goalId === goal.id && !t.recurrence);
+  const touched = goalTasks.some((t) => t.status === "completed" || t.status === "in_progress") || Object.values(db.occurrences).some((o) => o.status === "completed" && db.tasks[o.taskId]?.goalId === goal.id);
   const state: QuestState =
     goal.status === "done"
       ? "completed"
       : milestones.some((m) => m.state === "pending")
         ? "pending"
-        : milestones.some((m) => m.state === "active" || m.state === "completed")
+        : milestones.some((m) => m.state === "active" || m.state === "completed") || touched
           ? "active"
           : "available";
   return { goal, region: regionOfGoal(goal), state, milestones, progress };

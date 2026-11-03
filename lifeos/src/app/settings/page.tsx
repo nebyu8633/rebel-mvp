@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Upload, LogOut, UserRound, Clock, Repeat, UtensilsCrossed, Bell, Sparkles, Cloud, HardDrive } from "lucide-react";
+import { Plus, Trash2, Download, Upload, LogOut, UserRound, Clock, Repeat, UtensilsCrossed, Bell, Sparkles, Cloud, HardDrive, Gamepad2 } from "lucide-react";
 import { useStore, useSettings } from "@/lib/store/store";
 import { updateSettings, saveTask, uid } from "@/lib/actions";
 import { SEED_IDS } from "@/lib/seed";
@@ -12,6 +12,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import type { CollectionName, MealReminder } from "@/lib/types";
 import { Badge, Button, Card, Details, Disclosure, Field, Input, PageHeader, Select, Toggle, confirmDialog } from "@/components/ui";
 import { PushToggle } from "@/components/PushToggle";
+import { NotifySettings, XpSettings } from "@/components/game/NotifySettings";
 
 export default function SettingsPage() {
   const settings = useSettings();
@@ -216,15 +217,12 @@ export default function SettingsPage() {
           <Input type="number" min={0} max={1440} defaultValue={settings.defaultReminderMinutes} onBlur={(e) => updateSettings({ defaultReminderMinutes: Math.max(0, Math.min(1440, Number(e.target.value) || 0)) })} />
         </Field>
         {perm === "denied" && <p className="mt-2 text-xs text-rose-600">ההרשאה נחסמה בדפדפן — יש לאפשר בהגדרות האתר.</p>}
-        <Details className="mt-3" label="מתי התראות פועלות">
-          התראות באפליקציה ובדפדפן פועלות כשהאפליקציה פתוחה בלשונית כלשהי; תזכורת שהוחמצה ביותר מ-10 דקות לא מוצגת בדיעבד. כשהאפליקציה סגורה — רק דרך Web Push (למטה), כשהשרת מוגדר. ב-iOS: רק לאתר שהותקן למסך הבית. כל תזכורת נשלחת פעם אחת.
-        </Details>
+        <NotifySettings />
         <PushToggle />
-        {settings.notifyBrowser && perm === "granted" && (
-          <Button size="sm" className="mt-3" onClick={() => new Notification("LifeOS", { body: "בדיקת התראה ✓", lang: "he", dir: "rtl" })}>
-            שליחת התראת בדיקה
-          </Button>
-        )}
+      </Disclosure>
+
+      <Disclosure id="s-game" icon={<Gamepad2 size={16} />} title="משחק" summary="ערכי XP">
+        <XpSettings />
       </Disclosure>
 
       <Card className="flex items-center gap-3 py-3.5">

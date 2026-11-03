@@ -13,6 +13,8 @@ export interface Reminder {
   body: string;
   kind: "task" | "event" | "habit" | "meal";
   href: string;
+  /** Task instance this reminder belongs to (for start / snooze / reschedule / complete actions). */
+  instanceKey?: string;
 }
 
 /** All reminders scheduled for `date`. Pure; the caller decides which are due. */
@@ -31,6 +33,7 @@ export function remindersForDate(db: DB, date: string): Reminder[] {
       title: i.title,
       body: i.task.reminderMinutes ? `מתחיל בעוד ${i.task.reminderMinutes} דק׳ (${i.startTime})` : `עכשיו (${i.startTime})`,
       kind: "task",
+      instanceKey: i.key,
       href: i.task.routine === "grocery" ? "/meals?tab=groceries" : i.task.routine === "meal_prep" ? "/meals?tab=prep" : i.task.routine === "weekly_review" ? "/progress?review=1" : "/",
     });
   }
@@ -47,7 +50,7 @@ export function remindersForDate(db: DB, date: string): Reminder[] {
       for (const r of rs) {
         if (r.kind === "before_start" && i.date === date && i.startTime && r.minutes != null) {
           const at = timeToMinutes(i.startTime) - r.minutes;
-          if (at >= 0) out.push({ key: `rem:${r.id}:${i.key}:${i.startTime}:${r.minutes}`, date, at, time: minutesToTime(at), title: i.title, body: r.minutes ? `מתחיל בעוד ${r.minutes} דק׳ (${i.startTime})` : `עכשיו (${i.startTime})`, kind: "task", href: "/today" });
+          if (at >= 0) out.push({ key: `rem:${r.id}:${i.key}:${i.startTime}:${r.minutes}`, date, at, time: minutesToTime(at), title: i.title, body: r.minutes ? `מתחיל בעוד ${r.minutes} דק׳ (${i.startTime})` : `עכשיו (${i.startTime})`, kind: "task", href: "/today", instanceKey: i.key });
         }
       }
     }
@@ -56,7 +59,7 @@ export function remindersForDate(db: DB, date: string): Reminder[] {
       const t = db.tasks[r.taskId];
       if (!t || !isOpen(t.status) || t.recurrence) continue;
       if (r.kind === "at" && r.date === date && r.time) {
-        out.push({ key: `rem:${r.id}:${r.date}:${r.time}`, date, at: timeToMinutes(r.time), time: r.time, title: t.title, body: "תזכורת", kind: "task", href: "/today" });
+        out.push({ key: `rem:${r.id}:${r.date}:${r.time}`, date, at: timeToMinutes(r.time), time: r.time, title: t.title, body: "תזכורת", kind: "task", href: "/today", instanceKey: t.id });
       }
       if (r.kind === "before_deadline" && t.deadline && r.minutes != null) {
         // relative to 09:00 on the deadline day, may fall on an earlier day
@@ -65,7 +68,7 @@ export function remindersForDate(db: DB, date: string): Reminder[] {
         const fireDate = addDays(t.deadline, -dayOffset);
         const at = 9 * 60 - totalBefore + dayOffset * 24 * 60;
         if (fireDate === date && at >= 0 && at < 24 * 60)
-          out.push({ key: `rem:${r.id}:${t.deadline}:${r.minutes}`, date, at, time: minutesToTime(at), title: t.title, body: `דדליין ב-${t.deadline}`, kind: "task", href: "/today" });
+          out.push({ key: `rem:${r.id}:${t.deadline}:${r.minutes}`, date, at, time: minutesToTime(at), title: t.title, body: `דדליין ב-${t.deadline}`, kind: "task", href: "/today", instanceKey: t.id });
       }
     }
   }

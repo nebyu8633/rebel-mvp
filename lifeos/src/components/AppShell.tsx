@@ -8,7 +8,7 @@ import { useUI } from "@/lib/store/ui";
 import { cx, ConfirmHost } from "./ui";
 import { TaskEditorHost } from "./TaskEditor";
 import { RescheduleHost } from "./TaskRow";
-import { ReminderEngine } from "./ReminderEngine";
+import { ReminderEngine, ReminderCards } from "./ReminderEngine";
 import { GameSync, CelebrationLayer } from "./game/GameSync";
 import { FocusHost } from "./game/FocusMode";
 import { EvidenceHost } from "./game/EvidenceModal";
@@ -252,6 +252,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <RescheduleHost />
       <ConfirmHost />
       <ReminderEngine />
+      <ReminderCards />
       <GameSync />
       <FocusHost />
       <EvidenceHost />

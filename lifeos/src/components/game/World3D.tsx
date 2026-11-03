@@ -101,7 +101,7 @@ function CameraRig({ selected }: { selected: RegionId | null }) {
   const controls = useRef<React.ComponentRef<typeof OrbitControls>>(null);
   const { camera, size } = useThree();
   // portrait screens need a farther camera to fit the whole archipelago
-  const fit = Math.min(2.1, Math.max(1, 1.05 / (size.width / size.height)));
+  const fit = Math.min(2.35, Math.max(1, 1.05 / (size.width / size.height)));
   const portrait = size.width < size.height;
   const anim = useRef<{ t: number; from: THREE.Vector3; to: THREE.Vector3; camFrom: THREE.Vector3; camTo: THREE.Vector3 } | null>(null);
   const [interacted, setInteracted] = useState(false);

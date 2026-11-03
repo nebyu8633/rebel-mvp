@@ -11,7 +11,7 @@ import { hydrate } from "@/lib/store/repo";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const NEEDED: CollectionName[] = ["settings", "tasks", "occurrences", "reminders", "events", "habits", "habitLogs"];
+const NEEDED: CollectionName[] = ["settings", "tasks", "occurrences", "reminders", "events", "habits", "habitLogs", "goals", "milestones", "evidence", "xpEvents", "gameProfile"];
 
 /**
  * Background reminder scheduler. Call it every few minutes from a scheduler
