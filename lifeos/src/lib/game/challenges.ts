@@ -80,10 +80,16 @@ export function challengesFor(db: DB, today: string): Challenge[] {
     const progressed = weekList.some((i) => verifiedDone(db, i) && taskRegion(db, i.task) === neglected);
     out.push({ id: `p:${ws}:${neglected}`, period: "personal", title: `צעד אחד ב${REGION_BY_ID[neglected].name}`, target: 1, progress: progressed ? 1 : 0, xp: 30, done: progressed, why: "לא הייתה התקדמות באזור הזה בשבועיים האחרונים" });
   }
-  // a gentle return challenge when there is overdue work (never a punishment)
+  // a gentle return challenge when there is overdue work (never a punishment):
+  // done by finishing (and verifying) one task from an earlier day, today
   const overdue = overdueInstances(db, today);
-  if (overdue.length >= 2) {
-    out.push({ id: `p:${today}:return`, period: "personal", title: "לחזור למסלול: משימה אחת מהאיחור", target: 1, progress: 0, xp: 15, done: false, why: `${overdue.length} משימות מחכות` });
+  const caughtUp = instancesInRange(db, addDays(today, -14), addDays(today, -1), today).filter((i) => {
+    if (!verifiedDone(db, i)) return false;
+    const at = i.occurrence?.completedAt ?? (i.recurring ? null : i.task.completedAt);
+    return !!at && at.slice(0, 10) === today;
+  }).length;
+  if (overdue.length >= 2 || caughtUp > 0) {
+    out.push({ id: `p:${today}:return`, period: "personal", title: "לחזור למסלול: משימה אחת מהאיחור", target: 1, progress: Math.min(1, caughtUp), xp: 15, done: caughtUp >= 1, why: overdue.length ? `${overdue.length} משימות מחכות` : "השלמת משימה מיום קודם" });
   }
   return out;
 }

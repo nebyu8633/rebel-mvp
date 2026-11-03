@@ -95,3 +95,88 @@ input[type="date"],
 input[type="time"] {
   min-height: 2.5rem;
 }
+
+/* ───────── Game layer (premium RPG look: deep night-blue, gold hairlines) ───────── */
+.game-bg {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(212, 167, 60, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgba(83, 179, 201, 0.1), transparent 60%),
+    #0b1120;
+  color: #e7e9ee;
+}
+.glass {
+  background: rgba(13, 19, 34, 0.72);
+  border: 1px solid rgba(232, 200, 120, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #e9ecf2;
+}
+.glass-soft {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.gold-text {
+  color: #f1cf7a;
+}
+.gold-btn {
+  background: linear-gradient(180deg, #f3d488, #d4a73c 55%, #b8862b);
+  color: #1f1606;
+  box-shadow: 0 6px 20px -6px rgba(212, 167, 60, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.gold-btn:hover {
+  filter: brightness(1.06);
+}
+.gold-btn:disabled {
+  filter: grayscale(0.6);
+  opacity: 0.6;
+}
+.xp-bar {
+  background: linear-gradient(90deg, #b8862b, #f3d488);
+}
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pop {
+  animation: pop-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+@keyframes rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-rays {
+  animation: rays 14s linear infinite;
+}
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px);
+  }
+}
+.animate-float-up {
+  animation: float-up 1.6s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop,
+  .animate-rays,
+  .animate-float-up {
+    animation: none;
+  }
+}

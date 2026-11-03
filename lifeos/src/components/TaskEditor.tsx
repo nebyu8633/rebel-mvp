@@ -10,6 +10,8 @@ import { RecurrenceEditor, defaultRule } from "./RecurrenceEditor";
 import { formatHebDate } from "@/lib/dates";
 import { blockingDependencies } from "@/lib/tasks";
 import { RemindersEditor } from "./RemindersEditor";
+import { EVIDENCE_LABEL } from "@/lib/game/evidence";
+import { profileOf, taskXp } from "@/lib/game/engine";
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   planned: "מתוכנן",
@@ -42,6 +44,7 @@ export function TaskEditorHost() {
 function TaskEditor({ onClose }: { onClose: () => void }) {
   const req = useUI((s) => s.editor)!;
   const db = useStore((s) => s.db);
+  const profile = profileOf(db);
   const today = useToday();
   const inst = req.instance;
   const initial = useMemo(() => req.task ?? inst?.task ?? blankTask({ date: today, ...req.defaults }), [req, inst, today]);
@@ -299,11 +302,35 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
             )}
 
             <button type="button" className="text-sm font-medium text-accent-700 dark:text-accent-200" onClick={() => setShowMore((s) => !s)} aria-expanded={showMore}>
-              {showMore ? "פחות פרטים" : "עוד פרטים: תזכורות, דדליין, הערות, תלויות"}
+              {showMore ? "פחות פרטים" : "עוד פרטים: הוכחה ו-XP, תזכורות, דדליין, הערות"}
             </button>
 
             {showMore && (
               <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="הוכחת ביצוע" hint={form.evidence === "none" ? "XP מתקבל מיד עם הסימון" : "XP מתקבל אחרי אישור ההוכחה"}>
+                    <Select value={form.evidence} onChange={(e) => set({ evidence: e.target.value as Task["evidence"] })}>
+                      {Object.entries(EVIDENCE_LABEL).map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="גודל המשימה (XP)">
+                    <Select value={form.xpSize} onChange={(e) => set({ xpSize: e.target.value as Task["xpSize"] })}>
+                      <option value="auto">אוטומטי ({taskXp({ ...form, xpSize: "auto" }, profile)} XP)</option>
+                      <option value="small">קטנה ({taskXp({ ...form, xpSize: "small" }, profile)} XP)</option>
+                      <option value="medium">בינונית ({taskXp({ ...form, xpSize: "medium" }, profile)} XP)</option>
+                      <option value="major">גדולה ({taskXp({ ...form, xpSize: "major" }, profile)} XP)</option>
+                    </Select>
+                  </Field>
+                </div>
+                {form.evidence !== "none" && form.evidence !== "manual" && (
+                  <Field label="מה צריך להיראות בהוכחה (רשות)">
+                    <Input value={form.evidenceCriteria} onChange={(e) => set({ evidenceCriteria: e.target.value })} maxLength={500} placeholder="למשל: תמונה של הספר פתוח בעמוד שהגעת אליו" />
+                  </Field>
+                )}
                 <div>
                   <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">תזכורות נוספות</span>
                   {isNew ? <p className="text-xs text-stone-500">אפשר להוסיף תזכורות נוספות אחרי השמירה.</p> : <RemindersEditor taskId={form.id} />}

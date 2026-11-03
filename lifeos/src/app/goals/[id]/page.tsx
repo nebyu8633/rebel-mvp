@@ -19,6 +19,7 @@ import { TaskRow } from "@/components/TaskRow";
 import { GoalForm, MotorcycleInfoForm, WeightLogger, WeightStart } from "@/components/GoalForms";
 import { FinanceEntries, FinanceSummary, PortfolioScenarios } from "@/components/FinancePanel";
 import { LineChart } from "@/components/charts";
+import { milestoneLocked } from "@/lib/game/engine";
 import type { Milestone, MotorcycleInfo } from "@/lib/types";
 
 export default function GoalDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -275,6 +276,7 @@ function MilestoneRow({ m, index, goalColor, onEdit, onAddTask }: { m: Milestone
   const put = useStore((s) => s.put);
   const [open, setOpen] = useState(false);
   const comp = milestoneCompletion(db, m.id);
+  const locked = milestoneLocked(db, m);
   const mTasks = Object.values(db.tasks).filter((t) => t.milestoneId === m.id && !t.recurrence);
   return (
     <li className="relative">
@@ -302,7 +304,9 @@ function MilestoneRow({ m, index, goalColor, onEdit, onAddTask }: { m: Milestone
             <Select className="w-auto py-1 text-xs" value={m.status} aria-label="סטטוס אבן דרך" onChange={(e) => void put("milestones", { ...m, status: e.target.value as Milestone["status"], updatedAt: nowIso() })}>
               <option value="pending">ממתינה</option>
               <option value="active">בעבודה</option>
-              <option value="done">הושלמה</option>
+              <option value="done" disabled={locked && m.status !== "done"}>
+                {locked && m.status !== "done" ? "הושלמה (נעולה — קודם אבן הדרך הקודמת)" : "הושלמה"}
+              </option>
             </Select>
             <Button size="sm" variant="ghost" onClick={onEdit}>
               <Pencil size={13} /> עריכה

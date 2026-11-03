@@ -146,6 +146,15 @@ export function questFor(db: DB, goal: Goal): Quest {
   return { goal, region: regionOfGoal(goal), state, milestones, progress };
 }
 
+/** True while an earlier milestone of the same goal is not done (the milestone can't be completed yet). */
+export function milestoneLocked(db: DB, m: Milestone): boolean {
+  for (const x of orderedMilestones(db, m.goalId)) {
+    if (x.id === m.id) return false;
+    if (x.status !== "done") return true;
+  }
+  return false;
+}
+
 export function quests(db: DB): Quest[] {
   return Object.values(db.goals)
     .sort((a, b) => a.order - b.order)
@@ -166,7 +175,8 @@ export function milestoneSync(db: DB, now: string): Milestone[] {
       if (tasks.length) {
         const allDone = tasks.every((t) => (t.status === "completed" && isVerified(db, t, t.id)) || t.status === "skipped") && tasks.some((t) => t.status === "completed");
         if (allDone && prevDone && m.status !== "done") out.push({ ...m, status: "done", updatedAt: now });
-        else if (!allDone && m.status === "done") out.push({ ...m, status: "active", updatedAt: now });
+        // reopen only when a task changed after the milestone was completed (a manual "done" is respected)
+        else if (!allDone && m.status === "done" && tasks.some((t) => t.status !== "completed" && t.status !== "skipped" && t.updatedAt > m.updatedAt)) out.push({ ...m, status: "active", updatedAt: now });
       }
       prevDone = (out.find((x) => x.id === m.id)?.status ?? m.status) === "done";
     }

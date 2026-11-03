@@ -27,6 +27,8 @@ import type { RecoveryAction } from "./recovery";
 import type { PlanProposal } from "./planner/schema";
 import { schedulePlanTasks } from "./planner/validate";
 import { dayLoad } from "./tasks";
+import { isVerified } from "./game/engine";
+import { useGameUI } from "./game/ui";
 
 export const uid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -127,8 +129,13 @@ export async function setInstanceStatus(inst: TaskInstance, status: TaskStatus):
 export async function toggleComplete(inst: TaskInstance): Promise<void> {
   const done = inst.status === "completed";
   const ok = await setInstanceStatus(inst, done ? "planned" : "completed");
-  if (ok && !done)
-    S().toast("סומן כהושלם", "success", { label: "ביטול", run: () => void setInstanceStatus({ ...inst, status: "completed" }, "planned") });
+  if (!ok || done) return;
+  const undo = { label: "ביטול", run: () => void setInstanceStatus({ ...inst, status: "completed" }, "planned") };
+  if (inst.task.evidence !== "none" && !isVerified(S().db, inst.task, inst.key)) {
+    // XP waits for the evidence the task asks for; the player can add it now or later
+    S().toast("הושלם · ה-XP ימתין להוכחה", "success", undo, { label: "הוספת הוכחה", run: () => useGameUI.getState().openEvidence(inst.key, false) });
+    useGameUI.getState().openEvidence(inst.key, false);
+  } else S().toast("סומן כהושלם", "success", undo);
 }
 
 /** Move one instance. date=null → back to the inbox (status "postponed"). */

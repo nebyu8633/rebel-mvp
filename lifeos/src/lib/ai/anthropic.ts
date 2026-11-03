@@ -2,7 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { PlanProposal, type PlanInput } from "../planner/schema";
-import { AIError, type AIContext, type AIProvider } from "./provider";
+import { AIError, EvidenceVerdict, type AIContext, type AIProvider, type EvidenceInput } from "./provider";
 import { GoalTurnOutput, type GoalTurnInput, type GoalPlanInput } from "../goalplan/ai-schema";
 import { GoalPlan } from "../goalplan/schema";
 
@@ -28,6 +28,22 @@ Only use the data in the provided JSON snapshot of the user's own account. If so
 Never fabricate progress, finances, schedule or health information. Never guarantee investment returns or weight outcomes.
 When reorganizing missed tasks, propose a realistic spread over the coming days within the user's availability — not everything tomorrow — and note that the "תוכנית התאוששות" button in the app can apply it.
 When asked for a grocery list, base it only on the approved meal plan in the snapshot and mention the app can generate the checklist automatically.`;
+
+const GAME_MASTER_SYSTEM = `${ASK_SYSTEM}
+
+In this conversation you are the "Game Master" of the player's life-RPG world (LifeOS game layer).
+Voice: immersive but brief Hebrew (address the player as "חוקר" sometimes), never childish, never more than ~70 words.
+Use ONLY the real data in the snapshot (including the "game" field). Never invent XP, levels, progress, completions or achievements.
+You may recommend the next task, suggest realistic adjustments, point out overload or conflicts, and celebrate real progress.
+Never claim you changed the plan — the player approves any change in the app. After missed days be encouraging, never punishing; suggest one small step.`;
+
+const EVIDENCE_SYSTEM = `You check whether a photo submitted by a user is RELEVANT to a task they say they completed, inside a Hebrew life-management game.
+You cannot verify that the task really happened — a photo is never proof. Assess only visual relevance:
+- "likely": the image plausibly shows something related to the task / criteria.
+- "unclear": cannot tell, image is blurry, generic, or only loosely related.
+- "unlikely": the image clearly shows something unrelated.
+"reason": ONE short neutral Hebrew sentence describing what is visible and how it relates. Never write that the task is proven, verified or confirmed.
+Do not describe people's identities, faces, or any sensitive data (account numbers, documents' private details) — if such details are visible, mention only the type of document.`;
 
 const GOAL_TURN_SYSTEM = `You run a guided, professional goal-planning conversation inside LifeOS (Hebrew UI).
 All user-facing text MUST be natural Hebrew.
@@ -182,6 +198,10 @@ export class AnthropicProvider implements AIProvider {
     }
   }
 
+  assessEvidence(input: EvidenceInput) {
+    return assessEvidenceWith(this.client, this.model, input);
+  }
+
   async ask(question: string, context: AIContext) {
     try {
       const res = await this.client.beta.messages.create({
@@ -191,7 +211,7 @@ export class AnthropicProvider implements AIProvider {
         fallbacks: "default",
         thinking: { type: "adaptive" },
         output_config: { effort: "low" },
-        system: ASK_SYSTEM,
+        system: context.game ? GAME_MASTER_SYSTEM : ASK_SYSTEM,
         messages: [
           {
             role: "user",
@@ -210,6 +230,33 @@ export class AnthropicProvider implements AIProvider {
     } catch (e) {
       throw mapError(e);
     }
+  }
+}
+
+export async function assessEvidenceWith(client: Anthropic, model: string, input: EvidenceInput): Promise<EvidenceVerdict> {
+  try {
+    const res = await client.beta.messages.parse({
+      model,
+      max_tokens: 2000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low", format: betaZodOutputFormat(EvidenceVerdict) },
+      system: EVIDENCE_SYSTEM,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: input.mediaType, data: input.imageBase64 } },
+            { type: "text", text: `<task>${input.taskTitle}</task>\n<criteria>${input.criteria || "(none)"}</criteria>` },
+          ],
+        },
+      ],
+    });
+    if (res.stop_reason === "refusal") throw new AIError("refused", "שירות ה-AI לא בדק את התמונה. אפשר לאשר ידנית.");
+    if (!res.parsed_output) throw new AIError("invalid_output", "שירות ה-AI החזיר תשובה במבנה לא תקין.");
+    return res.parsed_output;
+  } catch (e) {
+    throw mapError(e);
   }
 }
 
