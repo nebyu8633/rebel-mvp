@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Premium / minimal / financial: a near-black ground, layered
+ * glass surfaces, and exactly ONE accent (emerald) reserved for savings and
+ * primary actions so the savings figure is always the loudest thing on screen.
+ */
+@theme {
+  --color-ground: #0a0b0d;
+  --color-surface: #131519;
+  --color-surface-2: #1a1d23;
+  --color-border: #262a32;
+  --color-border-strong: #363b45;
+
+  --color-content: #f4f5f7;
+  --color-content-muted: #9aa1ad;
+  /*
+   * Raised from #6b7280, which scored 3.78:1 on --color-surface and so failed
+   * WCAG AA for text. The token carries real content in ~30 places — file
+   * sizes, units, step numbers — not just decoration, so the fix belongs here
+   * rather than at each call site. 5.00:1 on surface, 4.61:1 on surface-2, and
+   * still clearly dimmer than --color-content-muted, so the three-tier
+   * hierarchy is intact.
+   */
+  --color-content-subtle: #7f8694;
+
+  --color-accent: #10b981;
+  --color-accent-strong: #34d399;
+  --color-accent-dim: #065f46;
+
+  --color-danger: #f87171;
+  --color-warning: #fbbf24;
+
+  --font-sans: var(--font-heebo), ui-sans-serif, system-ui, sans-serif;
+
+  /* Typography hierarchy (spec §7): the savings number is the largest type
+     in the product, by a wide margin. */
+  --text-savings: 4.5rem;
+  --text-savings--line-height: 1;
+  --text-savings--letter-spacing: -0.03em;
+  --text-savings--font-weight: 700;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-ground);
+    color: var(--color-content);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-ground);
+    color: var(--color-content);
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Tabular figures keep money columns aligned in tables. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-dim);
+    color: var(--color-content);
+  }
+}
+
+@layer utilities {
+  .glass {
+    background-color: color-mix(in oklab, var(--color-surface) 80%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-border);
+  }
+}
+
+/* Respect the OS reduced-motion preference everywhere, including the 3D scene
+   (spec §53). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
