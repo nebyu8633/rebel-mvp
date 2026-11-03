@@ -85,7 +85,7 @@ export function RecurrenceEditor({ value, onChange }: { value: RecurrenceRule; o
           <Input type="date" value={value.endDate ?? ""} min={value.startDate} onChange={(e) => set({ endDate: e.target.value || null })} />
         </Field>
       </div>
-      <Field label="אם מפספסים מופע" hint="לא דוחפים הכול אוטומטית למחר.">
+      <Field label="אם מפספסים מופע">
         <Select value={value.missedPolicy} onChange={(e) => set({ missedPolicy: e.target.value as RecurrenceRule["missedPolicy"] })}>
           <option value="carry">נשאר ברשימת ״באיחור״ עד שמטפלים בו</option>
           <option value="skip">מדלגים — המופע הבא יגיע בזמנו</option>

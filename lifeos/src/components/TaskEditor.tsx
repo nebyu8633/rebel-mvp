@@ -311,7 +311,7 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
                 <Field label="דדליין (רשות)" error={errors.deadline}>
                   <Input type="date" value={form.deadline ?? ""} onChange={(e) => set({ deadline: e.target.value || null })} />
                 </Field>
-                <Field label="למה זה חשוב" hint="יוצג ליד המשימה כתזכורת לקשר שלה למטרה">
+                <Field label="למה זה חשוב">
                   <Input value={form.rationale} onChange={(e) => set({ rationale: e.target.value })} maxLength={600} />
                 </Field>
                 <Field label="הערות">

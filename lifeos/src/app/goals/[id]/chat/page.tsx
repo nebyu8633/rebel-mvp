@@ -125,8 +125,7 @@ export default function GoalChatPage({ params }: { params: Promise<{ id: string 
           <ArrowRight size={14} /> {goal.title}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{KIND_LABEL[goal.kind]}</Badge>
-          <Badge tone={conv.mode === "ai" ? "indigo" : "stone"}>{conv.mode === "ai" ? "AI" : "מנוע בסיסי"}</Badge>
+          <Badge tone={conv.mode === "ai" ? "indigo" : "stone"}>{conv.mode === "ai" ? "AI" : "בסיסי"}</Badge>
           {conv.mode === "basic" && ai && (
             <Button size="sm" variant="ghost" onClick={() => void switchToAI(id)}>
               <Sparkles size={14} /> מעבר ל-AI
@@ -249,20 +248,24 @@ export default function GoalChatPage({ params }: { params: Promise<{ id: string 
 }
 
 function Stepper({ stage, phase }: { stage: number; phase: string }) {
+  const done = phase === "active";
+  const current = done ? 8 : stage;
   return (
-    <ol className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" aria-label="שלבי התכנון">
-      {STAGES.map((s, i) => {
-        const n = i + 1;
-        const done = n < stage || phase === "active";
-        const current = n === stage && phase !== "active";
-        return (
-          <li key={s} aria-current={current ? "step" : undefined} className={cx("flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs", current ? "bg-accent-600 font-semibold text-white" : done ? "bg-accent-50 text-accent-800 dark:bg-accent-800/20 dark:text-accent-100" : "text-stone-400")}>
-            <span className={cx("flex h-4 w-4 items-center justify-center rounded-full text-[10px]", current ? "bg-white/25" : done ? "bg-accent-600 text-white" : "border hairline")}>{done ? <Check size={10} /> : n}</span>
-            {s}
+    <div aria-label="שלבי התכנון">
+      <div className="mb-1.5 flex items-baseline justify-between text-xs">
+        <span className="font-semibold text-stone-700 dark:text-stone-200">{done ? "התוכנית פעילה" : STAGES[current - 1]}</span>
+        <span className="text-stone-500">
+          {current}/{STAGES.length}
+        </span>
+      </div>
+      <ol className="flex gap-1">
+        {STAGES.map((s, i) => (
+          <li key={s} title={s} aria-current={i + 1 === current ? "step" : undefined} className={cx("h-1.5 flex-1 rounded-full", i + 1 < current || done ? "bg-accent-600" : i + 1 === current ? "bg-accent-300 dark:bg-accent-700" : "bg-stone-200 dark:bg-white/10")}>
+            <span className="sr-only">{s}</span>
           </li>
-        );
-      })}
-    </ol>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -274,28 +277,31 @@ function Summary({ goalId, busy, missing, onEdit, onBuild }: { goalId: string; b
   return (
     <Card className="space-y-4 p-4">
       <div>
-        <h2 className="mb-2 text-sm font-semibold">מה ידוע עד עכשיו</h2>
+        <h2 className="mb-2 flex items-center justify-between text-sm font-semibold">
+          התשובות שלך
+          <span className="flex items-center gap-2 text-[10px] font-normal text-stone-500">
+            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-accent-600" />אושר</span>
+            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />הערכה</span>
+            <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-stone-400" />הנחה</span>
+          </span>
+        </h2>
         {facts.length === 0 ? (
           <p className="text-xs text-stone-500">עדיין אין תשובות.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {facts.map((f) => (
-              <li key={f.key} className="group text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-xs text-stone-500">{f.label}</span>
-                  <Badge tone={FACT_KIND[f.kind].tone}>{FACT_KIND[f.kind].label}</Badge>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="flex-1 font-medium">{f.display}</span>
-                  {f.kind !== "confirmed" && (
-                    <button className="rounded p-1 text-accent-700 hover:bg-accent-50" aria-label={`אישור: ${f.label}`} title="זה נכון — לאשר" onClick={() => void confirmFact(goalId, f.key)}>
-                      <Check size={13} />
-                    </button>
-                  )}
-                  <button className="rounded p-1 text-stone-500 hover:bg-stone-100 dark:hover:bg-white/5" aria-label={`עריכה: ${f.label}`} disabled={busy} onClick={() => onEdit(f.key)}>
-                    <Pencil size={13} />
+              <li key={f.key} className="flex items-center gap-2 text-sm">
+                <span className={cx("h-2 w-2 shrink-0 rounded-full", f.kind === "confirmed" ? "bg-accent-600" : f.kind === "estimate" ? "bg-amber-500" : "bg-stone-400")} title={FACT_KIND[f.kind].label} aria-label={FACT_KIND[f.kind].label} />
+                <span className="w-24 shrink-0 truncate text-xs text-stone-500">{f.label}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{f.display}</span>
+                {f.kind !== "confirmed" && (
+                  <button className="rounded p-1 text-accent-700 hover:bg-accent-50" aria-label={`אישור: ${f.label}`} title="לאשר" onClick={() => void confirmFact(goalId, f.key)}>
+                    <Check size={13} />
                   </button>
-                </div>
+                )}
+                <button className="rounded p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-white/5" aria-label={`עריכה: ${f.label}`} disabled={busy} onClick={() => onEdit(f.key)}>
+                  <Pencil size={13} />
+                </button>
               </li>
             ))}
           </ul>
@@ -314,10 +320,10 @@ function Summary({ goalId, busy, missing, onEdit, onBuild }: { goalId: string; b
       {conv?.phase === "discovery" && (
         <div className="border-t hairline pt-3">
           {missing.length ? (
-            <p className="text-xs text-stone-500">חסר לפני בניית תוכנית: {missing.join(", ")}</p>
+            <p className="text-xs text-stone-500">חסר: {missing.join(", ")}</p>
           ) : (
             <Button size="sm" variant="subtle" className="w-full" disabled={busy} onClick={onBuild}>
-              <Sparkles size={14} /> לבנות טיוטה עכשיו
+              <Sparkles size={14} /> לבנות טיוטה
             </Button>
           )}
         </div>

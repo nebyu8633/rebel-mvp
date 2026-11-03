@@ -74,7 +74,7 @@ export function GoalForm({ goal, onClose }: { goal: Goal; onClose: () => void })
         <Field label="שם המטרה" error={errors.title}>
           <Input value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="למשל: לרוץ 10 ק״מ" />
         </Field>
-        <Field label="למה זה חשוב לי" hint="משפט קצר שיופיע כתזכורת">
+        <Field label="למה זה חשוב לי">
           <Input value={f.why} onChange={(e) => set({ why: e.target.value })} maxLength={500} />
         </Field>
         <Field label="תיאור">

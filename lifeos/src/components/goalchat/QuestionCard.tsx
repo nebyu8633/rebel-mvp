@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Check, SkipForward } from "lucide-react";
 import type { Question } from "@/lib/goalplan/schema";
 import { WEEKDAYS_HE, WEEKDAYS_SHORT_HE, addMonths, formatHebDate } from "@/lib/dates";
-import { Button, Input, Spinner, cx } from "../ui";
+import { Button, Details, Input, Spinner, cx } from "../ui";
 
 export interface QuestionAnswer {
   value: string | number | string[] | null;
@@ -35,7 +35,6 @@ export function QuestionCard({
 
   return (
     <div className="animate-in mt-2 space-y-3 rounded-2xl border border-accent-200 bg-accent-50/40 p-3 dark:border-accent-800/50 dark:bg-accent-800/10" role="group" aria-label={q.text || "בחירה"}>
-      {q.help && <p className="text-xs text-stone-500">{q.help}</p>}
 
       {(q.input === "single" || (q.options.length > 0 && q.input !== "multi" && q.input !== "weekdays")) && (
         <div className="flex flex-wrap gap-2">
@@ -52,7 +51,7 @@ export function QuestionCard({
           ))}
           {q.input === "single" && q.allowCustom && !custom && (
             <button type="button" onClick={() => setCustom(true)} className="rounded-xl border border-dashed hairline px-3.5 py-2 text-sm text-stone-500 hover:text-stone-800">
-              תשובה אחרת…
+              אחר…
             </button>
           )}
         </div>
@@ -147,11 +146,14 @@ export function QuestionCard({
           {error}
         </p>
       )}
+      <div className="flex flex-wrap items-center gap-3">
+      {q.help && <Details label="למה שואלים">{q.help}</Details>}
       {q.skippable && onSkip && (
         <button type="button" disabled={busy} onClick={onSkip} className="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800">
-          <SkipForward size={12} /> לא יודע/ת עדיין — לדלג
+          <SkipForward size={12} /> לדלג
         </button>
       )}
+      </div>
     </div>
   );
 }

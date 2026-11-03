@@ -62,7 +62,7 @@ export default function NewGoalPage() {
       <Link href="/goals" className="mb-3 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800">
         <ArrowRight size={14} /> המטרות שלי
       </Link>
-      <PageHeader title="מטרה חדשה" subtitle="תאר/י את המטרה במילים שלך. נעבור יחד על מה שחשוב — שאלה אחת בכל פעם — ונבנה תוכנית לאישורך." />
+      <PageHeader title="מטרה חדשה" subtitle="מה תרצה/י להשיג?" />
       <Card>
         <Textarea
           autoFocus

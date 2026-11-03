@@ -22,7 +22,7 @@ import {
 import { dayLoad, eventsInRange, findConflicts, habitDueOn, instancesInRange, timedItemsFor, type EventInstance, type TaskInstance } from "@/lib/tasks";
 import { instanceFromKey, rescheduleInstance, toggleComplete, nowIso } from "@/lib/actions";
 import { goalColor } from "@/lib/goals";
-import { Badge, Button, PageHeader, Segmented, cx } from "@/components/ui";
+import { Badge, Button, Details, PageHeader, Segmented, cx } from "@/components/ui";
 import { EventEditor, blankEvent } from "@/components/EventEditor";
 import type { CalendarEvent, Habit } from "@/lib/types";
 
@@ -301,7 +301,6 @@ export default function CalendarPage() {
         />
       )}
 
-      <p className="mt-3 hidden text-xs text-stone-500 md:block">טיפ: אפשר לגרור משימות ואירועים בין ימים ושעות. במכשיר מגע — דרך ״תזמון מחדש״ בתפריט המשימה.</p>
       {eventEdit && <EventEditor event={eventEdit} onClose={() => setEventEdit(null)} />}
     </div>
   );
@@ -309,7 +308,8 @@ export default function CalendarPage() {
 
 function Legend() {
   return (
-    <div className="mb-3 flex flex-wrap gap-3 text-xs text-stone-500">
+    <Details className="mb-3" label="מקרא">
+    <div className="flex flex-wrap gap-3 text-xs text-stone-500">
       <span className="flex items-center gap-1">
         <span className="h-3 w-3 rounded border-s-4 border-accent-600 bg-white dark:bg-stone-800" /> משימה
       </span>
@@ -326,6 +326,8 @@ function Legend() {
         <AlertTriangle size={12} /> התנגשות בזמנים
       </span>
     </div>
+    <p className="mt-2">גוררים משימות ואירועים בין ימים ושעות. במגע — ״תזמון מחדש״ בתפריט המשימה.</p>
+    </Details>
   );
 }
 

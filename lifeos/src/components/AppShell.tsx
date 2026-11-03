@@ -141,14 +141,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="mx-auto w-full max-w-5xl px-4 pb-32 pt-5 sm:px-6 lg:pb-12 lg:pt-8">{children}</main>
       </div>
 
-      {/* mobile quick add */}
-      <button
+      {/* mobile quick add (hidden where a page has its own action bar) */}
+      {!/^\/goals\/(new|[^/]+\/(plan|chat))/.test(path) && <button
         onClick={() => openEditor()}
         aria-label="הוספת משימה"
         className="fixed bottom-20 start-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent-600 text-white shadow-lg shadow-accent-600/30 active:scale-95 lg:hidden"
       >
         <Plus size={26} />
-      </button>
+      </button>}
 
       {/* mobile bottom nav */}
       <nav className="surface pb-safe fixed inset-x-0 bottom-0 z-40 border-t lg:hidden" aria-label="ניווט ראשי">

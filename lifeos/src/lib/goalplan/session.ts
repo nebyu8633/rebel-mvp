@@ -127,7 +127,7 @@ export async function ensureConversation(goal: Goal, today: string, mode: "basic
   const conv: GoalConversation = { id: goal.id, goalId: goal.id, mode, phase: approvedOf(db, goal.id) ? "active" : "discovery", stage: q?.stage ?? 8, pending: mode === "basic" ? q : null, skipped: [], createdAt: n, updatedAt: n };
   const profile: GoalProfile = { id: goal.id, goalId: goal.id, facts, unresolved: [], createdAt: n, updatedAt: n };
   const known = Object.values(facts);
-  const text = `בוא/י נתכנן את "${goal.title}". ${known.length ? `מה שכבר רשום אצלך: ${known.map((f) => `${f.label}: ${f.display}`).join(" · ")}.` : ""} אשאל רק את מה שחסר.`;
+  const text = known.length ? `ידוע: ${known.map((f) => f.display).join(" · ")}` : goal.title;
   const ops = [put("conversations", conv), put("profiles", profile), put("messages", msg(goal.id, "assistant", text + (q && mode === "basic" ? `\n\n${q.text}` : ""), { question: mode === "basic" ? q : null }))];
   return (await S().applyBatch(ops)).ok;
 }
@@ -177,21 +177,24 @@ function afterFactsOps(db: DB, goal: Goal, conv: GoalConversation, facts: Facts,
   const contr = contradictions(goal.kind, facts, now.slice(0, 10));
   const q = nextQuestion(goal.kind, facts, conv.skipped);
   const hasPlan = !!(draftOf(db, goal.id) || approvedOf(db, goal.id));
-  let text = ack;
-  if (contr.length) text += `\n\nשים/י לב: ${contr.join(" ")} אפשר לעדכן תשובה בסיכום שבצד.`;
+  const parts: string[] = ack ? [ack] : [];
+  if (contr.length) parts.push(`⚠ ${contr.join(" ")}`);
   let question: Question | null = q;
-  if (q) text += `\n\n${q.text}`;
+  if (q) parts.push(q.text);
   else {
     const missing = missingCritical(goal.kind, facts);
     question = buildQuestion(hasPlan ? "עדכון טיוטת התוכנית" : "בניית טיוטת תוכנית");
-    text += missing.length
-      ? `\n\nחסר עדיין מידע קריטי: ${missing.join(", ")}.`
-      : hasPlan
-        ? changedKey && SCHEDULE_ONLY_KEYS.has(changedKey)
-          ? "\n\nהשינוי משפיע רק על לוח הזמנים — אעדכן את השיבוץ בלי לשנות את תוכן התוכנית."
-          : "\n\nאפשר לעדכן את הטיוטה לפי התשובות החדשות. פריטים שערכת ידנית יישמרו."
-        : "\n\nיש לי מספיק מידע כדי לבנות טיוטת תוכנית. היא תוצג לבדיקה ולעריכה — שום דבר לא ייכנס ללוח לפני אישורך.";
+    parts.push(
+      missing.length
+        ? `חסר: ${missing.join(", ")}.`
+        : hasPlan
+          ? changedKey && SCHEDULE_ONLY_KEYS.has(changedKey)
+            ? "משפיע רק על השיבוץ."
+            : "לעדכן את הטיוטה? עריכות ידניות יישמרו."
+          : "מספיק מידע. לבנות טיוטה?",
+    );
   }
+  const text = parts.join("\n\n");
   ops.push(
     put("conversations", { ...conv, pending: question, stage: q ? q.stage : 6, updatedAt: now }),
     put("messages", msg(goal.id, "assistant", text, { question })),
@@ -237,7 +240,7 @@ export async function skipPending(goalId: string): Promise<TurnResult> {
   const ops: BatchOp[] = [
     put("profiles", { ...(profile ?? { id: goalId, goalId, facts: {}, createdAt: now }), unresolved, updatedAt: now }),
     put("messages", msg(goalId, "user", "לא יודע/ת — לדלג", { answerKey: q.key })),
-    ...afterFactsOps(db, goal, conv2, factsOf(db, goalId), q.key, "בסדר — אסמן את זה כשאלה פתוחה, והתוכנית תתייחס לזה כהנחה או כמשימת בירור.", now),
+    ...afterFactsOps(db, goal, conv2, factsOf(db, goalId), q.key, "סומן כשאלה פתוחה.", now),
   ];
   const r = await S().applyBatch(ops);
   return r.ok ? { ok: true } : { ok: false, error: r.error ?? "שמירה נכשלה" };
@@ -253,7 +256,7 @@ export async function editFact(goalId: string, key: string): Promise<TurnResult>
   const now = nowIso();
   const r = await S().applyBatch([
     put("conversations", { ...conv, pending: q, mode: "basic", updatedAt: now }),
-    put("messages", msg(goalId, "assistant", `בוא/י נעדכן: ${q.text}${prev ? `\n(כרגע: ${prev.display})` : ""}`, { question: q })),
+    put("messages", msg(goalId, "assistant", `${q.text}${prev ? `\n(כרגע: ${prev.display})` : ""}`, { question: q })),
   ]);
   return r.ok ? { ok: true } : { ok: false, error: r.error ?? "" };
 }
@@ -299,7 +302,7 @@ async function reviseIntent(goalId: string, text: string, today: string): Promis
   } else {
     ops.push(
       put("conversations", { ...conv, pending: reviseQuestion, updatedAt: now }),
-      put("messages", msg(goalId, "assistant", "המנוע הבסיסי יכול לעדכן את התוכנית לפי שינוי בנתונים. מה לשנות? (לשינויים חופשיים יותר — חברו מפתח AI, או ערכו ישירות בעמוד התוכנית.)", { question: reviseQuestion })),
+      put("messages", msg(goalId, "assistant", "מה לשנות?", { question: reviseQuestion })),
     );
   }
   const r = await S().applyBatch(ops);
@@ -337,7 +340,7 @@ export async function buildDraft(goalId: string, opts: { today: string; ai?: { c
     const q = nextQuestion(goal.kind, facts, []);
     await S().applyBatch([
       put("conversations", { ...conv, pending: q, updatedAt: nowIso() }),
-      put("messages", msg(goalId, "assistant", `לפני שאבנה תוכנית חסר מידע קריטי: ${missing.join(", ")}.${q ? `\n\n${q.text}` : ""}`, { question: q })),
+      put("messages", msg(goalId, "assistant", `חסר: ${missing.join(", ")}.${q ? `\n\n${q.text}` : ""}`, { question: q })),
     ]);
     return { ok: true };
   }
@@ -377,11 +380,11 @@ export async function buildDraft(goalId: string, opts: { today: string; ai?: { c
     ? { ...draft, plan: v.plan, updatedAt: now }
     : { id: uid(), goalId, version: maxV + 1, status: "draft", plan: v.plan, basedOnVersionId: approved?.id ?? null, approvedAt: null, createdAt: now, updatedAt: now };
   const notes = [
-    ...(report.needsAvailability ? ["לא ידועה הזמינות שלך, אז המשימות מוצעות בלי תאריך ביצוע — אפשר להגדיר זמינות בהגדרות או לקבוע תאריכים בעמוד התוכנית."] : []),
-    ...(report.overloaded.length ? [`${report.overloaded.length} משימות לא נכנסות בזמן הפנוי — בעמוד התוכנית יוצעו חלופות.`] : []),
-    ...fixes.map((f) => `תיקון אוטומטי: ${f}`),
+    ...(report.needsAvailability ? ["⚠ בלי זמינות מוגדרת — המשימות בלי תאריך."] : []),
+    ...(report.overloaded.length ? [`⚠ ${report.overloaded.length} משימות מעבר לזמן הפנוי.`] : []),
+    ...(fixes.length ? [`${fixes.length} תיקונים אוטומטיים.`] : []),
   ];
-  const text = `${draft ? "עדכנתי את טיוטת התוכנית" : `הכנתי טיוטת תוכנית (גרסה ${version.version})`}: ${v.plan.milestones.filter((m) => !m.excluded).length} אבני דרך, ${v.plan.tasks.filter((t) => !t.excluded).length} משימות ו-${v.plan.routines.filter((r) => !r.excluded).length} שגרות.${notes.length ? `\n${notes.join("\n")}` : ""}\n\nהיא עדיין טיוטה — אפשר לערוך כל פרט בעמוד התוכנית, ושום דבר לא נכנס ללוח השנה לפני אישור.`;
+  const text = `${draft ? "הטיוטה עודכנה" : `טיוטה מוכנה (v${version.version})`}: ${v.plan.milestones.filter((m) => !m.excluded).length} אבני דרך · ${v.plan.tasks.filter((t) => !t.excluded).length} משימות · ${v.plan.routines.filter((r) => !r.excluded).length} שגרות.${notes.length ? `\n${notes.join("\n")}` : ""}`;
   const r = await S().applyBatch([
     put("planVersions", version),
     put("conversations", { ...conv, phase: approved ? "revising" : "plan_draft", stage: 8, pending: null, updatedAt: now }),
@@ -495,11 +498,11 @@ export async function aiTurn(goalId: string, userText: string, today: string, op
     nextFacts[u.key] = { key: u.key, label: u.label, value, display: u.display, kind: u.kind, source: u.kind === "confirmed" ? "user" : "ai", updatedAt: now };
   }
   let text = turn.reply;
-  if (turn.contradictions.length) text += `\n\nשים/י לב: ${turn.contradictions.join(" ")}`;
+  if (turn.contradictions.length) text += `\n\n⚠ ${turn.contradictions.join(" ")}`;
   let question: Question | null = turn.question;
   if (turn.separateGoals.length >= 2) {
     question = splitQuestion(turn.separateGoals.map((g) => ({ title: g.title, description: `${g.title}. ${g.description}` })));
-    text += `\n\nזיהיתי כמה מטרות שונות. כדאי לתכנן כל אחת בנפרד (הן ישתפו את אותו לוח שנה ואותה מגבלת זמן).`;
+    text += `\n\nאלה כמה מטרות שונות — עדיף לתכנן בנפרד.`;
   } else if (turn.readyForPlan && !question) question = buildQuestion(draftOf(db, goalId) || approvedOf(db, goalId) ? "עדכון טיוטת התוכנית" : "בניית טיוטת תוכנית");
   else if (question) text += `\n\n${question.text}`;
   const ops: BatchOp[] = [
@@ -558,7 +561,7 @@ export async function switchToBasic(goalId: string): Promise<boolean> {
   return (
     await S().applyBatch([
       put("conversations", { ...conv, mode: "basic", pending: question, updatedAt: now }),
-      put("messages", msg(goalId, "assistant", `ממשיכים עם מנוע התכנון הבסיסי. כל התשובות נשמרו.${q ? `\n\n${q.text}` : ""}`, { question })),
+      put("messages", msg(goalId, "assistant", `ממשיכים במנוע הבסיסי.${q ? `\n\n${q.text}` : ""}`, { question })),
     ])
   ).ok;
 }

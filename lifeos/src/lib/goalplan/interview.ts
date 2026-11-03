@@ -307,17 +307,14 @@ export function contradictions(kind: GoalKind, f: Facts, today: string): string[
 }
 
 /** Short acknowledgement after an answer, so the conversation feels responsive (not a form). */
-export function acknowledge(q: Question, fact: ProfileFact): string {
-  if (fact.kind === "estimate") return `רשמתי ${fact.display} כהערכה — נוכל לעדכן כשיהיה מספר מדויק.`;
-  if (q.key === "targetDate") return `מעולה, היעד: ${fact.display}.`;
-  if (q.key === "weeklyHours") return `${fact.display} בשבוע — אבנה את התוכנית כך שלא תעבור את זה.`;
-  return `רשמתי: ${fact.label} — ${fact.display}.`;
+export function acknowledge(_q: Question, fact: ProfileFact): string {
+  // The user's own bubble already shows the answer — only flag what changes meaning.
+  return fact.kind === "estimate" ? "נרשם כהערכה." : "";
 }
 
 export function opening(kind: GoalKind, extracted: Facts): string {
   const got = Object.values(extracted);
-  const head = `נשמע כמו מטרה של ${KIND_LABEL[kind]}. אשאל כמה שאלות קצרות — אחת בכל פעם — ואז אבנה טיוטת תוכנית לאישורך.`;
-  return got.length ? `${head}\nכבר הבנתי מהתיאור: ${got.map((g) => `${g.label}: ${g.display}`).join(" · ")}.` : head;
+  return got.length ? `${KIND_LABEL[kind]} · ${got.map((g) => g.display).join(" · ")}` : KIND_LABEL[kind];
 }
 
 export function dateFromMonthsOption(today: string, months: number) {

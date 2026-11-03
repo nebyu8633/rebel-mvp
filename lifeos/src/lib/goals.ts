@@ -1,6 +1,8 @@
 import type { DB, Goal, MotorcycleInfo, WeightLog } from "./types";
 import { summarizeAccount, motorcycleCost } from "./finance";
 import { diffDays } from "./dates";
+import { addDays as _addDays } from "./dates";
+import { instancesInRange as _inst, overdueInstances as _over, mostImportant as _most, type TaskInstance } from "./tasks";
 
 export interface GoalProgress {
   /** 0..1, or null when it cannot be computed honestly (missing data). */
@@ -143,3 +145,32 @@ export const GOAL_STATUS: Record<Goal["status"], { label: string; tone: "amber" 
   done: { label: "הושגה", tone: "indigo" },
 };
 
+
+// ───────── Snapshot for compact cards ─────────
+
+export interface GoalSnapshot {
+  progress: GoalProgress;
+  nextMilestone: { id: string; title: string; targetDate: string | null } | null;
+  nextAction: TaskInstance | null;
+  plan: "none" | "draft" | "active";
+  milestonesDone: number;
+  milestonesTotal: number;
+}
+
+/** Everything a compact goal card needs: progress, next milestone, next action. */
+export function goalSnapshot(db: DB, goal: Goal, today: string): GoalSnapshot {
+  const ms = Object.values(db.milestones)
+    .filter((m) => m.goalId === goal.id)
+    .sort((a, b) => (a.targetDate ?? "9999") < (b.targetDate ?? "9999") ? -1 : a.order - b.order);
+  const next = ms.find((m) => m.status !== "done") ?? null;
+  const pool = [..._over(db, today), ..._inst(db, today, _addDays(today, 30), today)].filter((i) => i.task.goalId === goal.id && i.task.id !== `rv:${goal.id}`);
+  const versions = Object.values(db.planVersions ?? {}).filter((v) => v.goalId === goal.id);
+  return {
+    progress: goalProgress(db, goal, today),
+    nextMilestone: next ? { id: next.id, title: next.title, targetDate: next.targetDate } : null,
+    nextAction: _most(db, pool, today),
+    plan: versions.some((v) => v.status === "approved") ? "active" : versions.some((v) => v.status === "draft") ? "draft" : "none",
+    milestonesDone: ms.filter((m) => m.status === "done").length,
+    milestonesTotal: ms.length,
+  };
+}

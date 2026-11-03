@@ -16,7 +16,7 @@ export type GoalTurnInput = z.infer<typeof GoalTurnInput>;
 
 /** Structured output of one AI conversation turn. */
 export const GoalTurnOutput = z.object({
-  reply: z.string().describe("Short Hebrew reply: acknowledge, explain assumptions if any. No questions here — put the question in `question`."),
+  reply: z.string().describe("Very short Hebrew reply (0–1 sentence, no greetings or introductions). Mention an assumption only if you made one. Put the question in `question`, not here."),
   factUpdates: z.array(
     z.object({
       key: z.string(),

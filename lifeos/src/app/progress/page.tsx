@@ -58,7 +58,7 @@ function Progress() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="התקדמות" subtitle="נתונים אמיתיים בלבד — בלי ציון כולל מומצא." />
+      <PageHeader title="התקדמות" />
 
       <WeeklyReview open={params.get("review") === "1"} />
 
@@ -88,7 +88,7 @@ function Progress() {
                     <span className="absolute -top-1 h-4 w-0.5 rounded bg-stone-500" style={{ insetInlineStart: `${p.timeElapsed * 100}%` }} title="כמה מהזמן עבר" aria-hidden />
                   </div>
                   <p className="mt-1 text-xs text-stone-500">
-                    {p.fraction != null ? `${Math.round(p.fraction * 100)}% מהיעד` : `חסר מידע: ${p.missing.join(", ")}`} · עבר {Math.round(p.timeElapsed * 100)}% מהזמן (הקו האנכי)
+                    {p.fraction != null ? `${Math.round(p.fraction * 100)}%` : `חסר: ${p.missing.join(", ")}`} · זמן: {Math.round(p.timeElapsed * 100)}%
                   </p>
                 </li>
               );
@@ -114,7 +114,7 @@ function Progress() {
           )}
         </Card>
         <Card>
-          <SectionTitle hint="ימים שבוצעו מתוך ימים שנדרשו (דילוג לא נספר כפספוס)">עקביות בהרגלים</SectionTitle>
+          <SectionTitle hint="דילוג לא נספר כפספוס">עקביות בהרגלים</SectionTitle>
           {habits.length === 0 ? (
             <p className="text-sm text-stone-500">
               אין הרגלים. <Link href="/habits" className="text-accent-700">הוספה</Link>

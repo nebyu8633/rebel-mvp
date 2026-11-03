@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { VAPID_PUBLIC_KEY } from "@/lib/push/config";
 import { useStore } from "@/lib/store/store";
-import { Button, Badge } from "./ui";
+import { Button, Badge, Details } from "./ui";
 
 const FLAG = "lifeos:push:on";
 
@@ -39,10 +39,14 @@ export function PushToggle() {
   if (!status) return null;
   if (!status.available || mode !== "supabase" || !supported)
     return (
-      <p className="mt-2 text-xs text-stone-500">
-        <Badge>לא פעיל</Badge> התראות כשהאפליקציה סגורה דורשות שמירה בענן (Supabase), מפתחות VAPID ותזמון בשרת.
-        {!supported ? " הדפדפן הזה לא תומך ב-Web Push." : status.missing.length ? ` חסר בשרת: ${status.missing.join(", ")}.` : mode !== "supabase" ? " האפליקציה רצה במצב מקומי." : ""}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+        <span>התראות כשהאפליקציה סגורה</span>
+        <Badge>לא פעיל</Badge>
+        <Details label="למה">
+          דורש שמירה בענן (Supabase), מפתחות VAPID ותזמון בשרת.
+          {!supported ? " הדפדפן הזה לא תומך ב-Web Push." : status.missing.length ? ` חסר בשרת: ${status.missing.join(", ")}.` : mode !== "supabase" ? " האפליקציה רצה במצב מקומי." : ""}
+        </Details>
+      </div>
     );
 
   async function enable() {
@@ -80,7 +84,7 @@ export function PushToggle() {
   }
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="text-sm">התראות גם כשהאפליקציה סגורה (Web Push):</span>
+      <span className="text-sm">התראות כשהאפליקציה סגורה</span>
       {on ? (
         <>
           <Badge tone="accent">פעיל במכשיר הזה</Badge>

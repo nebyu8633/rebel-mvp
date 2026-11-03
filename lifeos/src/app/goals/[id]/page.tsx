@@ -2,18 +2,19 @@
 import Link from "next/link";
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Pencil, Trash2, Sparkles, Plus, Flag } from "lucide-react";
+import { ArrowRight, Pencil, Trash2, Sparkles, Plus, Flag, CalendarDays, ArrowLeft, Repeat, Compass, CalendarRange, ListChecks, TrendingUp, FileText, MessageSquare, Check, ChevronDown } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { useUI } from "@/lib/store/ui";
 import { useToday } from "@/hooks/useToday";
-import { goalColor, goalProgress, milestoneCompletion, GOAL_STATUS } from "@/lib/goals";
-import { addDays, formatHebDate, MONTHS_HE, parseDate } from "@/lib/dates";
-import { singleInstance, instancesInRange, overdueInstances, mostImportant, isOpen } from "@/lib/tasks";
+import { goalColor, goalSnapshot, milestoneCompletion, GOAL_STATUS } from "@/lib/goals";
+import { addDays, diffDays, formatHebDate, MONTHS_HE, parseDate, relativeDayLabel, startOfWeek, formatDuration } from "@/lib/dates";
+import { singleInstance, instancesInRange, overdueInstances, isOpen, type TaskInstance } from "@/lib/tasks";
 import { approvedOf, draftOf } from "@/lib/goalplan/session";
+import { describeRule } from "@/lib/recurrence";
 import { RecoveryModal } from "@/components/RecoveryModal";
-import { deleteGoal, deleteMilestone, nowIso, uid } from "@/lib/actions";
+import { deleteGoal, deleteMilestone, nowIso, toggleComplete, uid } from "@/lib/actions";
 import { motorcycleCost } from "@/lib/finance";
-import { Badge, Button, Card, EmptyState, Field, Input, Modal, PageHeader, ProgressBar, SectionTitle, Select, confirmDialog, cx } from "@/components/ui";
+import { Badge, Button, Card, Details, Disclosure, EmptyState, Field, Input, Modal, ProgressBar, Ring, Select, confirmDialog, cx } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
 import { GoalForm, MotorcycleInfoForm, WeightLogger, WeightStart } from "@/components/GoalForms";
 import { FinanceEntries, FinanceSummary, PortfolioScenarios } from "@/components/FinancePanel";
@@ -23,330 +24,379 @@ import type { Milestone, MotorcycleInfo } from "@/lib/types";
 export default function GoalDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const db = useStore((s) => s.db);
-  const put = useStore((s) => s.put);
   const today = useToday();
   const router = useRouter();
   const openEditor = useUI((s) => s.openEditor);
   const [editing, setEditing] = useState(false);
   const [msEdit, setMsEdit] = useState<Milestone | null>(null);
+  const [recovery, setRecovery] = useState(false);
   const goal = db.goals[id];
 
-  if (!goal)
-    return (
-      <EmptyState title="המטרה לא נמצאה" action={<Link href="/goals" className="text-accent-700">חזרה למטרות</Link>}>
-        ייתכן שנמחקה.
-      </EmptyState>
-    );
+  if (!goal) return <EmptyState title="המטרה לא נמצאה" action={<Link href="/goals" className="text-accent-700">למטרות</Link>} />;
 
-  const p = goalProgress(db, goal, today);
+  const snap = goalSnapshot(db, goal, today);
+  const p = snap.progress;
   const c = goalColor(goal.color);
-  const milestones = Object.values(db.milestones)
-    .filter((m) => m.goalId === id)
-    .sort((a, b) => a.order - b.order);
+  const approved = approvedOf(db, id);
+  const draft = draftOf(db, id);
+  const plan = (approved ?? draft)?.plan ?? null;
+  const milestones = Object.values(db.milestones).filter((m) => m.goalId === id).sort((a, b) => a.order - b.order);
   const objectives = Object.values(db.objectives).filter((o) => o.goalId === id);
   const tasks = Object.values(db.tasks).filter((t) => t.goalId === id);
-  const unassigned = tasks.filter((t) => !t.milestoneId && !t.recurrence);
+  const oneOff = tasks.filter((t) => !t.recurrence);
   const routines = tasks.filter((t) => t.recurrence);
-  const motoInfo = goal.kind === "motorcycle" ? motorcycleCost((goal.info ?? {}) as Partial<MotorcycleInfo>) : null;
-  const plannerBlocked = goal.kind === "motorcycle" && motoInfo && (!((goal.info as MotorcycleInfo).model) || (goal.info as MotorcycleInfo).price == null);
-  const weights = Object.values(db.weightLogs).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const oneOffDone = oneOff.filter((t) => t.status === "completed").length;
+  const overdue = overdueInstances(db, today).filter((i) => i.task.goalId === id);
+  const upcoming = instancesInRange(db, today, addDays(today, 60), today).filter((i) => i.task.goalId === id);
+  const review = upcoming.find((i) => i.task.id === `rv:${id}` && isOpen(i.status));
+  const daysLeft = diffDays(today, goal.targetDate);
+  const monthObjs = objectives.filter((o) => o.level === "month").sort((a, b) => (a.periodStart < b.periodStart ? -1 : 1));
+  const weekObjs = objectives.filter((o) => o.level === "week").sort((a, b) => (a.periodStart < b.periodStart ? -1 : 1));
 
   return (
-    <div className="space-y-5">
-      <Link href="/goals" className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800">
-        <ArrowRight size={14} /> המטרות שלי
-      </Link>
-      <PageHeader
-        title={goal.title}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={GOAL_STATUS[goal.status].tone}>{GOAL_STATUS[goal.status].label}</Badge>
-            {formatHebDate(goal.startDate, { year: true })} ← {formatHebDate(goal.targetDate, { year: true })}
-            {!goal.startConfirmed && <span className="text-amber-700">(תאריך התחלה לא אושר — ערכו כדי לאשר)</span>}
-          </span>
-        }
-        actions={
-          <>
-            <Button size="sm" onClick={() => setEditing(true)}>
-              <Pencil size={14} /> עריכה
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-rose-600"
-              onClick={async () => {
-                if (await confirmDialog({ title: "למחוק את המטרה?", message: "אבני הדרך והיעדים יימחקו. המשימות יישארו, ללא שיוך למטרה.", danger: true, confirmLabel: "מחיקה" })) {
-                  if (await deleteGoal(id)) router.push("/goals");
-                }
-              }}
-            >
-              <Trash2 size={14} /> מחיקה
-            </Button>
-          </>
-        }
-      />
-
-      <Card>
-        <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-sm text-stone-500">התקדמות</span>
-          <span className="text-sm font-semibold">{p.fraction != null ? `${Math.round(p.fraction * 100)}%` : "—"}</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/goals" className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800">
+          <ArrowRight size={14} /> המטרות שלי
+        </Link>
+        <div className="flex gap-1">
+          <Button size="icon" variant="ghost" aria-label="עריכת מטרה" onClick={() => setEditing(true)}>
+            <Pencil size={16} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-rose-600"
+            aria-label="מחיקת מטרה"
+            onClick={async () => {
+              if (await confirmDialog({ title: "למחוק את המטרה?", message: "המשימות יישארו, ללא שיוך למטרה.", danger: true, confirmLabel: "מחיקה" })) {
+                if (await deleteGoal(id)) router.push("/goals");
+              }
+            }}
+          >
+            <Trash2 size={16} />
+          </Button>
         </div>
-        <ProgressBar value={p.fraction} barClass={c.bar} label="התקדמות" />
-        <p className="mt-2 text-xs text-stone-500">
-          עברו {Math.round(p.timeElapsed * 100)}% מהזמן.
-          {p.missing.length > 0 && ` כדי לחשב התקדמות חסר: ${p.missing.join(", ")}.`}
-        </p>
-        {goal.why && <p className="mt-2 text-sm">{goal.why}</p>}
+      </div>
+
+      {/* Summary */}
+      <Card className="animate-in">
+        <div className="flex items-start gap-4">
+          <Ring value={p.fraction} size={72} stroke={7} colorClass={c.text} label="התקדמות" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{goal.title}</h1>
+              <Badge tone={GOAL_STATUS[goal.status].tone}>{GOAL_STATUS[goal.status].label}</Badge>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-500">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays size={14} /> {formatHebDate(goal.targetDate, { year: true })}
+              </span>
+              {daysLeft > 0 && <span>{daysLeft} ימים</span>}
+            </div>
+            <div className="mt-2" title="כמה מהזמן עבר">
+              <ProgressBar value={p.timeElapsed} className="h-1" barClass="bg-stone-300 dark:bg-stone-600" label="זמן שעבר" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <Info icon={<Flag size={14} />} label="אבן הדרך הבאה" value={snap.nextMilestone?.title ?? "—"} sub={snap.nextMilestone?.targetDate ? formatHebDate(snap.nextMilestone.targetDate) : undefined} />
+          <NextAction inst={snap.nextAction} today={today} />
+          <Info icon={<Repeat size={14} />} label="בדיקה הבאה" value={review ? relativeDayLabel(review.date!, today) : "—"} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(approved || draft) && (
+            <Link href={`/goals/${id}/plan`}>
+              <Button variant="primary" size="sm">
+                <FileText size={14} /> {draft ? `טיוטה (גרסה ${draft.version})` : "התוכנית"}
+              </Button>
+            </Link>
+          )}
+          <Link href={`/goals/${id}/chat`}>
+            <Button size="sm" variant={approved || draft ? "secondary" : "primary"}>
+              {approved || draft ? <MessageSquare size={14} /> : <Sparkles size={14} />} {approved || draft ? "שיחה" : "לבנות תוכנית"}
+            </Button>
+          </Link>
+          {overdue.length > 0 && (
+            <Button size="sm" variant="subtle" className="text-rose-700" onClick={() => setRecovery(true)}>
+              {overdue.length} באיחור · לסדר מחדש
+            </Button>
+          )}
+        </div>
       </Card>
 
-      <GoalPlanStatus goalId={id} />
-
-      {goal.kind === "motorcycle" && (
-        <>
-          <Card>
-            <SectionTitle hint="אבני הדרך נבנות רק אחרי שהמידע הזה קיים">פרטי הרכישה</SectionTitle>
-            <MotorcycleInfoForm goal={goal} />
-          </Card>
-          {goal.financeAccountId && (
-            <Card>
-              <SectionTitle hint="נפרד מתיק ההשקעות">חיסכון לאופנוע</SectionTitle>
-              <FinanceSummary accountId={goal.financeAccountId} target={motoInfo?.upfront || null} />
-              <div className="mt-4">
-                <FinanceEntries accountId={goal.financeAccountId} />
-              </div>
-            </Card>
-          )}
-        </>
-      )}
-
-      {goal.kind === "weight" && (
-        <Card>
-          <SectionTitle hint="אין כאן הבטחה לתוצאה. לשינויי תזונה משמעותיים — כדאי להתייעץ עם איש מקצוע.">משקל</SectionTitle>
-          <WeightStart goal={goal} />
-          <div className="mt-4">
-            <WeightLogger />
-          </div>
-          {weights.length >= 2 && (
-            <div className="mt-4">
-              <LineChart ariaLabel="היסטוריית משקל" series={[{ label: "משקל", color: "var(--series-1)", points: weights.map((w) => ({ x: w.date, y: w.kg })) }]} format={(v) => `${v}`} />
-            </div>
-          )}
-        </Card>
-      )}
-
-      {goal.kind === "portfolio" && goal.financeAccountId && (
-        <Card>
-          <SectionTitle hint="שווי שוק לפי הדיווח שלך — ללא חיבור לחשבון וללא ביצוע פעולות">תיק השקעות</SectionTitle>
-          <FinanceSummary accountId={goal.financeAccountId} target={goal.targetValue} />
-          <div className="mt-4">
-            <PortfolioScenarios accountId={goal.financeAccountId} target={goal.targetValue ?? 30000} deadline={goal.targetDate} />
-          </div>
-          <div className="mt-4">
-            <FinanceEntries accountId={goal.financeAccountId} portfolio />
-          </div>
-        </Card>
-      )}
-
-      {goal.kind === "custom" && goal.startValue != null && goal.targetValue != null && (
-        <Card>
-          <SectionTitle>עדכון ערך נוכחי</SectionTitle>
-          <div className="flex items-end gap-2">
-            <Field label={`ערך נוכחי ${goal.unit ? `(${goal.unit})` : ""}`} className="w-40">
-              <Input
-                inputMode="decimal"
-                defaultValue={goal.manualValue ?? ""}
-                onBlur={(e) => {
-                  const v = e.target.value === "" ? null : Number(e.target.value);
-                  if (v === null || !Number.isNaN(v)) void put("goals", { ...goal, manualValue: v, updatedAt: nowIso() });
-                }}
-              />
-            </Field>
-            <span className="pb-2 text-sm text-stone-500">
-              מ-{goal.startValue} אל {goal.targetValue}
-            </span>
-          </div>
-        </Card>
-      )}
-
-      <Card>
-        <SectionTitle
-          action={
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setMsEdit({ id: uid(), goalId: id, title: "", description: "", targetDate: null, status: "pending", order: milestones.length, planVersionId: null, createdAt: nowIso(), updatedAt: nowIso() })}>
-                <Plus size={14} /> ידני
-              </Button>
-              <Link href={`/goals/${id}/chat`}>
-                <Button size="sm" variant="primary">
-                  <Sparkles size={14} /> {milestones.length ? "שיחת תכנון" : "פירוק לתוכנית"}
-                </Button>
-              </Link>
-            </div>
-          }
-          hint="אבני דרך נוצרות מתוכנית מאושרת, או ידנית"
-        >
-          אבני דרך
-        </SectionTitle>
-        {milestones.length === 0 ? (
-          <EmptyState icon={<Flag size={24} />} title="עדיין אין אבני דרך">
-            המתכנן יציע פירוק שתוכלו לבדוק, לערוך ולאשר לפני שמשהו נכנס ללוח.
-          </EmptyState>
-        ) : (
-          <ol className="space-y-4">
-            {milestones.map((m, idx) => {
-              const comp = milestoneCompletion(db, m.id);
-              const mTasks = tasks.filter((t) => t.milestoneId === m.id && !t.recurrence);
-              const monthObjs = objectives.filter((o) => o.milestoneId === m.id && o.level === "month").sort((a, b) => (a.periodStart < b.periodStart ? -1 : 1));
-              const weekObjs = objectives.filter((o) => o.milestoneId === m.id && o.level === "week").sort((a, b) => (a.periodStart < b.periodStart ? -1 : 1));
-              return (
-                <li key={m.id} className="rounded-2xl border hairline p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={cx("flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold", m.status === "done" ? "bg-accent-600 text-white" : "bg-stone-100 dark:bg-white/10")}>{idx + 1}</span>
-                        <button className="font-semibold hover:underline" onClick={() => setMsEdit(m)}>
-                          {m.title}
-                        </button>
-                      </div>
-                      <p className="mt-0.5 text-xs text-stone-500">
-                        {m.targetDate ? `עד ${formatHebDate(m.targetDate, { year: true })}` : "ללא תאריך"} · {comp.done}/{comp.total} משימות
-                      </p>
-                    </div>
-                    <Select
-                      className="w-auto py-1 text-sm"
-                      value={m.status}
-                      aria-label="סטטוס אבן דרך"
-                      onChange={(e) => void put("milestones", { ...m, status: e.target.value as Milestone["status"], updatedAt: nowIso() })}
-                    >
-                      <option value="pending">ממתינה</option>
-                      <option value="active">בעבודה</option>
-                      <option value="done">הושלמה</option>
-                    </Select>
-                  </div>
-                  {comp.total > 0 && <ProgressBar className="mt-2 h-1.5" value={comp.done / comp.total} barClass={c.bar} label={m.title} />}
-                  {(monthObjs.length > 0 || weekObjs.length > 0) && (
-                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                      {monthObjs.length > 0 && (
-                        <ObjList
-                          title="יעדים חודשיים"
-                          items={monthObjs.map((o) => ({ o, label: `${MONTHS_HE[parseDate(o.periodStart).getUTCMonth()]}: ${o.title}` }))}
-                        />
-                      )}
-                      {weekObjs.length > 0 && <ObjList title="יעדים שבועיים" items={weekObjs.map((o) => ({ o, label: `שבוע ${formatHebDate(o.periodStart)}: ${o.title}` }))} />}
-                    </div>
-                  )}
-                  <div className="-mx-2 mt-2">
-                    {mTasks.map((t) => (
-                      <TaskRow key={t.id} inst={singleInstance(t)} showDate compact showWhy />
-                    ))}
-                  </div>
-                  <Button size="sm" variant="ghost" className="mt-1" onClick={() => openEditor({ defaults: { goalId: id, milestoneId: m.id, date: null } })}>
-                    <Plus size={14} /> משימה לאבן הדרך
-                  </Button>
+      {plan && (
+        <Disclosure id={`g-${id}-strategy`} icon={<Compass size={16} />} title="אסטרטגיה" summary={plan.strategy}>
+          <p className="text-sm leading-relaxed">{plan.strategy}</p>
+          {plan.successCriteria.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm">
+              {plan.successCriteria.map((x) => (
+                <li key={x} className="flex items-center gap-2">
+                  <Check size={13} className="text-accent-600" /> {x}
                 </li>
-              );
-            })}
+              ))}
+            </ul>
+          )}
+          {plan.rationale && <Details className="mt-2" label="למה">{plan.rationale}</Details>}
+        </Disclosure>
+      )}
+
+      <Disclosure
+        id={`g-${id}-ms`}
+        defaultOpen
+        icon={<Flag size={16} />}
+        title="אבני דרך"
+        summary={milestones.length ? `${snap.milestonesDone}/${milestones.length}` : "אין עדיין"}
+        action={
+          <Button size="icon" variant="ghost" aria-label="אבן דרך חדשה" onClick={() => setMsEdit({ id: uid(), goalId: id, title: "", description: "", targetDate: null, status: "pending", order: milestones.length, planVersionId: null, createdAt: nowIso(), updatedAt: nowIso() })}>
+            <Plus size={16} />
+          </Button>
+        }
+      >
+        {milestones.length === 0 ? (
+          <p className="text-sm text-stone-500">נוצרות מתוכנית מאושרת או ידנית (+).</p>
+        ) : (
+          <ol className="relative space-y-1 border-s-2 border-stone-100 ps-4 dark:border-white/10">
+            {milestones.map((m, i) => (
+              <MilestoneRow key={m.id} m={m} index={i} goalColor="bg-accent-600" onEdit={() => setMsEdit(m)} onAddTask={() => openEditor({ defaults: { goalId: id, milestoneId: m.id, date: null } })} />
+            ))}
           </ol>
         )}
-      </Card>
+      </Disclosure>
 
-      {(unassigned.length > 0 || routines.length > 0) && (
-        <Card>
-          <SectionTitle
-            action={
-              <Button size="sm" variant="ghost" onClick={() => openEditor({ defaults: { goalId: id } })}>
-                <Plus size={14} />
-              </Button>
-            }
-          >
-            משימות ושגרות נוספות
-          </SectionTitle>
-          <div className="-mx-2">
-            {unassigned.map((t) => (
+      {monthObjs.length > 0 && (
+        <Disclosure id={`g-${id}-month`} icon={<CalendarRange size={16} />} title="תוכנית חודשית" summary={`${monthObjs.filter((o) => o.status === "done").length}/${monthObjs.length}`}>
+          <ObjList title="" items={monthObjs.map((o) => ({ o, label: `${MONTHS_HE[parseDate(o.periodStart).getUTCMonth()]} — ${o.title}` }))} />
+        </Disclosure>
+      )}
+
+      <Disclosure id={`g-${id}-week`} icon={<CalendarDays size={16} />} title="תוכנית שבועית" summary={weekSummary(upcoming, today)}>
+        <WeekPlan upcoming={upcoming} today={today} />
+        {weekObjs.length > 0 && (
+          <div className="mt-3">
+            <ObjList title="יעדים שבועיים" items={weekObjs.map((o) => ({ o, label: `${formatHebDate(o.periodStart)} — ${o.title}` }))} />
+          </div>
+        )}
+      </Disclosure>
+
+      <Disclosure
+        id={`g-${id}-tasks`}
+        icon={<ListChecks size={16} />}
+        title="משימות"
+        summary={`${oneOffDone}/${oneOff.length} הושלמו${routines.length ? ` · ${routines.length} חוזרות` : ""}`}
+        action={
+          <Button size="icon" variant="ghost" aria-label="משימה חדשה למטרה" onClick={() => openEditor({ defaults: { goalId: id } })}>
+            <Plus size={16} />
+          </Button>
+        }
+      >
+        <ProgressBar value={oneOff.length ? oneOffDone / oneOff.length : null} className="mb-3 h-1.5" label="ביצוע משימות" />
+        <div className="-mx-2">
+          {oneOff
+            .slice()
+            .sort((a, b) => (isOpen(a.status) === isOpen(b.status) ? ((a.date ?? "9") < (b.date ?? "9") ? -1 : 1) : isOpen(a.status) ? -1 : 1))
+            .map((t) => (
               <TaskRow key={t.id} inst={singleInstance(t)} showDate compact />
             ))}
-            {routines.map((t) => {
-              const next = instancesInRange(db, today, today, today).find((i) => i.task.id === t.id);
-              return next ? <TaskRow key={t.id} inst={next} compact /> : (
-                <button key={t.id} className="block w-full px-2 py-2 text-start text-sm text-stone-600" onClick={() => openEditor({ task: t })}>
-                  ↻ {t.title}
+        </div>
+        {routines.length > 0 && (
+          <ul className="mt-3 space-y-1 border-t hairline pt-3 text-sm">
+            {routines.map((t) => (
+              <li key={t.id}>
+                <button className="flex w-full items-center gap-2 text-start hover:text-accent-700" onClick={() => openEditor({ task: t })}>
+                  <Repeat size={13} className="text-stone-400" />
+                  <span className="flex-1 truncate">{t.title}</span>
+                  <span className="text-xs text-stone-500">{describeRule(t.recurrence!)}</span>
                 </button>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Disclosure>
+
+      <Disclosure id={`g-${id}-progress`} defaultOpen={p.missing.length > 0} icon={<TrendingUp size={16} />} title="התקדמות" summary={progressSummary(p)}>
+        <ProgressSection goalId={id} />
+      </Disclosure>
 
       {editing && <GoalForm goal={goal} onClose={() => setEditing(false)} />}
       {msEdit && <MilestoneForm m={msEdit} onClose={() => setMsEdit(null)} />}
+      {recovery && <RecoveryModal open onClose={() => setRecovery(false)} />}
     </div>
   );
 }
 
-function GoalPlanStatus({ goalId }: { goalId: string }) {
-  const db = useStore((s) => s.db);
-  const today = useToday();
-  const goal = db.goals[goalId];
-  const [recovery, setRecovery] = useState(false);
-  const approved = approvedOf(db, goalId);
-  const draft = draftOf(db, goalId);
-  const tasks = Object.values(db.tasks).filter((t) => t.goalId === goalId);
-  const oneOff = tasks.filter((t) => !t.recurrence);
-  const done = oneOff.filter((t) => t.status === "completed").length;
-  const insts = instancesInRange(db, today, addDays(today, 60), today).filter((i) => i.task.goalId === goalId);
-  const overdue = overdueInstances(db, today).filter((i) => i.task.goalId === goalId);
-  const next = mostImportant(db, [...overdue, ...insts.filter((i) => i.date! <= addDays(today, 14))], today);
-  const review = insts.find((i) => i.task.id === `rv:${goalId}` && isOpen(i.status));
-  const manualMetric = goal && (goal.kind === "income" || goal.kind === "learning" || goal.kind === "custom");
+function progressSummary(p: ReturnType<typeof goalSnapshot>["progress"]) {
+  if (p.fraction == null) return p.current != null ? `${p.current} ${p.unit}` : "חסרים נתונים";
+  return `${Math.round(p.fraction * 100)}%${p.current != null && p.target != null ? ` · ${p.current} / ${p.target} ${p.unit}` : ""}`;
+}
+
+function weekSummary(list: TaskInstance[], today: string) {
+  const ws = startOfWeek(today);
+  const thisWeek = list.filter((i) => i.date! <= addDays(ws, 6));
+  const mins = thisWeek.reduce((s, i) => s + (i.task.estimatedMinutes ?? 0), 0);
+  return thisWeek.length ? `השבוע: ${thisWeek.length} · ${formatDuration(mins) || "—"}` : "אין השבוע";
+}
+
+function Info({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
-    <Card>
-      <SectionTitle
-        action={
-          <div className="flex gap-2">
-            <Link href={`/goals/${goalId}/chat`}>
-              <Button size="sm">שיחת תכנון</Button>
-            </Link>
-            {(approved || draft) && (
-              <Link href={`/goals/${goalId}/plan`}>
-                <Button size="sm" variant="primary">
-                  {draft ? `טיוטה (גרסה ${draft.version})` : `תוכנית (גרסה ${approved!.version})`}
-                </Button>
-              </Link>
-            )}
-          </div>
-        }
-      >
-        תוכנית וביצוע
-      </SectionTitle>
-      {!approved && !draft ? (
-        <p className="text-sm text-stone-500">עדיין אין תוכנית. שיחת התכנון בונה טיוטה לאישורך.</p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <div className="text-xs text-stone-500">ביצוע משימות (לא זהה להשגת המטרה)</div>
-            <ProgressBar className="mt-1.5" value={oneOff.length ? done / oneOff.length : null} label="ביצוע משימות" />
-            <div className="mt-1 text-xs text-stone-500">
-              {done}/{oneOff.length} הושלמו{overdue.length ? ` · ${overdue.length} באיחור` : ""}
+    <div className="min-w-0 rounded-xl bg-stone-50 px-3 py-2.5 dark:bg-white/[0.03]">
+      <div className="flex items-center gap-1 text-[11px] text-stone-500">
+        {icon} {label}
+      </div>
+      <div className="truncate text-sm font-medium">{value}</div>
+      {sub && <div className="text-[11px] text-stone-500">{sub}</div>}
+    </div>
+  );
+}
+
+function NextAction({ inst, today }: { inst: TaskInstance | null; today: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-accent-50/70 px-3 py-2.5 dark:bg-accent-800/15">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1 text-[11px] text-stone-500">
+          <ArrowLeft size={14} /> הצעד הבא
+        </div>
+        <div className="truncate text-sm font-medium">{inst?.title ?? "—"}</div>
+        {inst?.date && <div className={cx("text-[11px]", inst.date < today ? "text-rose-600" : "text-stone-500")}>{relativeDayLabel(inst.date, today)}</div>}
+      </div>
+      {inst && (
+        <Button size="icon" variant="ghost" className="h-8 w-8 text-accent-700" aria-label={`סיום: ${inst.title}`} onClick={() => void toggleComplete(inst)}>
+          <Check size={16} />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function MilestoneRow({ m, index, goalColor, onEdit, onAddTask }: { m: Milestone; index: number; goalColor: string; onEdit: () => void; onAddTask: () => void }) {
+  const db = useStore((s) => s.db);
+  const put = useStore((s) => s.put);
+  const [open, setOpen] = useState(false);
+  const comp = milestoneCompletion(db, m.id);
+  const mTasks = Object.values(db.tasks).filter((t) => t.milestoneId === m.id && !t.recurrence);
+  return (
+    <li className="relative">
+      <span className={cx("absolute -start-[25px] top-3 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold", m.status === "done" ? "bg-accent-600 text-white" : m.status === "active" ? "bg-white ring-2 ring-accent-500 dark:bg-stone-900" : "bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-200")}>
+        {m.status === "done" ? <Check size={10} /> : index + 1}
+      </span>
+      <button className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start hover:bg-stone-50 dark:hover:bg-white/[0.03]" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <div className="min-w-0 flex-1">
+          <div className={cx("truncate text-sm font-medium", m.status === "done" && "text-stone-400 line-through")}>{m.title}</div>
+          <div className="text-[11px] text-stone-500">{m.targetDate ? formatHebDate(m.targetDate, { year: true }) : "ללא תאריך"}</div>
+        </div>
+        {comp.total > 0 && (
+          <div className="w-16 shrink-0">
+            <ProgressBar value={comp.done / comp.total} className="h-1.5" barClass={goalColor} label={m.title} />
+            <div className="mt-0.5 text-center text-[10px] text-stone-500">
+              {comp.done}/{comp.total}
             </div>
-            {overdue.length > 0 && (
-              <Button size="sm" variant="subtle" className="mt-2" onClick={() => setRecovery(true)}>
-                אפשרויות התאוששות
-              </Button>
-            )}
           </div>
-          <div>
-            <div className="text-xs text-stone-500">הפעולה הבאה המומלצת</div>
-            <div className="mt-1 text-sm font-medium">{next ? next.title : "—"}</div>
-            {next?.date && <div className="text-xs text-stone-500">{formatHebDate(next.date, { weekday: true })}</div>}
+        )}
+        <ChevronDown size={16} className={cx("shrink-0 text-stone-400 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="animate-in mb-2 ms-2 space-y-2 border-s hairline ps-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select className="w-auto py-1 text-xs" value={m.status} aria-label="סטטוס אבן דרך" onChange={(e) => void put("milestones", { ...m, status: e.target.value as Milestone["status"], updatedAt: nowIso() })}>
+              <option value="pending">ממתינה</option>
+              <option value="active">בעבודה</option>
+              <option value="done">הושלמה</option>
+            </Select>
+            <Button size="sm" variant="ghost" onClick={onEdit}>
+              <Pencil size={13} /> עריכה
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onAddTask}>
+              <Plus size={13} /> משימה
+            </Button>
           </div>
-          <div>
-            <div className="text-xs text-stone-500">בדיקת ההתקדמות הבאה</div>
-            <div className="mt-1 text-sm font-medium">{review ? formatHebDate(review.date!, { weekday: true }) : "—"}</div>
+          {m.description && <p className="text-xs text-stone-500">{m.description}</p>}
+          <div className="-mx-2">
+            {mTasks.map((t) => (
+              <TaskRow key={t.id} inst={singleInstance(t)} showDate compact />
+            ))}
           </div>
         </div>
       )}
-      {manualMetric && goal.targetValue != null && <ProgressRecorder goalId={goalId} />}
-      {recovery && <RecoveryModal open onClose={() => setRecovery(false)} />}
-    </Card>
+    </li>
+  );
+}
+
+function WeekPlan({ upcoming, today }: { upcoming: TaskInstance[]; today: string }) {
+  const ws = startOfWeek(today);
+  const weeks = [0, 1, 2, 3].map((i) => addDays(ws, i * 7));
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {weeks.map((w) => {
+        const items = upcoming.filter((i) => i.date! >= w && i.date! <= addDays(w, 6) && !i.task.id.startsWith("rv:"));
+        return (
+          <div key={w} className={cx("rounded-xl border hairline p-2.5", w === ws && "border-accent-300 dark:border-accent-700")}>
+            <div className="mb-1 flex justify-between text-[11px] text-stone-500">
+              <span className="font-semibold">{w === ws ? "השבוע" : formatHebDate(w)}</span>
+              <span>{formatDuration(items.reduce((s, i) => s + (i.task.estimatedMinutes ?? 0), 0)) || "—"}</span>
+            </div>
+            {items.length === 0 ? (
+              <p className="text-xs text-stone-400">—</p>
+            ) : (
+              <ul className="space-y-0.5 text-xs">
+                {items.slice(0, 6).map((i) => (
+                  <li key={i.key} className={cx("flex gap-1.5 truncate", !isOpen(i.status) && "text-stone-400 line-through")}>
+                    {i.recurring && <Repeat size={11} className="mt-0.5 shrink-0 text-stone-400" />}
+                    {i.title}
+                  </li>
+                ))}
+                {items.length > 6 && <li className="text-stone-400">+{items.length - 6}</li>}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Kind-specific measurement & trackers. */
+function ProgressSection({ goalId }: { goalId: string }) {
+  const db = useStore((s) => s.db);
+  const goal = db.goals[goalId];
+  const weights = Object.values(db.weightLogs).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const motoInfo = goal.kind === "motorcycle" ? motorcycleCost((goal.info ?? {}) as Partial<MotorcycleInfo>) : null;
+  return (
+    <div className="space-y-4">
+      {goal.kind === "weight" && (
+        <>
+          <WeightStart goal={goal} />
+          <WeightLogger />
+          {weights.length >= 2 && <LineChart ariaLabel="היסטוריית משקל" series={[{ label: "משקל", color: "var(--series-1)", points: weights.map((w) => ({ x: w.date, y: w.kg })) }]} format={(v) => `${v}`} />}
+          <Details label="על התוצאה">אין הבטחה לתוצאה. לשינויי תזונה משמעותיים כדאי להתייעץ עם איש מקצוע.</Details>
+        </>
+      )}
+      {goal.kind === "portfolio" && goal.financeAccountId && (
+        <>
+          <FinanceSummary accountId={goal.financeAccountId} target={goal.targetValue} />
+          <PortfolioScenarios accountId={goal.financeAccountId} target={goal.targetValue ?? 30000} deadline={goal.targetDate} />
+          <FinanceEntries accountId={goal.financeAccountId} portfolio />
+        </>
+      )}
+      {goal.kind === "motorcycle" && (
+        <>
+          {goal.financeAccountId && <FinanceSummary accountId={goal.financeAccountId} target={motoInfo?.upfront || null} />}
+          {goal.financeAccountId && <FinanceEntries accountId={goal.financeAccountId} />}
+          <Disclosure id={`g-${goalId}-moto`} title="פרטי הרכישה" summary={motoInfo?.missing.length ? `חסר: ${motoInfo.missing.length}` : "מלא"}>
+            <MotorcycleInfoForm goal={goal} />
+          </Disclosure>
+        </>
+      )}
+      {goal.kind === "purchase" && goal.financeAccountId && (
+        <>
+          <FinanceSummary accountId={goal.financeAccountId} target={goal.targetValue} />
+          <FinanceEntries accountId={goal.financeAccountId} />
+        </>
+      )}
+      {(goal.kind === "income" || goal.kind === "learning" || goal.kind === "custom") &&
+        (goal.targetValue != null ? <ProgressRecorder goalId={goalId} /> : <p className="text-sm text-stone-500">אין מדד מספרי — ההתקדמות נמדדת באבני הדרך.</p>)}
+    </div>
   );
 }
 
