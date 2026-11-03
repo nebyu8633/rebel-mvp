@@ -153,4 +153,25 @@ do $$ begin
   if (select count(*) from task_evidence) <> 0 or (select count(*) from xp_events) <> 0 or (select count(*) from task_evaluations) <> 0 then raise exception 'game data leak across users'; end if;
 end $$;
 SQL
+$PSQL <<'SQL'
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+-- saved teams: player-writable through apply_batch
+select apply_batch('[{"op":"upsert","table":"arena_teams","row":{"id":"t1","name":"צוות","heroes":["aegis","sage","vita"]}}]'::jsonb);
+do $$ begin
+  if (select count(*) from arena_teams) <> 1 then raise exception 'arena team not saved'; end if;
+  -- results & hero XP: never writable by the player
+  begin perform apply_batch('[{"op":"upsert","table":"arena_profiles","row":{"id":"arena","hero_xp":{"aegis":99999}}}]'::jsonb); raise exception 'arena_profiles writable';
+  exception when raise_exception then if sqlerrm not like 'table not allowed%' then raise; end if; end;
+  begin insert into arena_matches (id, mode, map_id, won, draw, result, duration, played_at) values ('m','duel','vault',true,false,'{}',1,now()); raise exception 'arena_matches writable';
+  exception when insufficient_privilege then null; end;
+  begin insert into arena_profiles (id) values ('arena'); raise exception 'arena_profiles insert allowed';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+insert into arena_matches (user_id, id, mode, map_id, won, draw, result, duration, played_at) values ('11111111-1111-1111-1111-111111111111','m1','duel','vault',true,false,'{}',90,now());
+set role authenticated;
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$ begin if (select count(*) from arena_matches) + (select count(*) from arena_teams) <> 0 then raise exception 'arena data leak across users'; end if; end $$;
+SQL
 echo "migration + RLS checks: OK"
