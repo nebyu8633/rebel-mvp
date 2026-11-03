@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { Sun, CalendarDays, Target, ListChecks, Repeat, UtensilsCrossed, TrendingUp, Settings as Cog, Plus, Sparkles, MoreHorizontal, X, HardDrive, Cloud, Globe2, Map as MapIcon, UserRound, Swords, Gift, Landmark } from "lucide-react";
+import { Sun, CalendarDays, Target, ListChecks, Repeat, UtensilsCrossed, TrendingUp, Settings as Cog, Plus, Sparkles, MoreHorizontal, X, HardDrive, Cloud, Globe2, Map as MapIcon, UserRound, Swords, Gift, Landmark, Crosshair } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { useUI } from "@/lib/store/ui";
 import { cx, ConfirmHost } from "./ui";
@@ -19,6 +19,7 @@ export const GAME_NAV = [
   { href: "/", label: "העולם שלי", icon: Globe2 },
   { href: "/quests", label: "מפת המסעות", icon: MapIcon },
   { href: "/character", label: "הדמות", icon: UserRound },
+  { href: "/arena", label: "זירת הגיבורים", icon: Crosshair },
   { href: "/challenges", label: "אתגרים", icon: Swords },
   { href: "/rewards", label: "פרסים", icon: Gift },
   { href: "/legacy", label: "מורשת", icon: Landmark },

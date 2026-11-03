@@ -581,6 +581,40 @@ export const GameProfile = z.object({
 });
 export type GameProfile = z.infer<typeof GameProfile>;
 
+// ───────────────────────── Arena ─────────────────────────
+/** Saved hero team (written by the player). */
+export const ArenaTeam = z.object({
+  id,
+  name: z.string().trim().min(1).max(40),
+  /** 3 distinct hero ids; the first is the primary (starts the match). */
+  heroes: z.array(z.string().max(40)).length(3),
+  ...timestamps,
+});
+export type ArenaTeam = z.infer<typeof ArenaTeam>;
+/** Arena progression (Hero XP, ratings) — written ONLY by the game server from validated matches. */
+export const ArenaProfile = z.object({
+  id,
+  heroXp: z.record(z.string(), z.number()).default({}),
+  rating: z.record(z.string(), z.number()).default({}),
+  matches: z.number().int().min(0).default(0),
+  wins: z.number().int().min(0).default(0),
+  ...timestamps,
+});
+export type ArenaProfile = z.infer<typeof ArenaProfile>;
+export const ArenaMatch = z.object({
+  id,
+  mode: z.string().max(20),
+  mapId: z.string().max(40),
+  won: z.boolean(),
+  draw: z.boolean(),
+  result: z.record(z.string(), z.unknown()),
+  players: z.array(z.record(z.string(), z.unknown())).max(8),
+  duration: z.number().int().min(0),
+  playedAt: z.string(),
+  ...timestamps,
+});
+export type ArenaMatch = z.infer<typeof ArenaMatch>;
+
 // ───────────────────────── Database shape ─────────────────────────
 export const COLLECTIONS = {
   goals: Goal,
@@ -611,6 +645,9 @@ export const COLLECTIONS = {
   rewards: Reward,
   gameProfile: GameProfile,
   evaluations: TaskEvaluation,
+  arenaTeams: ArenaTeam,
+  arenaProfile: ArenaProfile,
+  arenaMatches: ArenaMatch,
 } as const;
 
 export type CollectionName = keyof typeof COLLECTIONS;
