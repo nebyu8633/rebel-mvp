@@ -14,6 +14,7 @@ import type { MatchState, Player } from "@/lib/arena/types";
 import { HeroModel, type HeroRig } from "./HeroModel";
 
 import { TEAM_COLORS, type Aim } from "./colors";
+import { initialQuality, pinnedQuality, PostFX, QualityGovernor, RendererTone, SceneLighting, type Quality } from "@/components/visual/Atmosphere";
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpAngle = (a: number, b: number, t: number) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * t;
@@ -200,9 +201,11 @@ function Crystals({ session }: { session: Session }) {
 }
 
 const POOL = { proj: 64, zone: 24, wall: 12, fx: 48 };
+const TRAIL = 3;
 
 function Effects({ session }: { session: Session }) {
   const proj = useRef<Array<THREE.Mesh | null>>([]);
+  const trail = useRef<Array<THREE.Mesh | null>>([]);
   const zoneDisc = useRef<Array<THREE.Mesh | null>>([]);
   const zoneRing = useRef<Array<THREE.Mesh | null>>([]);
   const walls = useRef<Array<THREE.Mesh | null>>([]);
@@ -224,6 +227,19 @@ function Effects({ session }: { session: Session }) {
       const mat = m.material as THREE.MeshStandardMaterial;
       mat.color.set(pr.color);
       mat.emissive.set(pr.color);
+      // glowing trail behind the projectile
+      for (let k = 0; k < TRAIL; k++) {
+        const t = trail.current[i * TRAIL + k];
+        if (!t) continue;
+        const back = (k + 1) * 0.45 * (pr.radius / 0.35 + 0.4);
+        t.position.set(m.position.x - pr.dir.x * back, 1.1, m.position.z - pr.dir.z * back);
+        t.scale.setScalar((pr.radius / 0.35) * (0.75 - k * 0.2));
+        (t.material as THREE.MeshBasicMaterial).color.set(pr.color);
+      }
+    }
+    for (let i = 0; i < POOL.proj; i++) for (let k = 0; k < TRAIL; k++) {
+      const t = trail.current[i * TRAIL + k];
+      if (t) t.visible = !!st.projectiles[i];
     }
     for (let i = 0; i < POOL.zone; i++) {
       const d = zoneDisc.current[i];
@@ -279,6 +295,12 @@ function Effects({ session }: { session: Session }) {
           <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={2} toneMapped={false} />
         </mesh>
       ))}
+      {Array.from({ length: POOL.proj * TRAIL }).map((_, i) => (
+        <mesh key={`t${i}`} ref={(m) => void (trail.current[i] = m)} visible={false}>
+          <sphereGeometry args={[0.3, 8, 6]} />
+          <meshBasicMaterial transparent opacity={0.45 - (i % TRAIL) * 0.12} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+      ))}
       {Array.from({ length: POOL.zone }).map((_, i) => (
         <group key={`z${i}`}>
           <mesh ref={(m) => void (zoneDisc.current[i] = m)} rotation-x={-Math.PI / 2} visible={false}>
@@ -300,7 +322,7 @@ function Effects({ session }: { session: Session }) {
       {Array.from({ length: POOL.fx }).map((_, i) => (
         <mesh key={`f${i}`} ref={(m) => void (fx.current[i] = m)} rotation-x={-Math.PI / 2} visible={false}>
           <ringGeometry args={[0.7, 1, 40]} />
-          <meshBasicMaterial transparent depthWrite={false} toneMapped={false} />
+          <meshBasicMaterial transparent depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />
         </mesh>
       ))}
     </>
@@ -461,27 +483,12 @@ function BarProjector({ session, bars }: { session: Session; bars: React.Mutable
   return null;
 }
 
-/** Drops shadows / resolution when the device can't keep up (measured, not guessed). */
-function QualityGovernor({ onLow }: { onLow: () => void }) {
-  const frames = useRef(0);
-  const t0 = useRef(0);
-  const done = useRef(false);
-  useFrame(({ clock }) => {
-    if (done.current) return;
-    if (!t0.current) t0.current = clock.elapsedTime;
-    frames.current++;
-    const el = clock.elapsedTime - t0.current;
-    if (el > 2) {
-      done.current = true;
-      if (frames.current / el < 40) onLow();
-    }
-  });
-  return null;
-}
-
 export default function Arena3D({ session, aim, lowPower: lowPowerHint }: { session: Session; aim: React.MutableRefObject<Aim>; lowPower: boolean }) {
-  const [lowPower, setLowPower] = useState(lowPowerHint);
-  useEffect(() => setLowPower((l) => l || lowPowerHint), [lowPowerHint]);
+  const [quality, setQuality] = useState<Quality>(() => (lowPowerHint && !pinnedQuality() ? "low" : initialQuality()));
+  useEffect(() => {
+    if (lowPowerHint && !pinnedQuality()) setQuality("low");
+  }, [lowPowerHint]);
+  const lowPower = quality === "low";
   const [ready, setReady] = useState<MatchState | null>(() => session.frame()?.cur ?? null);
   const bars = useRef<Record<string, HTMLDivElement | null>>({});
   useEffect(() => {
@@ -498,12 +505,13 @@ export default function Arena3D({ session, aim, lowPower: lowPowerHint }: { sess
   if (!ready) return <div className="flex h-full items-center justify-center text-sm text-slate-300">טוען זירה…</div>;
   const map = MAP_BY_ID[ready.mapId];
   return (
-    <div className="relative h-full w-full">
-      <Canvas shadows={!lowPower} dpr={lowPower ? 1 : [1, 2]} camera={{ fov: 45, position: [0, 20, 12], near: 0.5, far: 200 }} gl={{ antialias: !lowPower }} data-testid="arena-canvas">
+    <div className="relative h-full w-full" data-quality={quality}>
+      <Canvas shadows={lowPower ? false : { type: THREE.PCFShadowMap }} dpr={lowPower ? 1 : [1, 2]} camera={{ fov: 45, position: [0, 20, 12], near: 0.5, far: 200 }} gl={{ antialias: !lowPower }} data-testid="arena-canvas">
         <color attach="background" args={[map.palette.sky]} />
         <fog attach="fog" args={[map.palette.fog, 40, 90]} />
-        <hemisphereLight args={["#ffffff", map.palette.edge, 0.85]} />
-        <directionalLight position={[12, 26, 10]} intensity={1.7} castShadow={!lowPower} shadow-mapSize={[1024, 1024]} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
+        <hemisphereLight args={["#ffffff", map.palette.edge, lowPower ? 0.85 : 0.7]} />
+        {!lowPower && <SceneLighting warm={map.palette.accent} cool="#a8c8ff" intensity={0.9} />}
+        <directionalLight position={[12, 26, 10]} intensity={1.7} castShadow={!lowPower} shadow-mapSize={quality === "high" ? [2048, 2048] : [1024, 1024]} shadow-bias={-0.0004} shadow-normalBias={0.03} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
         <Environment map={map} />
         <Pickups session={session} map={map} />
         <Crystals session={session} />
@@ -512,7 +520,9 @@ export default function Arena3D({ session, aim, lowPower: lowPowerHint }: { sess
           <Actor key={p.id} session={session} id={p.id} colorIndex={ready.mode === "ffa" ? i : p.team} />
         ))}
         <AimPlane aim={aim} />
-        {!lowPower && <QualityGovernor onLow={() => setLowPower(true)} />}
+        <RendererTone quality={quality} />
+        <PostFX quality={quality} bloom={1.1} />
+        <QualityGovernor quality={quality} onChange={setQuality} />
         <CameraRig session={session} map={map} />
         <BarProjector session={session} bars={bars} />
       </Canvas>

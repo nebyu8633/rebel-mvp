@@ -11,6 +11,7 @@ import * as THREE from "three";
 import type { RegionId } from "@/lib/types";
 import { REGIONS, REGION_BY_ID, type RegionDef } from "@/lib/game/regions";
 import type { RegionState } from "@/lib/game/engine";
+import { initialQuality, pinnedQuality, PostFX, QualityGovernor, RendererTone, SceneLighting, type Quality } from "@/components/visual/Atmosphere";
 
 const RING = 15;
 
@@ -29,12 +30,16 @@ export function regionPosition(r: RegionDef): [number, number, number] {
 }
 
 export default function World3D(props: World3DProps) {
-  const { lowPower } = props;
+  const [quality, setQuality] = useState<Quality>(() => (props.lowPower && !pinnedQuality() ? "low" : initialQuality()));
+  useEffect(() => {
+    if (props.lowPower && !pinnedQuality()) setQuality("low");
+  }, [props.lowPower]);
+  const lowPower = quality === "low";
   const labels = useRef<Partial<Record<RegionId, HTMLButtonElement | null>>>({});
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full" data-quality={quality}>
     <Canvas
-      shadows={!lowPower}
+      shadows={lowPower ? false : { type: THREE.PCFShadowMap }}
       dpr={lowPower ? [1, 1.5] : [1, 2]}
       camera={{ position: [0, 30, 38], fov: 42, near: 0.5, far: 400 }}
       gl={{ antialias: !lowPower, powerPreference: "high-performance" }}
@@ -44,13 +49,16 @@ export default function World3D(props: World3DProps) {
       <color attach="background" args={["#a9cbe0"]} />
       <fog attach="fog" args={["#bcd6e4", 80, 230]} />
       <Sky distance={450} sunPosition={[60, 18, 40]} turbidity={6} rayleigh={1.4} mieCoefficient={0.006} mieDirectionalG={0.85} />
-      <hemisphereLight args={["#fff6e5", "#3d6a7d", 0.9]} />
+      <hemisphereLight args={["#fff6e5", "#3d6a7d", lowPower ? 0.9 : 0.75]} />
+      {!lowPower && <SceneLighting warm="#ffe2b8" cool="#a8d4ff" />}
       <directionalLight
         position={[30, 40, 20]}
         intensity={1.6}
         color="#fff1d6"
         castShadow={!lowPower}
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={quality === "high" ? [2048, 2048] : [1024, 1024]}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.03}
         shadow-camera-left={-40}
         shadow-camera-right={40}
         shadow-camera-top={40}
@@ -63,6 +71,9 @@ export default function World3D(props: World3DProps) {
       ))}
       <CameraRig selected={props.selected} />
       <LabelProjector regions={props.regions} labels={labels} />
+      <RendererTone quality={quality} exposure={1.05} />
+      <PostFX quality={quality} bloom={0.75} />
+      <QualityGovernor quality={quality} onChange={setQuality} />
     </Canvas>
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-label="אזורים">
       {REGIONS.map((r) => {
@@ -165,7 +176,7 @@ function Ocean() {
     <group>
       <mesh ref={ref} rotation-x={-Math.PI / 2} position={[0, -0.6, 0]} receiveShadow>
         <circleGeometry args={[200, 64]} />
-        <meshStandardMaterial color="#3b7fa7" roughness={0.22} metalness={0.15} />
+        <meshPhysicalMaterial color="#2f78a3" roughness={0.16} metalness={0.05} clearcoat={1} clearcoatRoughness={0.08} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, -0.55, 0]}>
         <ringGeometry args={[RING - 6.5, RING + 6.5, 96]} />
