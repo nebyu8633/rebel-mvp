@@ -70,6 +70,8 @@ export const Goal = z.object({
   manualValue: z.number().nullable().default(null),
   financeAccountId: z.string().nullable().default(null),
   info: z.record(z.string(), z.unknown()).default({}),
+  /** Game world region (life category). null = derived from kind. */
+  region: z.enum(["wealth", "health", "knowledge", "career", "social", "mind"]).nullable().default(null),
   color: z.string().default("teal"),
   order: z.number().default(0),
   ...timestamps,
@@ -143,6 +145,12 @@ export const Task = z.object({
   history: z.array(HistoryEntry).default([]),
   /** Approved plan version that created/last updated this task (null = created by hand). */
   planVersionId: z.string().nullable().default(null),
+  /** How completion is proven: none = just tick it; photo/document = upload; manual = explicit self-confirmation. */
+  evidence: z.enum(["none", "photo", "document", "manual"]).default("none"),
+  /** What counts as "done" (shown in Focus Mode and the evidence flow). */
+  evidenceCriteria: z.string().max(500).default(""),
+  /** XP size; auto = from duration/priority. */
+  xpSize: z.enum(["auto", "small", "medium", "major"]).default("auto"),
   ...timestamps,
 });
 export type Task = z.infer<typeof Task>;
@@ -421,6 +429,104 @@ export const ProgressRecord = z.object({
 });
 export type ProgressRecord = z.infer<typeof ProgressRecord>;
 
+
+// ───────────────────────── Game layer ─────────────────────────
+export const REGION_IDS = ["wealth", "health", "knowledge", "career", "social", "mind"] as const;
+export type RegionId = (typeof REGION_IDS)[number];
+
+export const Evidence = z.object({
+  id,
+  taskId: id,
+  /** Task instance key (task id, or `${taskId}:${date}` for a recurring occurrence). */
+  instanceKey: z.string(),
+  status: z.enum(["waiting", "submitted", "review", "accepted", "more", "manual"]),
+  kind: z.enum(["photo", "document", "manual"]),
+  /** Private storage reference (IndexedDB key locally, storage path in the cloud). Never a public URL. */
+  fileRef: z.string().nullable().default(null),
+  note: z.string().max(1000).default(""),
+  aiVerdict: z.enum(["likely", "unclear", "unlikely"]).nullable().default(null),
+  aiReason: z.string().max(600).default(""),
+  submittedAt: z.string().nullable().default(null),
+  decidedAt: z.string().nullable().default(null),
+  ...timestamps,
+});
+export type Evidence = z.infer<typeof Evidence>;
+
+export const XpEvent = z.object({
+  /** Deterministic id (e.g. `task:<id>`, `ms:<id>`) — the same achievement can never be awarded twice. */
+  id,
+  kind: z.enum(["task", "occurrence", "milestone", "goal", "habit", "achievement", "challenge", "chest"]),
+  refId: z.string(),
+  title: z.string().max(300),
+  amount: z.number().int().min(0).max(10000),
+  region: z.enum(REGION_IDS).nullable().default(null),
+  attribute: z.enum(["strength", "intelligence", "wealth", "discipline", "career", "social"]),
+  at: z.string(),
+  ...timestamps,
+});
+export type XpEvent = z.infer<typeof XpEvent>;
+
+export const Reward = z.object({
+  id,
+  title: z.string().trim().min(1, "חובה לתת שם לפרס").max(120),
+  note: z.string().max(300).default(""),
+  condition: z.discriminatedUnion("type", [
+    z.object({ type: z.literal("milestone"), refId: z.string() }),
+    z.object({ type: z.literal("goal"), refId: z.string() }),
+    z.object({ type: z.literal("level"), level: z.number().int().min(1).max(200) }),
+  ]),
+  claimedAt: z.string().nullable().default(null),
+  ...timestamps,
+});
+export type Reward = z.infer<typeof Reward>;
+
+export const GameProfile = z.object({
+  id,
+  displayName: z.string().max(40).default(""),
+  avatar: z
+    .object({
+      skin: z.number().int().min(0).max(5).default(2),
+      outfit: z.number().int().min(0).max(5).default(0),
+      accent: z.number().int().min(0).max(5).default(0),
+      emblem: z.number().int().min(0).max(5).default(0),
+    })
+    .default({ skin: 2, outfit: 0, accent: 0, emblem: 0 }),
+  xp: z
+    .object({
+      small: z.number().int().min(0).max(1000).default(10),
+      medium: z.number().int().min(0).max(1000).default(25),
+      major: z.number().int().min(0).max(1000).default(50),
+      milestone: z.number().int().min(0).max(5000).default(100),
+      goal: z.number().int().min(0).max(10000).default(250),
+    })
+    .default({ small: 10, medium: 25, major: 50, milestone: 100, goal: 250 }),
+  seasonStart: DateStr,
+  lastIntroDate: DateStr.nullable().default(null),
+  chestsOpened: z.array(z.string()).default([]),
+  notify: z
+    .object({
+      sound: z.enum(["chime", "bell", "pulse", "none"]).default("chime"),
+      quietStart: TimeStr.nullable().default(null),
+      quietEnd: TimeStr.nullable().default(null),
+      prepMinutes: z.number().int().min(0).max(240).default(15),
+      followUpMinutes: z.number().int().min(0).max(240).default(15),
+      prepAndFollowUp: z.boolean().default(true),
+      categories: z
+        .object({
+          standard: z.boolean().default(true),
+          high: z.boolean().default(true),
+          repeat: z.boolean().default(true),
+          challenge: z.boolean().default(true),
+          achievement: z.boolean().default(true),
+          milestone: z.boolean().default(true),
+        })
+        .default({ standard: true, high: true, repeat: true, challenge: true, achievement: true, milestone: true }),
+    })
+    .default({ sound: "chime", quietStart: null, quietEnd: null, prepMinutes: 15, followUpMinutes: 15, prepAndFollowUp: true, categories: { standard: true, high: true, repeat: true, challenge: true, achievement: true, milestone: true } }),
+  ...timestamps,
+});
+export type GameProfile = z.infer<typeof GameProfile>;
+
 // ───────────────────────── Database shape ─────────────────────────
 export const COLLECTIONS = {
   goals: Goal,
@@ -446,6 +552,10 @@ export const COLLECTIONS = {
   planVersions: PlanVersion,
   reminders: Reminder,
   progressRecords: ProgressRecord,
+  evidence: Evidence,
+  xpEvents: XpEvent,
+  rewards: Reward,
+  gameProfile: GameProfile,
 } as const;
 
 export type CollectionName = keyof typeof COLLECTIONS;

@@ -28,6 +28,7 @@ export function blankGoal(today: string): Goal {
     manualValue: null,
     financeAccountId: null,
     info: {},
+    region: null,
     color: "slate",
     order: 99,
     createdAt: n,

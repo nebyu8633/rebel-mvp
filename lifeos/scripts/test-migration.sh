@@ -115,4 +115,20 @@ select apply_batch('[{"op":"delete","table":"tasks","id":"pt:g2:t1"}]'::jsonb);
 set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 do $$ begin if (select count(*) from tasks where id='pt:g2:t1') <> 1 then raise exception 'cross-user delete via batch'; end if; end $$;
 SQL
+$PSQL <<'SQL'
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+-- partial rows: defaults apply (an older client that doesn't know the new columns still works)
+select apply_batch('[{"op":"upsert","table":"tasks","row":{"id":"pt:g2:t9","title":"חדש","goal_id":"g2"}}]'::jsonb);
+do $$ begin if (select evidence from tasks where id='pt:g2:t9') <> 'none' then raise exception 'default not applied'; end if; end $$;
+-- XP ledger is idempotent per deterministic id
+select apply_batch('[{"op":"upsert","table":"xp_events","row":{"id":"task:pt:g2:t9","kind":"task","ref_id":"pt:g2:t9","title":"x","amount":10,"region":"knowledge","attribute":"intelligence","at":"2026-11-03T10:00:00Z"}}]'::jsonb);
+select apply_batch('[{"op":"upsert","table":"xp_events","row":{"id":"task:pt:g2:t9","kind":"task","ref_id":"pt:g2:t9","title":"x","amount":10,"region":"knowledge","attribute":"intelligence","at":"2026-11-03T10:00:00Z"}}]'::jsonb);
+do $$ begin if (select count(*) from xp_events) <> 1 then raise exception 'duplicate xp'; end if; end $$;
+insert into task_evidence (id, task_id, instance_key, status, kind, file_ref) values ('ev1','pt:g2:t9','pt:g2:t9','submitted','photo','11111111-1111-1111-1111-111111111111/ev1.jpg');
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  if (select count(*) from task_evidence) <> 0 or (select count(*) from xp_events) <> 0 then raise exception 'game data leak across users'; end if;
+end $$;
+SQL
 echo "migration + RLS checks: OK"

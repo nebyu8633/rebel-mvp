@@ -13,6 +13,7 @@ import type { GoalPlan, GPRoutine, GPTask } from "./schema";
 import type { Facts } from "./interview";
 import { addDays } from "../dates";
 import { isOpen } from "../tasks";
+import { inferEvidence } from "../game/evidence";
 
 export const ids = {
   milestone: (g: string, k: string) => `ms:${g}:${k}`,
@@ -44,7 +45,7 @@ function baseTask(id: string, now: string): Task {
     id, title: "", notes: "", goalId: null, milestoneId: null, objectiveId: null, priority: "medium", estimatedMinutes: null,
     date: null, startTime: null, deadline: null, status: "planned", recurrence: null, reminderMinutes: null, rationale: "",
     dependsOn: [], routine: null, source: "planner", completedAt: null, history: [{ at: now, action: "created" }],
-    planVersionId: null, createdAt: now, updatedAt: now,
+    planVersionId: null, evidence: "none", evidenceCriteria: "", xpSize: "auto", createdAt: now, updatedAt: now,
   };
 }
 
@@ -184,7 +185,12 @@ export function buildActivation(args: {
     const oldPlanTask = prevApproved?.plan.tasks.find((x) => x.key === t.key);
     const movedByUser = !!(prev && oldPlanTask && (prev.date !== oldPlanTask.date || prev.startTime !== oldPlanTask.startTime) && !t.userEdited);
     if (movedByUser) t = { ...t, date: prev!.date, startTime: prev!.startTime };
-    const next = taskFromPlan(prev ?? baseTask(id, now), t, { g, version, now, milestoneId: t.milestoneKey && !excludedMs.has(t.milestoneKey) ? ids.milestone(g, t.milestoneKey) : null, depIds: t.dependsOn.map((k) => taskIdByKey.get(k)).filter((x): x is string => !!x) });
+    const base = prev ?? (() => {
+      const b = baseTask(id, now);
+      const ev = inferEvidence(t.title); // the planner picks a proof type per task; the user can change it
+      return { ...b, evidence: ev.evidence, evidenceCriteria: ev.criteria };
+    })();
+    const next = taskFromPlan(base, t, { g, version, now, milestoneId: t.milestoneKey && !excludedMs.has(t.milestoneKey) ? ids.milestone(g, t.milestoneKey) : null, depIds: t.dependsOn.map((k) => taskIdByKey.get(k)).filter((x): x is string => !!x) });
     if (prev) {
       const ch = changesOf(prev, next);
       if (ch.length) summary.updated.push({ title: next.title, changes: ch });

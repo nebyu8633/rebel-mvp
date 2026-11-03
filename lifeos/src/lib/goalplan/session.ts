@@ -104,7 +104,7 @@ export async function createGoals(descriptions: string[], opts: { today: string;
     const goal: Goal = {
       id, title: suggestTitle(text, kind), description: text.slice(0, 2000), why: "", kind, status: "planning",
       startDate: opts.today, startConfirmed: false, targetDate: (facts.targetDate?.value as string) ?? addMonths(opts.today, 12),
-      unit: "", startValue: null, targetValue: null, manualValue: null, financeAccountId: null, info: {},
+      unit: "", startValue: null, targetValue: null, manualValue: null, financeAccountId: null, info: {}, region: null,
       color: ["teal", "indigo", "amber", "rose", "slate"][(Object.keys(db.goals).length + i) % 5], order: Object.keys(db.goals).length + i, createdAt: n, updatedAt: n,
     };
     const q = nextQuestion(kind, facts, []);

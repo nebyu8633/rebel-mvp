@@ -54,6 +54,7 @@ export function buildSeed(db: DB, today: string, timezone: string, nowIso: strin
     startConfirmed: false,
     targetDate: target,
     manualValue: null,
+    region: null,
     ...ts,
   };
   const goals: Goal[] = [
@@ -125,6 +126,9 @@ export function buildSeed(db: DB, today: string, timezone: string, nowIso: strin
     completedAt: null,
     history: [],
     planVersionId: null,
+    evidence: "none" as const,
+    evidenceCriteria: "",
+    xpSize: "auto" as const,
     ...ts,
   };
   const routines: Task[] = [
@@ -137,6 +141,8 @@ export function buildSeed(db: DB, today: string, timezone: string, nowIso: strin
       estimatedMinutes: 60,
       rationale: "קונים בדיוק את מה שהתפריט המאושר דורש — בלי כפילויות.",
       routine: "grocery",
+      evidence: "photo",
+      evidenceCriteria: "תמונה של המצרכים שנקנו",
       recurrence: {
         freq: "weekly",
         interval: 1,

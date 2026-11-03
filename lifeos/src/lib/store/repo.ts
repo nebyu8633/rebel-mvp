@@ -40,6 +40,10 @@ export const TABLES: Record<CollectionName, string> = {
   planVersions: "goal_plan_versions",
   reminders: "reminders",
   progressRecords: "goal_progress_records",
+  evidence: "task_evidence",
+  xpEvents: "xp_events",
+  rewards: "rewards",
+  gameProfile: "game_profile",
 };
 
 /** Parent-first order, used when loading and when bulk-writing to satisfy foreign keys. */
@@ -67,6 +71,10 @@ export const COLLECTION_ORDER: CollectionName[] = [
   "profiles",
   "reminders",
   "progressRecords",
+  "evidence",
+  "xpEvents",
+  "rewards",
+  "gameProfile",
 ];
 
 export const camelToSnake = (s: string) => s.replace(/[A-Z]/g, (c) => "_" + c.toLowerCase());

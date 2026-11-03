@@ -171,7 +171,7 @@ describe("scheduler", () => {
 });
 
 describe("activation", () => {
-  const goal: Goal = { id: "g1", title: "ספרדית", description: "", why: "", kind: "learning", status: "planning", startDate: today, startConfirmed: false, targetDate: "2027-11-01", unit: "", startValue: null, targetValue: null, manualValue: null, financeAccountId: null, info: {}, color: "teal", order: 0, createdAt: T0, updatedAt: T0 };
+  const goal: Goal = { id: "g1", title: "ספרדית", description: "", why: "", kind: "learning", status: "planning", startDate: today, startConfirmed: false, targetDate: "2027-11-01", unit: "", startValue: null, targetValue: null, manualValue: null, financeAccountId: null, info: {}, region: null, color: "teal", order: 0, createdAt: T0, updatedAt: T0 };
   const f = answerAll("learning", { subject: "ספרדית", outcome: "x", currentLevel: "none", targetLevel: "conversation", targetDate: "12", weeklyHours: 3, method: ["app"], preferredDays: ["1", "3"] });
   const mkVersion = (id: string, v: number, plan = buildGoalPlan({ kind: "learning", title: "ספרדית", facts: f, today })): PlanVersion => ({ id, goalId: "g1", version: v, status: "draft", plan, basedOnVersionId: null, approvedAt: null, createdAt: T0, updatedAt: T0 });
 
