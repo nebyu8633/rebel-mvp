@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { computeEarned, defaultProfile, levelInfo, milestoneSync, questFor, reconcile, regionStates, isVerified } from "../game/engine";
 import { challengesFor } from "../game/challenges";
 import { inferEvidence } from "../game/evidence";
+import { ruleEvaluation } from "../game/difficulty";
 import type { DB, Evidence, Goal, Milestone, XpEvent } from "../types";
 import { dbWith, task, T0 } from "./helpers";
 
@@ -28,7 +29,8 @@ describe("XP ledger", () => {
     db.goals.g = goal("g");
     const r1 = reconcile(db, computeEarned(db, profile, today), T0);
     expect(r1.put.map((e) => e.id)).toEqual(["task:a", "ach:first-quest"]);
-    expect(r1.put[0].amount).toBe(10);
+    expect(r1.put[0].amount).toBe(ruleEvaluation(db, db.tasks.a, T0).xp);
+    expect(r1.put[0].amount).toBeGreaterThanOrEqual(5);
     expect(r1.put[0].region).toBe("knowledge");
     db = apply(db, r1);
     const r2 = reconcile(db, computeEarned(db, profile, today), T0);
@@ -88,7 +90,7 @@ describe("quests and milestones", () => {
 
 describe("world development", () => {
   it("records which real achievement built each landmark", () => {
-    const mk = (id: string, amount: number, at: string): XpEvent => ({ id, kind: "task", refId: id, title: id, amount, region: "wealth", attribute: "wealth", at, createdAt: T0, updatedAt: T0 });
+    const mk = (id: string, amount: number, at: string): XpEvent => ({ id, kind: "task", refId: id, title: id, amount, region: "wealth", attribute: "wealth", at, detail: "", evalVersion: null, createdAt: T0, updatedAt: T0 });
     const rs = regionStates([mk("a", 10, "2026-11-01"), mk("b", 15, "2026-11-02"), mk("c", 100, "2026-11-03")]);
     expect(rs.wealth.stage).toBe(2);
     expect(rs.wealth.unlocks.map((u) => [u.stage, u.event?.id])).toEqual([[1, "b"], [2, "c"]]);

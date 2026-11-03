@@ -11,6 +11,8 @@ import { playSound, SOUND_LABEL, type SoundId } from "@/lib/game/sound";
 import { deliver } from "@/components/ReminderEngine";
 import { Button, Details, Field, Input, Select, Toggle, cx } from "@/components/ui";
 import { nowIso } from "@/lib/actions";
+import { LEVEL_LABEL, XP_TABLE } from "@/lib/game/difficulty";
+import { GOAL_XP, MILESTONE_XP } from "@/lib/game/rewards";
 import type { GameProfile } from "@/lib/types";
 
 const CH_LABEL: Record<LogEntry["channels"][number], string> = { inapp: "באפליקציה", browser: "דפדפן", sound: "צליל", "push-device": "Push" };
@@ -154,37 +156,43 @@ export function NotifySettings() {
   );
 }
 
-/** XP values per task size / milestone / goal. Changing them recalculates the ledger consistently (no duplicates). */
+/** The XP table (read-only: rewards are set by the evaluation model, not by the player). */
 export function XpSettings() {
-  const db = useStore((s) => s.db);
-  const now = useNow();
-  const profile = profileOf(db) ?? defaultProfile(now.date, nowIso());
-  const rows: Array<[keyof GameProfile["xp"], string]> = [
-    ["small", "משימה קטנה"],
-    ["medium", "משימה בינונית"],
-    ["major", "משימה גדולה"],
-    ["milestone", "אבן דרך"],
-    ["goal", "מטרה שהושגה"],
-  ];
   return (
     <div className="space-y-3" data-testid="xp-settings">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {rows.map(([k, l]) => (
-          <Field key={k} label={l}>
-            <Input
-              type="number"
-              min={0}
-              max={k === "goal" ? 10000 : k === "milestone" ? 5000 : 1000}
-              defaultValue={profile.xp[k]}
-              onBlur={(e) => {
-                const v = Math.max(0, Math.round(Number(e.target.value) || 0));
-                if (v !== profile.xp[k]) void updateProfile({ xp: { ...profile.xp, [k]: v } }, now.date);
-              }}
-            />
-          </Field>
-        ))}
-      </div>
-      <p className="text-xs text-stone-500">שינוי ערכים מעדכן את ה-XP של מה שכבר הושלם באותה מידה — בלי כפילויות. XP ניתן רק אחרי השלמה מאומתת.</p>
+      <table className="w-full max-w-md text-sm">
+        <thead>
+          <tr className="text-xs text-stone-500">
+            <th className="py-1 text-start font-medium">רמת קושי</th>
+            <th className="py-1 text-start font-medium">XP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {([1, 2, 3, 4, 5] as const).map((l) => (
+            <tr key={l} className="border-t hairline">
+              <td className="py-1.5">
+                {l} · {LEVEL_LABEL[l]}
+              </td>
+              <td className="py-1.5 ltr-nums">
+                {XP_TABLE[l][0]}–{XP_TABLE[l][1]}
+              </td>
+            </tr>
+          ))}
+          <tr className="border-t hairline">
+            <td className="py-1.5">אבן דרך</td>
+            <td className="py-1.5 ltr-nums">
+              {MILESTONE_XP.minor}–{MILESTONE_XP.epic_plus}
+            </td>
+          </tr>
+          <tr className="border-t hairline">
+            <td className="py-1.5">מטרה שהושגה</td>
+            <td className="py-1.5 ltr-nums">{GOAL_XP}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="text-xs text-stone-500">
+        הקושי מוערך לפי ההיקף האמיתי של המשימה (זמן, מורכבות, מאמץ, היקף, וקשר קטן למטרה). אי אפשר לבחור XP — אפשר להבהיר את היקף המשימה. XP ניתן רק אחרי השלמה מאומתת, ובמצב ענן מחושב בשרת בלבד.
+      </p>
     </div>
   );
 }

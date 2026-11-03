@@ -65,6 +65,8 @@ export function blankTask(partial: Partial<Task> = {}): Task {
     evidence: "none",
     evidenceCriteria: "",
     xpSize: "auto",
+    parentTaskId: null,
+    actualMinutes: null,
     createdAt: n,
     updatedAt: n,
     ...partial,

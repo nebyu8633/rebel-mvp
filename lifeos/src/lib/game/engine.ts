@@ -12,9 +12,12 @@ import { ATTRIBUTES, REGION_BY_ID, REGIONS, STAGE_THRESHOLDS, regionOfGoal, type
 import { VERIFIED } from "./evidence";
 import { addDays, diffDays, startOfWeek } from "../dates";
 import { instancesInRange, isOpen } from "../tasks";
+import { goalEvaluation, milestoneEvaluation, taskRewards } from "./rewards";
+import { EVALUATION_VERSION, effectiveEvaluation } from "./difficulty";
 
-export type EarnedEvent = Omit<XpEvent, "createdAt" | "updatedAt">;
+export type EarnedEvent = Omit<XpEvent, "createdAt" | "updatedAt" | "detail" | "evalVersion"> & { detail?: string; evalVersion?: number | null };
 
+/** Legacy profile field (kept for stored data); rewards now come from the difficulty evaluation. */
 export const DEFAULT_XP = { small: 10, medium: 25, major: 50, milestone: 100, goal: 250 };
 const HABIT_XP = 5;
 const ACHIEVEMENT_XP = 50;
@@ -61,17 +64,9 @@ export function attributeOf(region: RegionId | null): Attribute {
   return region ? REGION_BY_ID[region].attribute : "discipline";
 }
 
-export function taskSize(task: Task): "small" | "medium" | "major" {
-  if (task.xpSize !== "auto") return task.xpSize;
-  const m = task.estimatedMinutes ?? 0;
-  if (task.priority === "high" || m > 60) return "major";
-  if (m > 20) return "medium";
-  return "small";
-}
-
-export function taskXp(task: Task, profile: GameProfile | null): number {
-  const x = profile?.xp ?? DEFAULT_XP;
-  return x[taskSize(task)];
+/** XP a task is worth (its current difficulty evaluation). The player can't set it. */
+export function taskXp(db: DB, task: Task): number {
+  return effectiveEvaluation(db, task).ev.xp;
 }
 
 export function latestEvidence(db: DB, instanceKey: string): Evidence | null {
@@ -189,29 +184,29 @@ export function milestoneSync(db: DB, now: string): Milestone[] {
 // ───────── Earned rewards ─────────
 
 export function computeEarned(db: DB, profile: GameProfile | null, today: string): EarnedEvent[] {
-  const x = profile?.xp ?? DEFAULT_XP;
   const out: EarnedEvent[] = [];
-  for (const t of Object.values(db.tasks)) {
-    if (t.recurrence || t.status !== "completed" || !isVerified(db, t, t.id)) continue;
-    const region = taskRegion(db, t);
-    out.push({ id: `task:${t.id}`, kind: "task", refId: t.id, title: t.title, amount: taskXp(t, profile), region, attribute: attributeOf(region), at: t.completedAt ?? t.updatedAt });
+  // tasks & occurrences: difficulty evaluation + anti-exploit rules (see rewards.ts)
+  const rewards = taskRewards(db);
+  for (const r of rewards) {
+    const region = taskRegion(db, r.task);
+    out.push({ id: r.id, kind: r.id.startsWith("occ:") ? "occurrence" : "task", refId: r.refId, title: r.task.title, amount: r.amount, region, attribute: attributeOf(region), at: r.at, detail: r.detail, evalVersion: EVALUATION_VERSION });
   }
-  for (const o of Object.values(db.occurrences)) {
-    const t = db.tasks[o.taskId];
-    if (!t || o.status !== "completed" || !isVerified(db, t, o.id)) continue;
-    const region = taskRegion(db, t);
-    out.push({ id: `occ:${o.id}`, kind: "occurrence", refId: o.id, title: o.title ?? t.title, amount: taskXp(t, profile), region, attribute: region ? attributeOf(region) : "discipline", at: o.completedAt ?? o.updatedAt });
-  }
+  // milestones are evaluated separately (tier by the real work behind them); unlocks are granted once
   for (const m of Object.values(db.milestones)) {
     if (m.status !== "done") continue;
+    const ev = milestoneEvaluation(db, m, rewards);
+    if (!ev.eligible) continue;
     const g = db.goals[m.goalId];
     const region = g ? regionOfGoal(g) : null;
-    out.push({ id: `ms:${m.id}`, kind: "milestone", refId: m.id, title: m.title, amount: x.milestone, region, attribute: attributeOf(region), at: m.updatedAt });
+    out.push({ id: `ms:${m.id}`, kind: "milestone", refId: m.id, title: m.title, amount: ev.xp, region, attribute: attributeOf(region), at: m.updatedAt, detail: ev.reason });
+    for (const u of ev.unlocks) out.push({ id: u.id, kind: "unlock", refId: u.refId, title: u.title, amount: 0, region, attribute: attributeOf(region), at: m.updatedAt, detail: `נפתח בזכות: ${m.title}` });
   }
   for (const g of Object.values(db.goals)) {
     if (g.status !== "done") continue;
+    const ev = goalEvaluation(db, g.id, rewards);
     const region = regionOfGoal(g);
-    out.push({ id: `goal:${g.id}`, kind: "goal", refId: g.id, title: g.title, amount: x.goal, region, attribute: attributeOf(region), at: g.updatedAt });
+    out.push({ id: `goal:${g.id}`, kind: "goal", refId: g.id, title: g.title, amount: ev.xp, region, attribute: attributeOf(region), at: g.updatedAt, detail: ev.reason });
+    for (const u of ev.unlocks) out.push({ id: u.id, kind: "unlock", refId: u.refId, title: u.title, amount: 0, region, attribute: attributeOf(region), at: g.updatedAt, detail: `נפתח בזכות: ${g.title}` });
   }
   for (const l of Object.values(db.habitLogs)) {
     if (l.status !== "done") continue;
@@ -223,7 +218,7 @@ export function computeEarned(db: DB, profile: GameProfile | null, today: string
   }
   for (const msId of profile?.chestsOpened ?? []) {
     const m = db.milestones[msId];
-    if (!m || m.status !== "done") continue;
+    if (!m || m.status !== "done" || !out.some((e) => e.id === `ms:${msId}`)) continue;
     out.push({ id: `chest:${msId}`, kind: "chest", refId: msId, title: `תיבת אוצר: ${m.title}`, amount: CHEST_XP, region: null, attribute: "discipline", at: m.updatedAt });
   }
   // achievements derive from the above (never from opening the app)
@@ -254,7 +249,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 function achievementsEarned(db: DB, base: EarnedEvent[], today: string): EarnedEvent[] {
   // sticky: once unlocked (stored in the ledger) an achievement stays
   const have = new Set(Object.keys(db.xpEvents ?? {}).filter((k) => k.startsWith("ach:")));
-  const progress = base.filter((e) => e.kind === "task" || e.kind === "occurrence" || e.kind === "milestone" || e.kind === "habit");
+  const progress = base.filter((e) => (e.kind === "task" || e.kind === "occurrence" || e.kind === "milestone" || e.kind === "habit") && e.amount > 0);
   const sorted = progress.slice().sort((a, b) => (a.at < b.at ? -1 : 1));
   const days = [...new Set(sorted.map((e) => e.at.slice(0, 10)))];
   const regionsTouched = new Set(sorted.map((e) => e.region).filter(Boolean));
@@ -356,7 +351,7 @@ export interface ReconcileResult {
   gained: XpEvent[];
 }
 
-const STICKY = new Set<XpEvent["kind"]>(["achievement", "challenge", "chest"]);
+const STICKY = new Set<XpEvent["kind"]>(["achievement", "challenge", "chest", "unlock"]);
 
 export function reconcile(db: DB, earned: EarnedEvent[], now: string): ReconcileResult {
   const existing = db.xpEvents ?? {};
@@ -367,11 +362,11 @@ export function reconcile(db: DB, earned: EarnedEvent[], now: string): Reconcile
     seen.add(e.id);
     const prev = existing[e.id];
     if (!prev) {
-      const ev: XpEvent = { ...e, at: e.at || now, createdAt: now, updatedAt: now };
+      const ev: XpEvent = { ...e, detail: e.detail ?? "", evalVersion: e.evalVersion ?? null, at: e.at || now, createdAt: now, updatedAt: now };
       put.push(ev);
       gained.push(ev);
-    } else if (prev.amount !== e.amount || prev.title !== e.title || prev.region !== e.region) {
-      put.push({ ...prev, amount: e.amount, title: e.title, region: e.region, attribute: e.attribute, updatedAt: now });
+    } else if (prev.amount !== e.amount || prev.title !== e.title || prev.region !== e.region || (prev.detail ?? "") !== (e.detail ?? "")) {
+      put.push({ ...prev, amount: e.amount, title: e.title, region: e.region, attribute: e.attribute, detail: e.detail ?? "", evalVersion: e.evalVersion ?? null, updatedAt: now });
     }
   }
   const remove = Object.values(existing)

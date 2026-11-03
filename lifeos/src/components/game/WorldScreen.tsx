@@ -182,7 +182,7 @@ export function WorldScreen() {
                     <div className="truncate text-base font-semibold">{main.title}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
                       <RegionChip id={taskRegion(g.db, main.task)} />
-                      <span className="gold-text font-semibold ltr-nums">+{taskXp(main.task, g.profile)} XP</span>
+                      <span className="gold-text font-semibold ltr-nums">+{taskXp(g.db, main.task)} XP</span>
                       {main.task.evidence !== "none" && <span>· דורש הוכחה</span>}
                       {main.date && main.date < g.today && <span>· מיום קודם</span>}
                     </div>

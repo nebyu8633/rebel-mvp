@@ -121,14 +121,36 @@ set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 -- partial rows: defaults apply (an older client that doesn't know the new columns still works)
 select apply_batch('[{"op":"upsert","table":"tasks","row":{"id":"pt:g2:t9","title":"חדש","goal_id":"g2"}}]'::jsonb);
 do $$ begin if (select evidence from tasks where id='pt:g2:t9') <> 'none' then raise exception 'default not applied'; end if; end $$;
--- XP ledger is idempotent per deterministic id
-select apply_batch('[{"op":"upsert","table":"xp_events","row":{"id":"task:pt:g2:t9","kind":"task","ref_id":"pt:g2:t9","title":"x","amount":10,"region":"knowledge","attribute":"intelligence","at":"2026-11-03T10:00:00Z"}}]'::jsonb);
-select apply_batch('[{"op":"upsert","table":"xp_events","row":{"id":"task:pt:g2:t9","kind":"task","ref_id":"pt:g2:t9","title":"x","amount":10,"region":"knowledge","attribute":"intelligence","at":"2026-11-03T10:00:00Z"}}]'::jsonb);
-do $$ begin if (select count(*) from xp_events) <> 1 then raise exception 'duplicate xp'; end if; end $$;
+-- the XP ledger can no longer be written by users (server-only): batch and direct writes are refused
+do $$ begin
+  begin perform apply_batch('[{"op":"upsert","table":"xp_events","row":{"id":"task:pt:g2:t9","kind":"task","ref_id":"pt:g2:t9","title":"x","amount":999,"region":"knowledge","attribute":"intelligence","at":"2026-11-03T10:00:00Z"}}]'::jsonb);
+    raise exception 'xp_events writable through apply_batch';
+  exception when raise_exception then if sqlerrm not like 'table not allowed%' then raise; end if; end;
+  begin insert into xp_events (id, kind, ref_id, title, amount, attribute, at) values ('task:fake','task','fake','x',999,'discipline',now());
+    raise exception 'xp_events directly writable';
+  exception when insufficient_privilege then null; end;
+  begin insert into task_evaluations (id, task_id, original_description, dims, score, difficulty, estimated_minutes, xp, explanation, source, repeat_key, content_hash, evaluation_version)
+      values ('pt:g2:t9','pt:g2:t9','x','{}',5,5,60,150,'x','ai','k','h',1);
+    raise exception 'task_evaluations writable by user';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+-- the server (service role / owner) writes them; deterministic ids keep awards idempotent
+insert into xp_events (user_id, id, kind, ref_id, title, amount, region, attribute, at, detail, eval_version) values ('11111111-1111-1111-1111-111111111111','task:pt:g2:t9','task','pt:g2:t9','x',25,'knowledge','intelligence','2026-11-03T10:00:00Z','רמה 3',1) on conflict (user_id, id) do update set amount = excluded.amount;
+insert into xp_events (user_id, id, kind, ref_id, title, amount, region, attribute, at) values ('11111111-1111-1111-1111-111111111111','task:pt:g2:t9','task','pt:g2:t9','x',25,'knowledge','intelligence','2026-11-03T10:00:00Z') on conflict (user_id, id) do update set amount = excluded.amount;
+insert into xp_events (user_id, id, kind, ref_id, title, amount, attribute, at) values ('11111111-1111-1111-1111-111111111111','unlock:ms:m1:hero','unlock','hero:knowledge:rare','גיבור נדיר',0,'intelligence',now());
+insert into task_evaluations (user_id, id, task_id, original_description, dims, score, difficulty, estimated_minutes, xp, explanation, source, repeat_key, content_hash, evaluation_version)
+  values ('11111111-1111-1111-1111-111111111111','pt:g2:t9','pt:g2:t9','חדש','{"time":3,"complexity":3,"effort":3,"scope":3,"significance":3}',3,3,60,32,'x','ai','t:חדש','abcd1234',1);
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+  if (select count(*) from xp_events) <> 2 then raise exception 'duplicate xp'; end if;
+  if (select count(*) from task_evaluations) <> 1 then raise exception 'owner cannot read own evaluation'; end if;
+end $$;
 insert into task_evidence (id, task_id, instance_key, status, kind, file_ref) values ('ev1','pt:g2:t9','pt:g2:t9','submitted','photo','11111111-1111-1111-1111-111111111111/ev1.jpg');
 set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 do $$ begin
-  if (select count(*) from task_evidence) <> 0 or (select count(*) from xp_events) <> 0 then raise exception 'game data leak across users'; end if;
+  if (select count(*) from task_evidence) <> 0 or (select count(*) from xp_events) <> 0 or (select count(*) from task_evaluations) <> 0 then raise exception 'game data leak across users'; end if;
 end $$;
 SQL
 echo "migration + RLS checks: OK"

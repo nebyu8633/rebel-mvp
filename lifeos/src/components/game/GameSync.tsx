@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Sparkles, Trophy, Castle, Crown, Swords, Flag } from "lucide-react";
+import { Sparkles, Trophy, Castle, Crown, Swords, Flag, Gem } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { useToday } from "@/hooks/useToday";
 import { runGameSync, useCelebrations, type Celebration } from "@/lib/game/sync";
 import { playSound } from "@/lib/game/sound";
 import { profileOf } from "@/lib/game/engine";
 import { appendLog } from "@/lib/game/notifyLog";
+import { evaluatePending } from "@/lib/game/evaluate";
 
 /** Keeps the ledger / milestones in sync with real data (debounced, idempotent) and queues celebrations. */
 export function GameSync() {
@@ -22,6 +23,7 @@ export function GameSync() {
       () => {
         const initial = first.current;
         first.current = false;
+        void evaluatePending();
         void runGameSync(today).then((c) => {
           // on the very first sync after loading, don't replay old history as celebrations
           if (c.length && !initial) {
@@ -64,6 +66,7 @@ const ICON: Record<Celebration["kind"], typeof Sparkles> = {
   milestone: Flag,
   building: Castle,
   challenge: Swords,
+  unlock: Gem,
 };
 const HEAD: Record<Celebration["kind"], string> = {
   xp: "",
@@ -72,6 +75,7 @@ const HEAD: Record<Celebration["kind"], string> = {
   milestone: "אבן דרך הושלמה",
   building: "ציון דרך חדש נבנה",
   challenge: "אתגר הושלם",
+  unlock: "נפתח פרס חדש",
 };
 
 /** Full-screen moment for big events; a small floating chip for plain XP. */

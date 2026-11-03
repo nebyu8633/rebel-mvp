@@ -51,7 +51,7 @@ export function gameReminders(db: DB, date: string): GameReminder[] {
     for (const i of instancesInRange(db, date, date)) {
       if (!i.startTime || !isOpen(i.status) || i.date !== date) continue;
       const start = timeToMinutes(i.startTime);
-      const xp = taskXp(i.task, p);
+      const xp = taskXp(db, i.task);
       const high = i.task.priority === "high";
       const cat: ReminderCategory = high ? "high" : "standard";
       const base = { date, kind: "task" as const, href: "/today", instanceKey: i.key, urgent: high };

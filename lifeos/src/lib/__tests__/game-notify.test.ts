@@ -74,7 +74,7 @@ describe("milestones & game master", () => {
   });
   it("after missed days the master suggests one small step, without punishment", () => {
     const db = settings(dbWith([task({ id: "s", title: "קריאה", date: D, estimatedMinutes: 10 }), task({ id: "big", date: D, estimatedMinutes: 120, priority: "high" })]), 60);
-    db.xpEvents = { "task:old": { id: "task:old", kind: "task", refId: "old", title: "x", amount: 10, region: null, attribute: "discipline", at: "2026-10-25T10:00:00.000Z", createdAt: T0, updatedAt: T0 } };
+    db.xpEvents = { "task:old": { id: "task:old", kind: "task", refId: "old", title: "x", amount: 10, region: null, attribute: "discipline", at: "2026-10-25T10:00:00.000Z", detail: "", evalVersion: null, createdAt: T0, updatedAt: T0 } };
     const b = briefing(db, D);
     const ret = b.notes.find((n) => n.id === "return")!;
     expect(ret.text).toContain("9 ימים");

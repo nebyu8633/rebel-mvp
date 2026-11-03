@@ -129,6 +129,8 @@ export function buildSeed(db: DB, today: string, timezone: string, nowIso: strin
     evidence: "none" as const,
     evidenceCriteria: "",
     xpSize: "auto" as const,
+    parentTaskId: null,
+    actualMinutes: null,
     ...ts,
   };
   const routines: Task[] = [

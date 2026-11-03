@@ -149,11 +149,61 @@ export const Task = z.object({
   evidence: z.enum(["none", "photo", "document", "manual"]).default("none"),
   /** What counts as "done" (shown in Focus Mode and the evidence flow). */
   evidenceCriteria: z.string().max(500).default(""),
-  /** XP size; auto = from duration/priority. */
+  /** Legacy (pre-evaluation) size field. Ignored for rewards: the player can't choose XP. */
   xpSize: z.enum(["auto", "small", "medium", "major"]).default("auto"),
+  /** Parent task when this task is a sub-step of a bigger one (shares the parent's XP budget). */
+  parentTaskId: z.string().nullable().default(null),
+  /** Minutes actually spent (from Focus Mode), used only to calibrate personal duration estimates. */
+  actualMinutes: z.number().int().min(0).max(24 * 60).nullable().default(null),
   ...timestamps,
 });
 export type Task = z.infer<typeof Task>;
+
+/**
+ * Difficulty evaluation of a task. The AI rates the dimensions; the scoring model, the level and
+ * the XP are computed by deterministic code (server-side in cloud mode). The player can clarify
+ * the scope but never sets the XP.
+ */
+export const EvalDims = z.object({
+  time: z.number().min(1).max(5),
+  complexity: z.number().min(1).max(5),
+  effort: z.number().min(1).max(5),
+  scope: z.number().min(1).max(5),
+  significance: z.number().min(1).max(5),
+});
+export type EvalDims = z.infer<typeof EvalDims>;
+export const TaskEvaluation = z.object({
+  /** = task id (one current evaluation per task; history kept in `previous`). */
+  id,
+  taskId: id,
+  originalDescription: z.string().max(4500),
+  clarifiedScope: z.string().max(1500).default(""),
+  answers: z.array(z.object({ q: z.string().max(300), a: z.string().max(500) })).max(6).default([]),
+  questions: z.array(z.object({ q: z.string().max(300), options: z.array(z.string().max(80)).max(5).default([]) })).max(2).default([]),
+  dims: EvalDims,
+  score: z.number().min(1).max(5),
+  difficulty: z.number().int().min(1).max(5),
+  /** AI's estimate of the duration and the number of steps. */
+  estimatedMinutes: z.number().int().min(1).max(24 * 60),
+  steps: z.number().int().min(1).max(100).default(1),
+  /** Duration adjusted to the player's own pace (calibration). Not used for XP. */
+  personalMinutes: z.number().int().min(1).max(24 * 60).nullable().default(null),
+  familiarity: z.enum(["new", "some", "experienced"]).default("new"),
+  xp: z.number().int().min(0).max(1000),
+  explanation: z.string().max(600),
+  reasons: z.array(z.string().max(200)).max(8).default([]),
+  source: z.enum(["ai", "rules"]),
+  repeatKey: z.string().max(200),
+  duplicateOf: z.string().nullable().default(null),
+  parentTaskId: z.string().nullable().default(null),
+  contentHash: z.string().max(40),
+  evaluationVersion: z.number().int().min(1),
+  /** Set when the task was completed: later scope edits can no longer raise its XP. */
+  lockedAt: z.string().nullable().default(null),
+  previous: z.array(z.object({ at: z.string(), difficulty: z.number().int(), xp: z.number().int(), contentHash: z.string() })).max(10).default([]),
+  ...timestamps,
+});
+export type TaskEvaluation = z.infer<typeof TaskEvaluation>;
 
 /**
  * Per-occurrence state of a recurring task. The id is deterministic
@@ -455,13 +505,17 @@ export type Evidence = z.infer<typeof Evidence>;
 export const XpEvent = z.object({
   /** Deterministic id (e.g. `task:<id>`, `ms:<id>`) — the same achievement can never be awarded twice. */
   id,
-  kind: z.enum(["task", "occurrence", "milestone", "goal", "habit", "achievement", "challenge", "chest"]),
+  kind: z.enum(["task", "occurrence", "milestone", "goal", "habit", "achievement", "challenge", "chest", "unlock"]),
   refId: z.string(),
   title: z.string().max(300),
   amount: z.number().int().min(0).max(10000),
   region: z.enum(REGION_IDS).nullable().default(null),
   attribute: z.enum(["strength", "intelligence", "wealth", "discipline", "career", "social"]),
   at: z.string(),
+  /** Why this amount (difficulty level, repeat balancing, sub-task budget…). */
+  detail: z.string().max(300).default(""),
+  /** Evaluation version used for this award (null = no evaluation involved). */
+  evalVersion: z.number().int().nullable().default(null),
   ...timestamps,
 });
 export type XpEvent = z.infer<typeof XpEvent>;
@@ -556,6 +610,7 @@ export const COLLECTIONS = {
   xpEvents: XpEvent,
   rewards: Reward,
   gameProfile: GameProfile,
+  evaluations: TaskEvaluation,
 } as const;
 
 export type CollectionName = keyof typeof COLLECTIONS;

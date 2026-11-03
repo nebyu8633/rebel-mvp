@@ -11,7 +11,7 @@ import type { Evidence, XpEvent } from "@/lib/types";
 import { cx } from "@/components/ui";
 import { GamePage, Panel } from "@/components/game/bits";
 
-const KIND_ICON: Record<XpEvent["kind"], typeof Check> = { task: Check, occurrence: Repeat, milestone: Flag, goal: Trophy, habit: Repeat, achievement: Sparkles, challenge: Swords, chest: Gift };
+const KIND_ICON: Record<XpEvent["kind"], typeof Check> = { unlock: Sparkles, task: Check, occurrence: Repeat, milestone: Flag, goal: Trophy, habit: Repeat, achievement: Sparkles, challenge: Swords, chest: Gift };
 
 export default function LegacyPage() {
   const g = useGame();
@@ -63,7 +63,10 @@ function Timeline({ ledger }: { ledger: XpEvent[] }) {
               return (
                 <li key={e.id} className={cx("flex items-center gap-3 rounded-xl px-3 py-2", big ? "bg-amber-300/10" : "bg-white/[0.03]")}>
                   <I size={15} className={big ? "gold-text" : "text-slate-500"} />
-                  <span className={cx("min-w-0 flex-1 truncate text-sm", big ? "font-semibold text-amber-50" : "text-slate-200")}>{e.title}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cx("block truncate text-sm", big ? "font-semibold text-amber-50" : "text-slate-200")}>{e.title}</span>
+                    {e.detail && <span className="block truncate text-[11px] text-slate-500">{e.detail}</span>}
+                  </span>
                   {e.region && <span className="hidden text-[11px] sm:inline" style={{ color: REGION_BY_ID[e.region].color.glow }}>{REGION_BY_ID[e.region].short}</span>}
                   <span className="text-[11px] text-slate-500">{formatHebDate(e.at.slice(0, 10))}</span>
                   <span className="gold-text w-12 text-end text-[12px] font-semibold ltr-nums">+{e.amount}</span>

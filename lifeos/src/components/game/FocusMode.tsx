@@ -59,13 +59,19 @@ function FocusMode({ instanceKey, onClose }: { instanceKey: string; onClose: () 
   const t = inst.task;
   const region = taskRegion(db, t);
   const profile = profileOf(db);
-  const xp = taskXp(t, profile);
+  const xp = taskXp(db, t);
   const needsEvidence = t.evidence !== "none";
 
   const complete = async () => {
     setRunning(false);
     const ok = inst.status === "completed" ? true : await setInstanceStatus(inst, "completed");
     if (!ok) return;
+    // calibration: remember how long it really took (only if the timer was used)
+    const spent = Math.round((total - left) / 60);
+    if (spent >= 1 && !inst.recurring) {
+      const cur = useStore.getState().db.tasks[inst.task.id];
+      if (cur) await useStore.getState().put("tasks", { ...cur, actualMinutes: Math.min(spent, 24 * 60), updatedAt: cur.updatedAt });
+    }
     setDoneAt(nowIso());
     if (needsEvidence && !isVerified(useStore.getState().db, t, inst.key)) useGameUI.getState().openEvidence(inst.key, false);
   };

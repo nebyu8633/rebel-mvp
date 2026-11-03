@@ -119,7 +119,7 @@ function EvidenceModal({ instanceKey, complete, onClose }: { instanceKey: string
           </button>
         </div>
         <p className="mt-2 text-[12px] text-slate-400">
-          <span className="gold-text font-semibold ltr-nums">+{taskXp(t, profileOf(db))} XP</span> יתווספו אחרי שתאשר את ההוכחה. התמונות נשמרות באופן פרטי.
+          <span className="gold-text font-semibold ltr-nums">+{taskXp(db, t)} XP</span> יתווספו אחרי שתאשר את ההוכחה. התמונות נשמרות באופן פרטי.
         </p>
 
         {live && (

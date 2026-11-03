@@ -221,7 +221,7 @@ export default function SettingsPage() {
         <PushToggle />
       </Disclosure>
 
-      <Disclosure id="s-game" icon={<Gamepad2 size={16} />} title="משחק" summary="ערכי XP">
+      <Disclosure id="s-game" icon={<Gamepad2 size={16} />} title="משחק" summary="טבלת XP">
         <XpSettings />
       </Disclosure>
 

@@ -44,6 +44,35 @@ export const EvidenceVerdict = z.object({
 });
 export type EvidenceVerdict = z.infer<typeof EvidenceVerdict>;
 
+/** What the server sends the AI to evaluate a task (only this task + minimal context). */
+export const TaskAssessInput = z.object({
+  title: z.string().max(200),
+  notes: z.string().max(4000),
+  userMinutes: z.number().int().min(0).max(1440).nullable(),
+  goal: z.string().max(200).nullable(),
+  milestone: z.string().max(250).nullable(),
+  parent: z.string().max(200).nullable(),
+  recurring: z.boolean(),
+  clarifiedScope: z.string().max(1500),
+  answers: z.array(z.object({ q: z.string().max(300), a: z.string().max(500) })).max(6),
+  similarDone: z.array(z.string().max(200)).max(8),
+  familiarity: z.enum(["new", "some", "experienced"]),
+});
+export type TaskAssessInput = z.infer<typeof TaskAssessInput>;
+export const TaskAssessment = z.object({
+  estimatedMinutes: z.number().int().min(1).max(1440),
+  steps: z.number().int().min(1).max(50),
+  complexity: z.number().int().min(1).max(5),
+  effort: z.number().int().min(1).max(5),
+  scope: z.number().int().min(1).max(5),
+  significance: z.number().int().min(1).max(5),
+  /** False when the description is too vague to evaluate reliably. */
+  sufficient: z.boolean(),
+  questions: z.array(z.object({ q: z.string().max(200), options: z.array(z.string().max(60)).max(4) })).max(2),
+  rationale: z.string().max(300),
+});
+export type TaskAssessment = z.infer<typeof TaskAssessment>;
+
 export class AIError extends Error {
   constructor(
     public code: "not_configured" | "rate_limited" | "auth" | "bad_request" | "unavailable" | "invalid_output" | "refused",
@@ -59,6 +88,7 @@ export interface AIProvider {
   plan(input: PlanInput, today: string): Promise<PlanProposal>;
   ask(question: string, context: AIContext): Promise<string>;
   assessEvidence(input: EvidenceInput): Promise<EvidenceVerdict>;
+  assessTask(input: TaskAssessInput): Promise<TaskAssessment>;
   goalTurn(input: GoalTurnInput): Promise<GoalTurnOutput>;
   goalPlan(input: GoalPlanInput): Promise<GoalPlan>;
 }

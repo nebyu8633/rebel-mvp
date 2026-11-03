@@ -27,6 +27,8 @@ export function task(p: Partial<Task> & { id: string }): Task {
     evidence: "none",
     evidenceCriteria: "",
     xpSize: "auto",
+    parentTaskId: null,
+    actualMinutes: null,
     createdAt: T0,
     updatedAt: T0,
     ...p,

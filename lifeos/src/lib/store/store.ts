@@ -30,6 +30,8 @@ interface StoreState {
   applyBatch(ops: BatchOp[], opts?: { silent?: boolean }): Promise<{ ok: boolean; error?: string }>;
   toast(message: string, kind?: Toast["kind"], action?: Toast["action"], secondary?: Toast["secondary"]): void;
   dismiss(id: number): void;
+  /** Replace records in memory only — for records the SERVER already wrote (cloud mode XP ledger, evaluations). */
+  setServerRecords(c: CollectionName, records: Array<{ id: string }>, removeIds?: string[]): void;
 }
 
 let toastSeq = 0;
@@ -191,6 +193,15 @@ export const useStore = create<StoreState>((set, get) => ({
   },
   dismiss(id) {
     set({ toasts: get().toasts.filter((t) => t.id !== id) });
+  },
+  setServerRecords(c, records, removeIds = []) {
+    let db = get().db;
+    for (const r of records) {
+      const parsed = COLLECTIONS[c].safeParse(r);
+      if (parsed.success) db = setEntity(db, c, r.id, parsed.data);
+    }
+    for (const id of removeIds) db = setEntity(db, c, id, undefined);
+    set({ db });
   },
 }));
 

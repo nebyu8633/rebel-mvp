@@ -42,9 +42,32 @@ export default function RewardsPage() {
   const special = REGIONS.filter((r) => g.regions[r.id].stage === 5);
   const rewards = Object.values(g.db.rewards).sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   const [adding, setAdding] = useState(false);
+  const unlocks = g.ledger.filter((e) => e.kind === "unlock").sort((a, b) => (a.at < b.at ? 1 : -1));
 
   return (
     <GamePage title="פרסים" subtitle="כל פרס כאן הושג בפעילות אמיתית. בלי הגרלות.">
+      <section className="space-y-2" data-testid="unlocks">
+        <h2 className="text-sm font-semibold text-slate-300">פתיחות מאבני דרך ומטרות</h2>
+        {unlocks.length === 0 ? (
+          <Panel className="text-sm text-slate-400">אבן דרך משמעותית פותחת גיבור נדיר או אפי ויכולות מיוחדות; מטרה שהושגה פותחת גיבור אגדי, אזור חדש ופרק בסיפור. כל פתיחה ניתנת פעם אחת בלבד.</Panel>
+        ) : (
+          <>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {unlocks.map((u) => (
+                <li key={u.id} className={cx("flex items-start gap-3 rounded-xl px-3 py-2.5", u.refId.includes(":legendary") ? "bg-amber-300/15" : u.refId.includes(":epic") ? "bg-violet-400/10" : "bg-white/[0.04]")}>
+                  <span className="text-xl">{u.refId.startsWith("hero:") ? "🛡️" : u.refId.startsWith("ability:") ? "✨" : u.refId.startsWith("area:") ? "🗺️" : "📖"}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-white">{u.title}</div>
+                    <div className="text-[11px] text-slate-400">{u.detail} · {formatHebDate(u.at.slice(0, 10))}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-slate-500">הפתיחות שמורות לך. מערכת הגיבורים עדיין לא בנויה — כשתיבנה, הגיבורים והיכולות יופיעו באוסף לפי הפתיחות האלה.</p>
+          </>
+        )}
+      </section>
+
       <section id="chests" className="scroll-mt-20 space-y-2">
         <h2 className="text-sm font-semibold text-slate-300">תיבות אוצר</h2>
         {chests.length === 0 ? (
@@ -53,6 +76,7 @@ export default function RewardsPage() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {chests.map((m) => {
               const isOpen = opened.has(m.id);
+              if (!g.ledger.some((e) => e.id === `ms:${m.id}`)) return null;
               return (
                 <Panel key={m.id} className={cx("flex flex-col items-center p-3 text-center", !isOpen && "ring-1 ring-amber-300/40")}>
                   <span className={cx("text-3xl", isOpen && "opacity-50")}>{isOpen ? "📭" : "🎁"}</span>

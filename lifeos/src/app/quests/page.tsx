@@ -166,7 +166,7 @@ function TaskLine({ t, db }: { t: Task; db: DB }) {
       <div className="min-w-0 flex-1">
         <div className={cx("truncate", done ? "text-slate-400" : "text-slate-100", t.status === "skipped" && "line-through")}>{t.title}</div>
         <div className="flex flex-wrap gap-x-2 text-[11px] text-slate-500">
-          <span className="gold-text ltr-nums">+{taskXp(t, profileOf(db))} XP</span>
+          <span className="gold-text ltr-nums">+{taskXp(db, t)} XP</span>
           {(t.date || t.deadline) && <span>{formatHebDate((t.date ?? t.deadline)!)}</span>}
           {t.evidence !== "none" && <span>הוכחה: {EVIDENCE_LABEL[t.evidence]}{ev ? ` · ${EVIDENCE_STATUS_LABEL[ev.status]}` : done ? " · ממתין" : ""}</span>}
         </div>

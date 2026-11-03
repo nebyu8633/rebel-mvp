@@ -45,7 +45,7 @@ function baseTask(id: string, now: string): Task {
     id, title: "", notes: "", goalId: null, milestoneId: null, objectiveId: null, priority: "medium", estimatedMinutes: null,
     date: null, startTime: null, deadline: null, status: "planned", recurrence: null, reminderMinutes: null, rationale: "",
     dependsOn: [], routine: null, source: "planner", completedAt: null, history: [{ at: now, action: "created" }],
-    planVersionId: null, evidence: "none", evidenceCriteria: "", xpSize: "auto", createdAt: now, updatedAt: now,
+    planVersionId: null, evidence: "none", evidenceCriteria: "", xpSize: "auto", parentTaskId: null, actualMinutes: null, createdAt: now, updatedAt: now,
   };
 }
 
