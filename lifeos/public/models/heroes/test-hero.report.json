@@ -1,0 +1,26 @@
+{
+  "hero": "test-hero",
+  "file": "public/models/heroes/test-hero.glb",
+  "bytes": 9920,
+  "triangles": {
+    "before": 84,
+    "after": 84,
+    "budget": 10000
+  },
+  "bones": 7,
+  "clips": [
+    {
+      "name": "idle",
+      "seconds": 2
+    },
+    {
+      "name": "run",
+      "seconds": 0.699999988079071
+    },
+    {
+      "name": "attack",
+      "seconds": 0.6000000238418579
+    }
+  ],
+  "textures": "none"
+}

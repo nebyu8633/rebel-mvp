@@ -4,11 +4,13 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
 import { HERO_BY_ID } from "@/lib/arena/heroes";
-import { HeroModel, type HeroRig } from "./HeroModel";
+import type { HeroRig } from "./HeroModel";
+import { HeroAvatar, type Motion } from "./HeroGLB";
 
 function Spin({ heroId }: { heroId: string }) {
   const g = useRef<THREE.Group>(null);
   const rig = useRef<HeroRig>(null);
+  const motion = useRef<Motion>({ speed: 0, casting: false });
   useFrame(({ clock }) => {
     if (g.current) g.current.rotation.y = clock.elapsedTime * 0.6;
     const r = rig.current;
@@ -18,7 +20,7 @@ function Spin({ heroId }: { heroId: string }) {
   const def = HERO_BY_ID[heroId];
   return (
     <group ref={g} position={[0, -1, 0]}>
-      <HeroModel ref={rig} def={def} teamColor={def.look.glow} />
+      <HeroAvatar ref={rig} def={def} teamColor={def.look.glow} motion={motion} />
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
         <circleGeometry args={[1.4, 40]} />
         <meshStandardMaterial color="#1a2236" />

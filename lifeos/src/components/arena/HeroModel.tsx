@@ -12,6 +12,8 @@ export interface HeroRig {
   armR: THREE.Group | null;
   body: THREE.Group | null;
   mats: THREE.MeshStandardMaterial[];
+  /** True for produced GLB heroes (already scaled to their real height). */
+  glb?: boolean;
 }
 
 const Mat = ({ c, e, rig, metal = 0.1, rough = 0.6 }: { c: string; e?: string; rig: React.MutableRefObject<THREE.MeshStandardMaterial[]>; metal?: number; rough?: number }) => (

@@ -11,7 +11,8 @@ import { HERO_BY_ID } from "@/lib/arena/heroes";
 import { MAP_BY_ID, type MapDef } from "@/lib/arena/maps";
 import type { Session } from "@/lib/arena/session";
 import type { MatchState, Player } from "@/lib/arena/types";
-import { HeroModel, type HeroRig } from "./HeroModel";
+import type { HeroRig } from "./HeroModel";
+import { HeroAvatar, type Motion } from "./HeroGLB";
 
 import { TEAM_COLORS, type Aim } from "./colors";
 import { initialQuality, pinnedQuality, PostFX, QualityGovernor, RendererTone, SceneLighting, type Quality } from "@/components/visual/Atmosphere";
@@ -332,6 +333,7 @@ function Effects({ session }: { session: Session }) {
 function Actor({ session, id, colorIndex }: { session: Session; id: string; colorIndex: number }) {
   const group = useRef<THREE.Group>(null);
   const rig = useRef<HeroRig>(null);
+  const motion = useRef<Motion>({ speed: 0, casting: false });
   const shield = useRef<THREE.Mesh>(null);
   const swap = useRef<THREE.Mesh>(null);
   const [heroId, setHeroId] = useState<string | null>(null);
@@ -362,6 +364,7 @@ function Actor({ session, id, colorIndex }: { session: Session; id: string; colo
       if (r.legR) r.legR.rotation.x = -Math.sin(t) * swing;
       if (r.armL) r.armL.rotation.x = -Math.sin(t) * swing * 0.6;
       const casting = p.castLock > 0 || (f.cur.events.some((e) => e.playerId === id && e.kind === "cast" && f.cur.time - e.t < 0.2));
+      motion.current = { speed, casting };
       if (r.armR) r.armR.rotation.x = casting ? -1.4 : Math.sin(t) * swing * 0.6;
       if (r.body) {
         r.body.position.y = Math.abs(Math.sin(t)) * swing * 0.08 + Math.sin(clock.elapsedTime * 2) * 0.02;
@@ -369,7 +372,7 @@ function Actor({ session, id, colorIndex }: { session: Session; id: string; colo
       }
       // switching: grow in; knocked out: sink and fade
       const s = p.switchFx > 0 ? 1 - p.switchFx / 0.6 : 1;
-      r.root.scale.setScalar((HERO_BY_ID[h?.heroId ?? ""]?.role === "tank" ? 1.25 : 0.92) * (0.4 + 0.6 * Math.min(1, s)) * (1 - fall.current * 0.6));
+      r.root.scale.setScalar((r.glb ? 1 : HERO_BY_ID[h?.heroId ?? ""]?.role === "tank" ? 1.25 : 0.92) * (0.4 + 0.6 * Math.min(1, s)) * (1 - fall.current * 0.6));
       r.root.position.y = -fall.current * 0.8;
       for (const m of r.mats) {
         if (m.userData.base === undefined) {
@@ -399,7 +402,7 @@ function Actor({ session, id, colorIndex }: { session: Session; id: string; colo
   const def = heroId ? HERO_BY_ID[heroId] : null;
   return (
     <group ref={group}>
-      {def && <HeroModel key={def.id} ref={rig} def={def} teamColor={TEAM_COLORS[colorIndex % TEAM_COLORS.length]} />}
+      {def && <HeroAvatar key={def.id} ref={rig} def={def} teamColor={TEAM_COLORS[colorIndex % TEAM_COLORS.length]} motion={motion} />}
       <mesh ref={shield} position={[0, 1.1, 0]} visible={false}>
         <sphereGeometry args={[1.25, 20, 14]} />
         <meshStandardMaterial color="#8fd0ff" transparent opacity={0.22} emissive="#4aa3ff" emissiveIntensity={0.6} depthWrite={false} />

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "arena:server": "tsx arena-server/server.ts"
+    "arena:server": "tsx arena-server/server.ts",
+    "assets:hero": "node scripts/assets/prepare-hero.mjs",
+    "assets:test-hero": "node scripts/assets/make-test-hero.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
@@ -31,6 +33,9 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
@@ -38,6 +43,7 @@
     "@types/three": "^0.187.0",
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.2",
+    "meshoptimizer": "^1.3.0",
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
