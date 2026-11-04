@@ -7,16 +7,15 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Environment, Sky } from "@react-three/drei";
-import esplanade from "@pmndrs/assets/hdri/esplanade.exr";
-import sunset from "@pmndrs/assets/hdri/sunset.exr";
+import { HDRI } from "../config";
 import { telemetry } from "../player/Player";
 import type { Quality } from "../store";
 
 export type LightPreset = "day" | "dusk";
 const PRESETS = {
-  day: { sun: new THREE.Vector3(0.7, 0.6, 0.38).normalize(), color: 0xfff0d8, intensity: 3.8, env: esplanade, envI: 0.1, hemi: [0xcfe3ff, 0x5a5040, 0.12] as const, fog: [0xc9d6e2, 45, 140] as const, sky: { turbidity: 6, rayleigh: 1.2 } },
+  day: { sun: new THREE.Vector3(0.7, 0.6, 0.38).normalize(), color: 0xfff0d8, intensity: 3.8, env: HDRI.day, envI: 0.1, hemi: [0xcfe3ff, 0x5a5040, 0.12] as const, fog: [0xc9d6e2, 45, 140] as const, sky: { turbidity: 6, rayleigh: 1.2 } },
   // late golden hour from the west, cool sky fill — the look of the reference image
-  dusk: { sun: new THREE.Vector3(-0.48, 0.7, 0.53).normalize(), color: 0xffc08a, intensity: 4.6, env: sunset, envI: 0.5, hemi: [0xa9bcff, 0x4a3a32, 0.45] as const, fog: [0xa7aac4, 110, 480] as const, sky: { turbidity: 7, rayleigh: 2.2 } },
+  dusk: { sun: new THREE.Vector3(-0.48, 0.7, 0.53).normalize(), color: 0xffc08a, intensity: 4.6, env: HDRI.dusk, envI: 0.5, hemi: [0xa9bcff, 0x4a3a32, 0.45] as const, fog: [0xa7aac4, 110, 480] as const, sky: { turbidity: 7, rayleigh: 2.2 } },
 };
 
 export function Lighting({ quality, preset = "day" }: { quality: Quality; preset?: LightPreset }) {

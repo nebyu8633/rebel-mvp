@@ -16,6 +16,7 @@ import { FACADE_TILE_M, logoTexture, mullionTexture, signTexture, windowTexture 
 import { interactables, useProto, type Quality } from "../store";
 import { emitMockEvent } from "../progression/useProgression";
 import type { LifeOSSnapshot } from "../data/lifeos";
+import { DEMO_EVENTS } from "../config";
 
 const deg = (d: number) => (d * Math.PI) / 180;
 
@@ -164,7 +165,7 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
   });
   const doorMat = useMemo(() => new THREE.MeshStandardMaterial({ color: 0x9fc4e0, metalness: 0.6, roughness: 0.05, transparent: true, opacity: 0.45, envMapIntensity: 1.5 }), []);
   const holo = useMemo(
-    () => new THREE.MeshBasicMaterial({ map: signTexture({ title: "LifeOS", subtitle: `רמה ${snapshot.profile.level} · ${snapshot.profile.lifeXp.toLocaleString()} Life XP`, accent: "#4fc3ff", footer: "נתוני דמו" }), transparent: true, toneMapped: false, side: THREE.DoubleSide }),
+    () => new THREE.MeshBasicMaterial({ map: signTexture({ title: "LifeOS", subtitle: `רמה ${snapshot.profile.level} · ${snapshot.profile.lifeXp.toLocaleString()} Life XP`, accent: "#4fc3ff", footer: snapshot.source === "mock" ? "נתוני דמו" : "נתונים מ־LifeOS" }), transparent: true, toneMapped: false, side: THREE.DoubleSide }),
     [snapshot],
   );
   return (
@@ -551,7 +552,7 @@ export function CityScene({ quality, snapshot }: { quality: Quality; snapshot: L
         <Fountain />
         <Tower snapshot={snapshot} />
         <Monorail />
-        <Kiosk />
+        {DEMO_EVENTS && <Kiosk />}
         {DISTRICTS.map((d) => (
           <Gate key={d.id} d={d} snapshot={snapshot} />
         ))}

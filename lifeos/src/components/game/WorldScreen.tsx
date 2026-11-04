@@ -161,7 +161,7 @@ export function WorldScreen() {
           </button>
         </div>
       )}
-      <Link href="/play" className="glass absolute end-3 top-[7rem] flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] text-amber-100 sm:top-[8.6rem]" data-testid="open-city">
+      <Link href="/city" className="glass absolute end-3 top-[7rem] flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] text-amber-100 sm:top-[8.6rem]" data-testid="open-city">
         העיר החדשה (ניסוי)
       </Link>
       {gl === false && <div className="glass absolute end-3 top-[4.6rem] rounded-xl px-2 py-1 text-[11px] text-slate-300">תצוגת מפה (אין תמיכה בתלת־ממד)</div>}

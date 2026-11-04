@@ -15,6 +15,7 @@ import { nextGoal, overallProgress, type Domain, type LifeOSSnapshot } from "../
 import { telemetry } from "../player/Player";
 import { emitMockCorrection } from "../progression/useProgression";
 import { ActionButtons, Stick } from "./Controls";
+import { DEMO_EVENTS } from "../config";
 
 const CSS = `
 .hud{position:absolute;inset:0;pointer-events:none;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#eef3f8;direction:rtl}
@@ -422,7 +423,7 @@ function Panel({ s }: { s: LifeOSSnapshot }) {
           ✕
         </button>
         {body}
-        <div style={{ fontSize: 11, opacity: 0.6, marginTop: 10 }}>נתוני דמו (Mock). חיבור לנתוני LifeOS אמיתיים: אחרי אישור האב־טיפוס.</div>
+        <div style={{ fontSize: 11, opacity: 0.6, marginTop: 10 }}>{s.source === "mock" ? "נתוני דמו (Mock). חיבור לנתוני LifeOS אמיתיים: אחרי אישור האב־טיפוס." : "נתונים מ־LifeOS · תצוגה בלבד. השלמה ואימות רק באפליקציה."}</div>
       </div>
     </div>
   );
@@ -456,7 +457,7 @@ function Settings() {
           <label>
             <input type="checkbox" checked={debug.showColliders} onChange={(e) => set({ debug: { ...debug, showColliders: e.target.checked } })} /> הצג מתנגשים
           </label>
-          <button onClick={emitMockCorrection}>שלח אירוע תיקון (דמו)</button>
+          {DEMO_EVENTS && <button onClick={emitMockCorrection}>שלח אירוע תיקון (דמו)</button>}
         </div>
       )}
     </div>

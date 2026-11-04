@@ -120,8 +120,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const moreOpen = useUI((s) => s.moreOpen);
   const setMoreOpen = useUI((s) => s.setMoreOpen);
   if (path.startsWith("/login")) return <>{children}</>;
-  const isWorld = path === "/" || path.startsWith("/play");
-  const dark = GAME_PATHS.some((h) => isActive(path, h)) || path.startsWith("/play");
+  const isWorld = path === "/" || path.startsWith("/play") || path.startsWith("/city");
+  const dark = GAME_PATHS.some((h) => isActive(path, h)) || path.startsWith("/play") || path.startsWith("/city");
   const mobileMain = MOBILE_MAIN.map((h) => ALL_NAV.find((n) => n.href === h)!);
 
   return (

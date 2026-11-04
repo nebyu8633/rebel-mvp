@@ -3,13 +3,14 @@
  * (copied from three/examples/jsm/libs/basis) so the static build works offline inside Capacitor.
  */
 import * as THREE from "three";
+import { BASE } from "../config";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
 let ktx2: KTX2Loader | null = null;
 export function getKTX2(gl: THREE.WebGLRenderer) {
   if (!ktx2) {
-    ktx2 = new KTX2Loader().setTranscoderPath(`${import.meta.env.BASE_URL}basis/`);
+    ktx2 = new KTX2Loader().setTranscoderPath(`${BASE}basis/`);
     ktx2.detectSupport(gl);
   }
   return ktx2;
@@ -25,7 +26,7 @@ export const gltfExtensions = (gl: THREE.WebGLRenderer) => (loader: GLTFLoaderLi
   loader.setMeshoptDecoder(MeshoptDecoder);
 };
 
-export const base = import.meta.env.BASE_URL;
+export const base = BASE;
 export const asset = (p: string) => `${base}assets/${p}`;
 
 /** Which GPU-compressed formats the device supports (for the bench report). */

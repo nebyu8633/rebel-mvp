@@ -11,7 +11,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { CapsuleCollider, RigidBody, useAfterPhysicsStep, useBeforePhysicsStep, useRapier, type RapierRigidBody } from "@react-three/rapier";
-import type { Collider, KinematicCharacterController } from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import { Character, type CharacterHandle } from "../character/Character";
 import { consumeEdges, input, readMove } from "./input";
@@ -20,6 +19,7 @@ import { autopilotStep } from "./autopilot";
 import { characterEvents } from "../progression/useProgression";
 import { suspend } from "suspend-react";
 import { resolveAvatar } from "../avatar/avatarSource";
+import { DEV } from "../config";
 
 export const CAPSULE = { halfHeight: 0.6, radius: 0.3 };
 const FOOT = CAPSULE.halfHeight + CAPSULE.radius; // centre -> feet
@@ -32,6 +32,11 @@ const JUMP_V = 5.4;
 const PORTRAIT = params.get("cam") === "portrait";
 /** ?cam=front: full-body view from the front (animation / retarget review). */
 const FRONT = params.get("cam") === "front";
+// Rapier types come from @react-three/rapier's own copy (an app may hoist a different version)
+type RapierWorld = ReturnType<typeof useRapier>["world"];
+type KinematicCharacterController = ReturnType<RapierWorld["createCharacterController"]>;
+type Collider = ReturnType<RapierRigidBody["collider"]>;
+
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const damp = (a: number, b: number, k: number, dt: number) => a + (b - a) * (1 - Math.exp(-k * dt));
 
@@ -107,7 +112,7 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
 
   // dev-only hooks for automated tests (teleport + telemetry); stripped from production builds
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!DEV) return;
     const w = window as unknown as { __protoPlayer?: unknown };
     w.__protoPlayer = {
       telemetry,

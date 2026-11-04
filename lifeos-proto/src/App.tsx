@@ -15,6 +15,7 @@ import { ActionButtons, Stick, useLookDrag } from "./ui/Controls";
 import { Hud, Loader } from "./ui/Hud";
 import { BenchPanel, BenchProbe, bench } from "./ui/Bench";
 import { params, useProto, type Quality } from "./store";
+import { DEV } from "./config";
 
 const isTouch = typeof window !== "undefined" && (matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && !matchMedia("(hover: hover)").matches));
 const pinned = params.get("q") as Quality | null;
@@ -68,7 +69,7 @@ function RendererSetup({ quality }: { quality: Quality }) {
   const scene = useThree((s) => s.scene);
   const setDpr = useThree((s) => s.setDpr);
   useEffect(() => {
-    if (import.meta.env.DEV) Object.assign(window, { __proto3d: { gl, scene } });
+    if (DEV) Object.assign(window, { __proto3d: { gl, scene } });
   }, [gl, scene]);
   useEffect(() => {
     gl.toneMapping = THREE.AgXToneMapping;
