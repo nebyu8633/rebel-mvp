@@ -4,3 +4,4 @@ assets-src
 *.log
 android
 ios
+public/avatar-private

@@ -7,33 +7,12 @@
  *  1. `renameTracks` — pure, name-only mapping (same rest pose, e.g. a re-export of the same rig).
  *  2. `retargetToAvatar` (threeRetarget.ts) — rest-pose aware, via three's SkeletonUtils.retargetClip.
  */
+import boneMap from "./boneMap.mixamo-rocketbox.json";
+
 export type BoneMap = Record<string, string>;
 
-/** Mixamo -> Rocketbox (Biped) bone names. Only bones that exist on both rigs. */
-export const MIXAMO_TO_ROCKETBOX: BoneMap = {
-  Hips: "Bip01_Pelvis",
-  Spine: "Bip01_Spine",
-  Spine1: "Bip01_Spine1",
-  Spine2: "Bip01_Spine2",
-  Neck: "Bip01_Neck",
-  Head: "Bip01_Head",
-  LeftShoulder: "Bip01_L_Clavicle",
-  LeftArm: "Bip01_L_UpperArm",
-  LeftForeArm: "Bip01_L_Forearm",
-  LeftHand: "Bip01_L_Hand",
-  RightShoulder: "Bip01_R_Clavicle",
-  RightArm: "Bip01_R_UpperArm",
-  RightForeArm: "Bip01_R_Forearm",
-  RightHand: "Bip01_R_Hand",
-  LeftUpLeg: "Bip01_L_Thigh",
-  LeftLeg: "Bip01_L_Calf",
-  LeftFoot: "Bip01_L_Foot",
-  LeftToeBase: "Bip01_L_Toe0",
-  RightUpLeg: "Bip01_R_Thigh",
-  RightLeg: "Bip01_R_Calf",
-  RightFoot: "Bip01_R_Foot",
-  RightToeBase: "Bip01_R_Toe0",
-};
+/** Mixamo-style (also Avaturn) -> Rocketbox (Biped) bone names, incl. fingers. Shared with scripts/build-avatar.mjs. */
+export const MIXAMO_TO_ROCKETBOX: BoneMap = boneMap;
 
 /** Strip the common "mixamorig:" / "mixamorig" prefixes. */
 export const normalizeBoneName = (n: string) => n.replace(/^mixamorig[:_]?/i, "");

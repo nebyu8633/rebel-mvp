@@ -11,10 +11,8 @@ import { CharacterAnimationController, type AnimFrame, type AnimInput } from "./
 import { FacialController, type Expression } from "./facial";
 import { ThreeAnimator } from "./threeAnimator";
 import type { CharacterMeta } from "./clipMeta";
-import { asset, gltfExtensions } from "../lib/loaders";
-import { params, useProto } from "../store";
-
-export const CHARACTER_URL = asset(params.get("tex") === "webp" ? "character/character.glb" : "character/character.ktx2.glb");
+import { gltfExtensions } from "../lib/loaders";
+import { useProto } from "../store";
 
 export interface CharacterHandle {
   step(i: AnimInput, exertion: number): AnimFrame;
@@ -22,9 +20,10 @@ export interface CharacterHandle {
   readonly controller: CharacterAnimationController;
 }
 
-export const Character = forwardRef<CharacterHandle, { castShadow?: boolean }>(function Character({ castShadow = true }, ref) {
+/** Renders any avatar GLB carrying `lifeosProto` clip metadata (placeholder or the user's retargeted avatar). */
+export const Character = forwardRef<CharacterHandle, { url: string; castShadow?: boolean }>(function Character({ url, castShadow = true }, ref) {
   const gl = useThree((s) => s.gl);
-  const gltf = useGLTF(CHARACTER_URL, false, true, gltfExtensions(gl));
+  const gltf = useGLTF(url, false, true, gltfExtensions(gl));
   const rootMotionStops = useProto((s) => s.debug.rootMotionStops);
 
   const rig = useMemo(() => {
@@ -44,7 +43,7 @@ export const Character = forwardRef<CharacterHandle, { castShadow?: boolean }>(f
         }
       }
     });
-    if (!meta) throw new Error("character.glb has no lifeosProto clip metadata — rebuild assets");
+    if (!meta) throw new Error(`${url} has no lifeosProto clip metadata — run the asset/avatar build`);
     const animator = new ThreeAnimator(scene, gltf.animations);
     const controller = new CharacterAnimationController(meta);
     const facial = new FacialController();

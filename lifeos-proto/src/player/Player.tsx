@@ -18,6 +18,8 @@ import { consumeEdges, input, readMove } from "./input";
 import { interactables, params, useProto } from "../store";
 import { autopilotStep } from "./autopilot";
 import { characterEvents } from "../progression/useProgression";
+import { suspend } from "suspend-react";
+import { resolveAvatar } from "../avatar/avatarSource";
 
 export const CAPSULE = { halfHeight: 0.6, radius: 0.3 };
 const FOOT = CAPSULE.halfHeight + CAPSULE.radius; // centre -> feet
@@ -28,6 +30,8 @@ const JUMP_V = 5.4;
 
 /** ?cam=portrait: camera in front of the face (facial animation / skin shading review). */
 const PORTRAIT = params.get("cam") === "portrait";
+/** ?cam=front: full-body view from the front (animation / retarget review). */
+const FRONT = params.get("cam") === "front";
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const damp = (a: number, b: number, k: number, dt: number) => a + (b - a) * (1 - Math.exp(-k * dt));
 
@@ -48,6 +52,8 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
   const character = useRef<CharacterHandle>(null);
   const { world, rapier } = useRapier();
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const avatar = suspend(() => resolveAvatar(), ["avatar"]);
+  useEffect(() => useProto.getState().set({ avatar: { label: avatar.label, placeholder: avatar.placeholder } }), [avatar]);
 
   const sim = useMemo(
     () => ({
@@ -270,16 +276,16 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
       const behind = sim.yaw + Math.PI;
       c.yaw += wrap(behind - c.yaw) * (1 - Math.exp(-0.9 * dt)) * Math.min(1, sim.speed / RUN + 0.3);
     }
-    if (PORTRAIT) {
-      c.yaw = sim.yaw;
-      c.pitch = 0.05;
-      c.dist = 0.85;
+    if (PORTRAIT || FRONT) {
+      c.yaw = sim.yaw + (FRONT ? 0.6 : 0);
+      c.pitch = FRONT ? 0.08 : 0.05;
+      c.dist = FRONT ? 3.4 : 0.85;
     }
     const tx = telemetry.x;
-    const ty = telemetry.y + (PORTRAIT ? 1.66 : 1.55);
+    const ty = telemetry.y + (PORTRAIT ? 1.66 : FRONT ? 1.0 : 1.55);
     const tz = telemetry.z;
     const dir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
-    let dist = c.dist + (sim.speed > WALK + 0.3 && !PORTRAIT ? 0.5 : 0);
+    let dist = c.dist + (sim.speed > WALK + 0.3 && !PORTRAIT && !FRONT ? 0.5 : 0);
     ray.origin = { x: tx, y: ty, z: tz };
     ray.dir = { x: dir.x, y: dir.y, z: dir.z };
     const hit = world.castRay(ray, dist + 0.3, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC | rapier.QueryFilterFlags.EXCLUDE_SENSORS, undefined, sim.collider ?? undefined);
@@ -302,7 +308,7 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
         <CapsuleCollider args={[CAPSULE.halfHeight, CAPSULE.radius]} />
       </RigidBody>
       <group ref={visual}>
-        <Character ref={character} />
+        <Character ref={character} url={avatar.url} />
       </group>
     </>
   );

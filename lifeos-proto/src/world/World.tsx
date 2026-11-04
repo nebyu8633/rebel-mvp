@@ -225,7 +225,8 @@ function Door({ x, y, z }: { x: number; y: number; z: number }) {
     rb.current?.setNextKinematicRotation(q);
   });
   return (
-    <RigidBody ref={rb} type="kinematicPosition" colliders={false} position={[x, y, z]} userData={{ noBatch: true }}>
+    <group userData={{ noBatch: true }}>
+    <RigidBody ref={rb} type="kinematicPosition" colliders={false} position={[x, y, z]}>
       <CuboidCollider args={[0.7, 1.19, 0.035]} position={[0.7, 1.19, 0]} />
       <mesh geometry={geo} material={wood} position={[0.7, 1.19, 0]} castShadow receiveShadow />
       <mesh material={metal} position={[1.25, 1.05, 0.07]} castShadow>
@@ -235,6 +236,7 @@ function Door({ x, y, z }: { x: number; y: number; z: number }) {
         <boxGeometry args={[0.04, 0.04, 0.14]} />
       </mesh>
     </RigidBody>
+    </group>
   );
 }
 

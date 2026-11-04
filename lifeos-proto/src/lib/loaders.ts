@@ -25,7 +25,8 @@ export const gltfExtensions = (gl: THREE.WebGLRenderer) => (loader: GLTFLoaderLi
   loader.setMeshoptDecoder(MeshoptDecoder);
 };
 
-export const asset = (p: string) => `${import.meta.env.BASE_URL}assets/${p}`;
+export const base = import.meta.env.BASE_URL;
+export const asset = (p: string) => `${base}assets/${p}`;
 
 /** Which GPU-compressed formats the device supports (for the bench report). */
 export function compressedSupport(gl: THREE.WebGLRenderer) {

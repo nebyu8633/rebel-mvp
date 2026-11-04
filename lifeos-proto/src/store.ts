@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { WorldReaction } from "./progression/lifeEvents";
 import type { AnimState } from "./character/animationController";
 import type { Expression } from "./character/facial";
+import type { LifeOSSnapshot } from "./data/lifeos";
 
 export type Quality = "high" | "medium" | "low";
 
@@ -29,6 +30,12 @@ interface ProtoState {
   litWindows: number;
   doorOpen: boolean;
   debug: { rootMotionStops: boolean; showColliders: boolean };
+  avatar: { label: string; placeholder: boolean } | null;
+  /** read-only LifeOS view (mock in the prototype) */
+  snapshot: LifeOSSnapshot | null;
+  towerDoorOpen: boolean;
+  /** open HUD panel: overview | inventory | achievements | map | district:<id> */
+  panel: string | null;
   set: (p: Partial<ProtoState>) => void;
   pushReaction: (r: WorldReaction) => void;
 }
@@ -43,6 +50,10 @@ export const useProto = create<ProtoState>((set) => ({
   litWindows: 0,
   doorOpen: false,
   debug: { rootMotionStops: true, showColliders: false },
+  avatar: null,
+  snapshot: null,
+  towerDoorOpen: false,
+  panel: null,
   set: (p) => set(p),
   pushReaction: (r) =>
     set((s) => ({

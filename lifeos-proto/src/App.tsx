@@ -3,6 +3,11 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import * as THREE from "three";
 import { World } from "./world/World";
+import { CityScene } from "./city/CityScene";
+import { SPAWN } from "./city/layout";
+import { MockLifeOSAdapter } from "./data/mock";
+import { suspend } from "suspend-react";
+import { GameHud } from "./ui/GameHud";
 import { Lighting } from "./world/Lighting";
 import { Player } from "./player/Player";
 import { bindKeyboard } from "./player/input";
@@ -15,6 +20,22 @@ const isTouch = typeof window !== "undefined" && (matchMedia("(pointer: coarse)"
 const pinned = params.get("q") as Quality | null;
 const initialQuality: Quality = pinned ?? (isTouch ? "medium" : "high");
 const DPR: Record<Quality, number> = { high: 2, medium: 1.5, low: 1 };
+
+/** `?scene=test` = the physics test scene (stairs/ramps/door); default = the LifeOS city slice. */
+const SCENE = params.get("scene") === "test" ? "test" : "city";
+const adapter = new MockLifeOSAdapter();
+
+function CityWorld({ quality }: { quality: Quality }) {
+  const snapshot = suspend(() => adapter.load(), ["lifeos-snapshot"]);
+  const set = useProto((s) => s.set);
+  useEffect(() => set({ snapshot }), [snapshot, set]);
+  return (
+    <>
+      <CityScene quality={quality} snapshot={snapshot} />
+      <Player spawn={[SPAWN.x, 1, SPAWN.z]} spawnYaw={SPAWN.yaw} />
+    </>
+  );
+}
 
 function Ready() {
   const set = useProto((s) => s.set);
@@ -70,21 +91,27 @@ export default function App() {
   return (
     <div style={{ position: "fixed", inset: 0 }}>
       <div ref={setEl} style={{ position: "absolute", inset: 0 }}>
-        <Canvas shadows="percentage" camera={{ fov: 55, near: 0.1, far: 400, position: [0, 3, 18] }} gl={{ antialias: quality !== "low", powerPreference: "high-performance" }} dpr={Math.min(DPR[initialQuality], window.devicePixelRatio || 1)}>
+        <Canvas shadows="percentage" camera={{ fov: 55, near: 0.1, far: 900, position: [0, 3, 22] }} gl={{ antialias: quality !== "low", powerPreference: "high-performance" }} dpr={Math.min(DPR[initialQuality], window.devicePixelRatio || 1)}>
           <RendererSetup quality={quality} />
           <BenchProbe />
           <Suspense fallback={null}>
-            <Lighting quality={quality} />
+            <Lighting quality={quality} preset={SCENE === "city" ? "dusk" : "day"} />
             <Physics timeStep="vary" debug={showColliders}>
-              <World quality={quality} />
-              <Player />
+              {SCENE === "city" ? (
+                <CityWorld quality={quality} />
+              ) : (
+                <>
+                  <World quality={quality} />
+                  <Player />
+                </>
+              )}
             </Physics>
             <Ready />
           </Suspense>
         </Canvas>
       </div>
-      <Hud touch={isTouch} />
-      {(isTouch || params.has("touch")) && (
+      {SCENE === "city" ? <GameHud touch={isTouch || params.has("touch")} /> : <Hud touch={isTouch} />}
+      {SCENE === "test" && (isTouch || params.has("touch")) && (
         <>
           <Stick />
           <ActionButtons />

@@ -13,6 +13,10 @@ if (!globalThis.FileReader) {
   };
 }
 // FBX textures are not loaded here: textures are processed separately (TGA -> webp) and bound by material name.
-THREE.TextureLoader.prototype.load = function () { return new THREE.Texture(); };
+THREE.TextureLoader.prototype.load = function (_url, onLoad) {
+  const t = new THREE.Texture();
+  if (onLoad) setTimeout(() => onLoad(t));
+  return t;
+};
 THREE.ImageLoader.prototype.load = function () { return null; };
 export { THREE };

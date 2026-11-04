@@ -26,6 +26,20 @@ URL parameters:
 
 Controls: WASD to move · Shift to run · Space to jump · E to interact · G to wave · drag to rotate the camera. On touch screens: a joystick, buttons, and dragging to rotate the camera.
 
+## City vertical slice (default scene)
+
+The default scene is the LifeOS city: central plaza, the LifeOS tower (lobby with doors, a terminal and a life overview), six gates for the six existing districts (wealth, health, knowledge, career, social, mind) with progress and locked/open state, enclosing buildings, a skyline, a monorail, and the HUD from the reference image.
+- Data: `src/data/lifeos.ts` (`LifeOSReadAdapter` interface, read-only) and `src/data/mock.ts` (mock only). The game doesn't write tasks and doesn't compute Life XP.
+- World Progress (discoveries, unlocked buildings, city construction) is shown separately and labelled "game progress · not Life XP". There is no Energy meter.
+- `?scene=test` switches to the physics test scene (stairs, ramps, door).
+
+## Personal avatar (local only)
+
+1. Create the avatar in Avaturn yourself and export it as a **GLB in T-pose**.
+2. Save it to `lifeos-proto/assets-src/avatar-user/avatar.glb`. That folder is gitignored.
+3. `npm run avatar` checks the skeleton and retargets all the Rocketbox animations onto your skeleton. It aligns the rest poses (A-pose → T-pose) and scales the root motion to your leg length. It also compresses everything (KTX2 + meshopt) and writes to `public/avatar-private/`, which is gitignored and not uploaded anywhere.
+4. The `AvatarAssetSource` loader (`src/avatar/avatarSource.ts`) uses the personal file if it exists, otherwise the placeholder (clearly labelled). `?avatar=placeholder` forces the placeholder. Private Supabase Storage is a stub only and needs separate approval.
+
 ## Architecture
 
 | Layer | File | Responsibility |
