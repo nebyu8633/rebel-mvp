@@ -89,8 +89,9 @@ export class LocalSaveStore implements SaveStore {
     const data: SaveData = SaveV1.parse({ version: 1, savedAt: new Date().toISOString(), world: d.world, loadout: d.loadout, enrichment: d.enrichment });
     try {
       this.kv.setItem(this.key, JSON.stringify(data));
-    } catch {
-      /* private mode / quota: the session continues in memory */
+    } catch (e) {
+      // private mode / quota: the session continues in memory; the caller surfaces the error
+      throw new Error(`save not written: ${e instanceof Error ? e.name : "storage unavailable"}`);
     }
     return data;
   }

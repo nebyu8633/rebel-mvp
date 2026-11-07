@@ -219,3 +219,40 @@ describe("world navigation across hosts", () => {
     expect(worldAvailable("sanctuary")).toBe(false);
   });
 });
+
+describe("AETHERIA store persistence (stabilization)", () => {
+  it("dispatch reports only real changes; state survives a save + fresh hydrate", async () => {
+    const { useAetheria, setSaveStore, flushSave } = await import("../aetheria/store");
+    const kv = new MemoryKV();
+    setSaveStore(new LocalSaveStore(kv));
+    await useAetheria.getState().reset();
+    await useAetheria.getState().hydrate();
+    const st = useAetheria.getState();
+    expect(st.dispatch([{ type: "setFlag", flag: "resonance.first" }])).toBe(true);
+    expect(st.dispatch([{ type: "setFlag", flag: "resonance.first" }])).toBe(false); // nothing new -> no duplicate effects
+    expect(st.equipItem("origin_pendant")).toBe(true);
+    await flushSave();
+    // a "new session": wipe memory, hydrate from storage
+    useAetheria.setState({ world: initialWorldState(), loadout: defaultLoadout(), hydrated: false });
+    await useAetheria.getState().hydrate();
+    expect(useAetheria.getState().world.flags).toContain("resonance.first");
+    expect(useAetheria.getState().loadout.equipped.neck).toBe("origin_pendant");
+    expect(useAetheria.getState().world.history).toHaveLength(1);
+  });
+  it("surfaces a storage failure instead of silently losing progress", async () => {
+    const { useAetheria, setSaveStore, flushSave } = await import("../aetheria/store");
+    const broken = new MemoryKV();
+    broken.setItem = () => {
+      throw Object.assign(new Error("quota"), { name: "QuotaExceededError" });
+    };
+    setSaveStore(new LocalSaveStore(broken));
+    useAetheria.setState({ hydrated: true, saveError: null });
+    useAetheria.getState().dispatch([{ type: "discover", id: "x_" + Math.random().toString(36).slice(2, 8) }]);
+    await flushSave();
+    expect(useAetheria.getState().saveError).toMatch(/QuotaExceededError/);
+    // storage works again -> error clears
+    setSaveStore(new LocalSaveStore(new MemoryKV()));
+    await flushSave();
+    expect(useAetheria.getState().saveError).toBeNull();
+  });
+});

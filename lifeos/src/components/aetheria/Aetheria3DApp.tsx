@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import { SanctuaryScene } from "@/game3d/aetheria/scenes/sanctuary/SanctuaryScene";
 import { SPAWN } from "@/game3d/aetheria/scenes/sanctuary/layout";
 import { AetheriaHud } from "@/game3d/aetheria/ui/AetheriaHud";
-import { flushSave, useAetheria } from "@/game3d/aetheria/store";
+import { bindSaveOnHide, flushSave, useAetheria } from "@/game3d/aetheria/store";
 import { useProto } from "@/game3d/store";
 import { World3DHost } from "@/components/game3d-host/World3DHost";
 
@@ -15,11 +15,11 @@ export default function Aetheria3DApp() {
   const quality = useProto((s) => s.quality);
   useEffect(() => {
     void useAetheria.getState().hydrate();
-    const save = () => void flushSave();
-    window.addEventListener("pagehide", save);
+    // iOS Safari: save on visibilitychange (hidden) as well as pagehide
+    const unbind = bindSaveOnHide();
     return () => {
-      save();
-      window.removeEventListener("pagehide", save);
+      void flushSave();
+      unbind();
     };
   }, []);
   return (
