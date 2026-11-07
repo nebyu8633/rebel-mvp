@@ -17,6 +17,23 @@ import { interactables, useProto, type Quality } from "../store";
 import { emitMockEvent } from "../progression/useProgression";
 import type { LifeOSSnapshot } from "../data/lifeos";
 import { DEMO_EVENTS } from "../config";
+import { getWorld } from "../worlds/registry";
+import { useWorlds } from "../engine/worldStore";
+
+/** A shimmering vertical crack of light in the tower lobby (the way into AETHERIA). */
+function ResonanceCrack({ x, z }: { x: number; z: number }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: 0xcff0ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }), []);
+  useFrame(({ clock }) => {
+    mat.opacity = 0.55 + Math.sin(clock.elapsedTime * 3) * 0.25;
+    if (ref.current) ref.current.scale.x = 1 + Math.sin(clock.elapsedTime * 1.7) * 0.25;
+  });
+  return (
+    <mesh ref={ref} material={mat} position={[x, 1.6, z]} rotation-y={-Math.PI / 2} userData={{ noBatch: true }}>
+      <planeGeometry args={[0.22, 2.6]} />
+    </mesh>
+  );
+}
 
 const deg = (d: number) => (d * Math.PI) / 180;
 
@@ -152,9 +169,21 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
   useEffect(() => {
     interactables.set("tower-door", { id: "tower-door", label: "כניסה למגדל LifeOS", x: 0, y: 0, z: front + 1.2, radius: 2.4, onContact: () => useProto.getState().set({ towerDoorOpen: !useProto.getState().towerDoorOpen }) });
     interactables.set("tower-terminal", { id: "tower-terminal", label: "מסוף LifeOS: סקירת החיים שלך", x: 0, y: 0, z: front - LOBBY.d + 2.2, radius: 1.8, onContact: () => useProto.getState().set({ panel: "overview" }) });
+    // a crack of light in the lobby: the passage from the real-life layer into AETHERIA
+    if (getWorld("sanctuary"))
+      interactables.set("resonance-crack", {
+        id: "resonance-crack",
+        label: "סדק של אור: מעבר אל AETHERIA",
+        x: 3.2,
+        y: 0,
+        z: front - 5,
+        radius: 1.6,
+        onContact: () => useWorlds.getState().transitionTo("sanctuary", { style: "resonance" }),
+      });
     return () => {
       interactables.delete("tower-door");
       interactables.delete("tower-terminal");
+      interactables.delete("resonance-crack");
     };
   }, [front]);
   useFrame((_, dt) => {
@@ -217,6 +246,7 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
           </RigidBody>
         ))}
       </group>
+      {getWorld("sanctuary") && <ResonanceCrack x={4.1} z={front - 5} />}
       <group position={[0, 0, front - LOBBY.d + 1.2]} userData={{ noBatch: true }}>
         <mesh material={granite} position={[0, 0.6, 0]}>
           <boxGeometry args={[1, 1.2, 0.7]} />

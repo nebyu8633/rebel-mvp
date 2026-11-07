@@ -54,6 +54,25 @@ Enforced rules (with tests):
 - The Echo advances only forward, one stage at a time.
 - Real-life progress in the city changes how a district looks, never access to it.
 
+## AETHERIA: The First Resonance (first playable slice)
+
+`?world=sanctuary`, or from the city: enter the LifeOS tower lobby and interact with the crack of light.
+
+1. **The First Sanctuary:** a misty plateau above a sea of clouds, a ruined colonnade, an arch, boulders, floating islands. Dawn lighting.
+2. **The abandoned observatory:** a ruined stone wall, a gallery, a stair with a broken middle section, a cracked dome.
+3. **The Origin Fragment:** a floating crystal on a pedestal inside an astrolabe of three rings.
+4. **The Future Echo, as the Silent Observer:** a figure of light in the player's own shape (a clone of the current model). It watches from the gallery and withdraws when approached.
+5. **Interactions:** touch the fragment, then three consoles to align the rings (Form, Change, Connection).
+6. **The Resonance (10 s):**
+   - The dome opens.
+   - A beam of light rises.
+   - The fallen steps fly back into place. Collision changes too: the gallery becomes reachable only now.
+7. **Narrative discovery:** the six kingdom sigils on the gallery wall, plus a journal and a kingdoms panel.
+8. **Persistence:** the Resonance happens once. On return, the world is already changed (local save).
+9. **Real life (optional):** a verified event can add a memory crystal on the gallery or a stronger fragment glow. The quest is fully completable without it (tested).
+
+Content lives in `src/aetheria/content/firstResonance.ts` (pure data). The scene only renders state. Every change goes through the rules engine.
+
 ## Personal avatar (local only)
 
 1. Create the avatar in Avaturn yourself and export it as a **GLB in T-pose**.

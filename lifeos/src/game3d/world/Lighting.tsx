@@ -11,11 +11,13 @@ import { HDRI } from "../config";
 import { telemetry } from "../player/Player";
 import type { Quality } from "../store";
 
-export type LightPreset = "day" | "dusk";
+export type LightPreset = "day" | "dusk" | "dawn";
 const PRESETS = {
   day: { sun: new THREE.Vector3(0.7, 0.6, 0.38).normalize(), color: 0xfff0d8, intensity: 3.8, env: HDRI.day, envI: 0.1, hemi: [0xcfe3ff, 0x5a5040, 0.12] as const, fog: [0xc9d6e2, 45, 140] as const, sky: { turbidity: 6, rayleigh: 1.2 } },
   // late golden hour from the west, cool sky fill — the look of the reference image
   dusk: { sun: new THREE.Vector3(-0.48, 0.7, 0.53).normalize(), color: 0xffc08a, intensity: 4.6, env: HDRI.dusk, envI: 0.5, hemi: [0xa9bcff, 0x4a3a32, 0.45] as const, fog: [0xa7aac4, 110, 480] as const, sky: { turbidity: 7, rayleigh: 2.2 } },
+  // AETHERIA dawn: low cool-gold sun over a misty mountain plateau
+  dawn: { sun: new THREE.Vector3(0.55, 0.42, -0.72).normalize(), color: 0xffd2a0, intensity: 3.6, env: HDRI.dawn, envI: 0.42, hemi: [0xbcc8ff, 0x3b4230, 0.4] as const, fog: [0xc4c7d8, 35, 190] as const, sky: { turbidity: 4, rayleigh: 2.8 } },
 };
 
 export function Lighting({ quality, preset = "day" }: { quality: Quality; preset?: LightPreset }) {

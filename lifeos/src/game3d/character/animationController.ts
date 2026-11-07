@@ -221,7 +221,9 @@ export class CharacterAnimationController {
         const sn = Math.sin(-yaw0);
         root = { dx: ddx * c + ddz * sn, dz: -ddx * sn + ddz * c, dyaw: (b[2] - a[2]) * s.yawScale };
       }
-      const exitAt = info.duration - (this.state === "turn" ? 0.35 * s.rate : 0.3);
+      // interactions hand control back shortly after the contact moment (the clip's tail is just a recovery)
+      const exitAt =
+        this.state === "turn" ? info.duration - 0.35 * s.rate : this.state === "interact" ? Math.min(info.duration - 0.3, this.cfg.interactContact + 1.6) : info.duration - 0.3;
       if (t1 >= exitAt) {
         if (this.state === "turn" && info.root) {
           // hand over the remaining rotation so the total turn is exact

@@ -58,10 +58,13 @@ export function FutureEcho({ anchors, visible }: { anchors: Anchor[]; visible: b
     });
     const mixer = new THREE.AnimationMixer(scene);
     const idle = gltf.animations.find((c) => c.name === "idle");
-    if (idle) mixer.clipAction(idle).play();
-    return { scene, mixer };
+    return { scene, mixer, idle };
   }, [gltf, material]);
-  useEffect(() => () => void rig.mixer.stopAllAction(), [rig]);
+  // start in the effect (StrictMode mounts, unmounts and remounts effects)
+  useEffect(() => {
+    if (rig.idle) rig.mixer.clipAction(rig.idle).play();
+    return () => void rig.mixer.stopAllAction();
+  }, [rig]);
 
   // drifting motes around the presence
   const motes = useMemo(() => {

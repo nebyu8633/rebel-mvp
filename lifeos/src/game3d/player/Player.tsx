@@ -84,6 +84,8 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
       cam: { yaw: spawnYaw + Math.PI, pitch: 0.18, dist: 4.4, idle: 0 },
       camPos: new THREE.Vector3(),
       camInit: false,
+      pendingTeleport: null as null | { x: number; y: number; z: number },
+      airborneFor: 1,
       groundRay: new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }),
     }),
     [spawnYaw, rapier],
@@ -126,8 +128,34 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
     w.__protoPlayer = {
       telemetry,
       anim: () => character.current?.controller.current,
+      /** Dev: tune the controller live (experiments only). */
+      kcc: () => sim.kcc,
+      /** Dev: run one controller query from the current position and report collisions. */
+      moveQuery: (dx: number, dy: number, dz: number) => {
+        if (!sim.kcc || !sim.collider) return null;
+        sim.kcc.computeColliderMovement(sim.collider, { x: dx, y: dy, z: dz }, rapier.QueryFilterFlags.EXCLUDE_SENSORS);
+        const m = sim.kcc.computedMovement();
+        const cols = [];
+        for (let i = 0; i < sim.kcc.numComputedCollisions(); i++) {
+          const c = sim.kcc.computedCollision(i);
+          if (!c) continue;
+          const col = c.collider;
+          cols.push({ n: c.normal1, pos: col?.translation(), half: (col?.shape as unknown as { halfExtents?: unknown })?.halfExtents });
+        }
+        return { move: m, grounded: sim.kcc.computedGrounded(), cols };
+      },
+      /** Dev: which collider does the capsule hit when moving from (x,y,z) along (dx,dz)? */
+      probe: (x: number, y: number, z: number, dx: number, dz: number, dist = 1) => {
+        const shape = new rapier.Capsule(CAPSULE.halfHeight, CAPSULE.radius);
+        const hit = world.castShape({ x, y: y + FOOT, z }, { x: 0, y: 0, z: 0, w: 1 }, { x: dx, y: 0, z: dz }, shape, 0, dist, true, rapier.QueryFilterFlags.EXCLUDE_SENSORS, undefined, sim.collider ?? undefined);
+        if (!hit) return null;
+        const c = hit.collider;
+        const sh = c.shape as unknown as { halfExtents?: { x: number; y: number; z: number }; radius?: number; halfHeight?: number; type: number };
+        return { toi: hit.time_of_impact, pos: c.translation(), rot: c.rotation(), type: sh.type, half: sh.halfExtents, radius: sh.radius, halfHeight: sh.halfHeight, normal: hit.normal1 };
+      },
       teleport: (x: number, y: number, z: number, yaw = sim.yaw) => {
-        body.current?.setTranslation({ x, y: y + FOOT, z }, true);
+        // applied inside the next physics step, on the body that step is simulating
+        sim.pendingTeleport = { x, y: y + FOOT, z };
         sim.yaw = yaw;
         sim.cam.yaw = yaw + Math.PI;
         sim.vx = sim.vz = sim.vy = 0;
@@ -142,6 +170,12 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
     if (!rb || !ch || !sim.kcc) return;
     const dt = Math.min(world.timestep || 1 / 60, 0.1);
     sim.collider ??= rb.collider(0);
+    if (sim.pendingTeleport) {
+      rb.setTranslation(sim.pendingTeleport, true);
+      rb.setNextKinematicTranslation(sim.pendingTeleport);
+      sim.pendingTeleport = null;
+      return;
+    }
     autopilotStep(dt);
     const mv = readMove();
     const edges = consumeEdges();
@@ -231,20 +265,27 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
     if (edges.jump && sim.grounded && !frame.lockMovement) {
       sim.vy = JUMP_V;
       sim.grounded = false;
+      sim.airborneFor = 0;
       // snap-to-ground would pull the take-off straight back down
       sim.kcc.disableSnapToGround();
     }
-    sim.vy -= GRAVITY * dt;
-    if (sim.grounded && sim.vy < -2) sim.vy = -2;
+    // Gravity only in the air. On the ground a strong downward push cancels slope climbing in the KCC;
+    // a tiny nudge + snap-to-ground keeps the character glued to stairs/ramps going down as well.
+    if (sim.grounded && sim.vy <= 0) sim.vy = 0;
+    else sim.vy -= GRAVITY * dt;
+    const dy = sim.grounded && sim.vy <= 0 ? -0.02 : sim.vy * dt;
 
-    sim.kcc.computeColliderMovement(sim.collider!, { x: mx, y: sim.vy * dt, z: mz }, rapier.QueryFilterFlags.EXCLUDE_SENSORS);
+    sim.kcc.computeColliderMovement(sim.collider!, { x: mx, y: dy, z: mz }, rapier.QueryFilterFlags.EXCLUDE_SENSORS);
     const m = sim.kcc.computedMovement();
     const wasGrounded = sim.grounded;
-    sim.grounded = sim.kcc.computedGrounded();
-    if (sim.grounded && sim.vy < 0) sim.vy = -2;
+    // right after take-off the KCC can still report "grounded" (within its offset): ignore that while
+    // the character is rising, so the landing logic can't cancel the jump
+    sim.airborneFor += dt;
+    sim.grounded = sim.kcc.computedGrounded() && !(sim.vy > 0 && sim.airborneFor < 0.25);
+    if (sim.grounded && sim.vy < 0) sim.vy = 0;
     if (!sim.grounded && sim.vy > 0 && m.y < sim.vy * dt * 0.5) sim.vy = 0; // head bump
     if (!wasGrounded && sim.grounded) {
-      sim.vy = -2;
+      sim.vy = 0;
       sim.kcc.enableSnapToGround(0.35);
     }
     const next = { x: p.x + m.x, y: p.y + m.y, z: p.z + m.z };

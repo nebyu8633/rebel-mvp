@@ -265,14 +265,17 @@ function Observatory({ done }: { done: boolean }) {
           const p = around(b, (GALLERY.rIn + GALLERY.rOut) / 2);
           return <CuboidCollider key={b} args={[galleryW / 2, GALLERY.thick / 2, galleryD / 2]} position={[p.x, GALLERY.y - GALLERY.thick / 2, p.z]} rotation={[0, (-b * Math.PI) / 180, 0]} />;
         })}
-        {/* intact steps (0..3, 10..12); the broken ones get colliders after the Resonance */}
-        {Array.from({ length: STAIR.steps }, (_, i) => i)
-          .filter((i) => done || !STAIR.broken.includes(i))
-          .map((i) => {
-            const s = stepAt(i);
-            const h = s.topY;
-            return <CuboidCollider key={i} args={[STAIR.width / 2, h / 2, stepRun() / 2]} position={[OBS.x + STAIR.x, h / 2, OBS.z + s.z]} />;
-          })}
+        {/* stair collision = smooth ramps under the visual steps (standard game practice: no snagging on
+            step edges). Before the Resonance only the intact lower flight is walkable; the upper flight is a
+            solid block, so the gallery can't be reached. After it, one ramp spans floor -> gallery. */}
+        {done ? <StairRamp from={-1} to={STAIR.steps - 1} /> : <StairRamp from={-1} to={STAIR.broken[0] - 1} />}
+        {!done &&
+          Array.from({ length: STAIR.steps }, (_, i) => i)
+            .filter((i) => i > STAIR.broken[STAIR.broken.length - 1])
+            .map((i) => {
+              const st = stepAt(i);
+              return <CuboidCollider key={i} args={[STAIR.width / 2, st.topY / 2, stepRun() / 2]} position={[OBS.x + STAIR.x, st.topY / 2, OBS.z + st.z]} />;
+            })}
         <CylinderCollider args={[PEDESTAL.h / 2, PEDESTAL.r]} position={[OBS.x, FLOOR_Y + PEDESTAL.h / 2, OBS.z]} />
       </RigidBody>
       <mesh geometry={floorGeo} material={floor} position={[OBS.x, FLOOR_Y / 2, OBS.z]} receiveShadow />
@@ -303,6 +306,22 @@ function Observatory({ done }: { done: boolean }) {
       })}
     </group>
   );
+}
+
+/** Ramp collider from the top edge of step `from` (-1 = floor) to the top edge of step `to`. */
+function StairRamp({ from, to }: { from: number; to: number }) {
+  const run = stepRun();
+  const z0 = STAIR.z0 - run * (from + 1);
+  const z1 = STAIR.z0 - run * (to + 1);
+  const y0 = from < 0 ? FLOOR_Y : stepAt(from).topY;
+  const y1 = stepAt(to).topY;
+  const L = Math.hypot(z0 - z1, y1 - y0);
+  const ang = Math.atan2(y1 - y0, z0 - z1);
+  const T = 0.1;
+  // centre of the slab, pushed down by half its thickness along the slab normal
+  const cy = (y0 + y1) / 2 - (T / 2) * Math.cos(ang);
+  const cz = (z0 + z1) / 2 - (T / 2) * Math.sin(ang);
+  return <CuboidCollider args={[STAIR.width / 2, T / 2, L / 2]} position={[OBS.x + STAIR.x, cy, OBS.z + cz]} rotation={[ang, 0, 0]} />;
 }
 
 /** Broken steps: debris on the floor before the Resonance, flying into place during it. */
@@ -361,7 +380,7 @@ function Dome() {
       const rim = new THREE.Vector3(-Math.cos(mid) * R, 0, Math.sin(mid) * R);
       g.translate(-rim.x, 0, -rim.z);
       const axis = new THREE.Vector3(0, 1, 0).cross(rim.clone().normalize()).normalize();
-      return { g, rim, axis, missing: i === 3 || i === 7, crack: (r() - 0.5) * 0.12, open: 1.05 + r() * 0.25 };
+      return { g, rim, axis, missing: i === 3 || i === 7, crack: (r() - 0.5) * 0.12, open: 0.55 + r() * 0.2 };
     });
   }, [R]);
   const refs = useRef<(THREE.Group | null)[]>([]);
@@ -369,7 +388,8 @@ function Dome() {
     const t = smooth(0.12, 0.5, resonance.p);
     petals.forEach((p, i) => {
       const g = refs.current[i];
-      if (g) g.quaternion.setFromAxisAngle(p.axis, -(p.crack + t * p.open));
+      // positive angle about (up × outward) tips the petal outward, like a flower opening
+      if (g) g.quaternion.setFromAxisAngle(p.axis, p.crack + t * p.open);
     });
   });
   return (
@@ -672,6 +692,8 @@ function Story() {
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1);
+    // the world already resonated (save, or a state change from elsewhere): show the changed world
+    if (!resonance.running && resonance.p < 1 && useAetheria.getState().world.flags.includes(F.resonance)) resonance.p = 1;
     if (resonance.running) {
       resonance.t += dt;
       resonance.p = Math.min(1, resonance.t / RESONANCE_S);
