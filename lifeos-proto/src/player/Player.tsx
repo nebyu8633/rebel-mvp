@@ -1,0 +1,370 @@
+/**
+ * Player: Rapier kinematic character controller (capsule) + follow camera.
+ *
+ * Separation of concerns:
+ *   input -> intent (direction, magnitude)
+ *   CharacterAnimationController -> pose + root motion + lockMovement
+ *   this file -> velocity, gravity, collisions (Rapier KCC), facing, camera
+ * The measured speed after collision (not the requested one) feeds the animation, so walking into a
+ * wall slows the cycle down instead of sliding the feet.
+ */
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { CapsuleCollider, RigidBody, useAfterPhysicsStep, useBeforePhysicsStep, useRapier, type RapierRigidBody } from "@react-three/rapier";
+import * as THREE from "three";
+import { Character, type CharacterHandle } from "../character/Character";
+import { consumeEdges, input, readMove } from "./input";
+import { interactables, params, useProto } from "../store";
+import { autopilotStep } from "./autopilot";
+import { playerReactions } from "../engine/events";
+import { suspend } from "suspend-react";
+import { resolveAvatar } from "../avatar/avatarSource";
+import { DEV } from "../config";
+import { useAetheria } from "../aetheria/store";
+import { architectIdentity, type Loadout } from "../avatar/loadout";
+
+export const CAPSULE = { halfHeight: 0.6, radius: 0.3 };
+const FOOT = CAPSULE.halfHeight + CAPSULE.radius; // centre -> feet
+const WALK = 1.35;
+const RUN = 3.3;
+const GRAVITY = 20;
+const JUMP_V = 5.4;
+
+/** ?cam=portrait: camera in front of the face (facial animation / skin shading review). */
+const PORTRAIT = params.get("cam") === "portrait";
+/** ?cam=front: full-body view from the front (animation / retarget review). */
+const FRONT = params.get("cam") === "front";
+// Rapier types come from @react-three/rapier's own copy (an app may hoist a different version)
+type RapierWorld = ReturnType<typeof useRapier>["world"];
+type KinematicCharacterController = ReturnType<RapierWorld["createCharacterController"]>;
+type Collider = ReturnType<RapierRigidBody["collider"]>;
+
+const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+const damp = (a: number, b: number, k: number, dt: number) => a + (b - a) * (1 - Math.exp(-k * dt));
+
+export interface PlayerTelemetry {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  speed: number;
+  grounded: boolean;
+  camYaw: number;
+}
+export const telemetry: PlayerTelemetry = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, camYaw: 0 };
+
+/** Dev preview of the Living Architect's starter equipment in any world (`?wear=1`). */
+const PREVIEW_LOADOUT: Loadout = { base: "auto", tier: 1, equipped: { mainHand: "architect_staff", neck: "origin_pendant", shoulders: "sentinel_pauldrons", offHand: "wayfinder_lantern" } };
+
+export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYaw = Math.PI, wearLoadout = false }: { spawn?: [number, number, number]; spawnYaw?: number; wearLoadout?: boolean }) {
+  const savedLoadout = useAetheria((s) => s.loadout);
+  const preview = DEV && params.get("wear") === "1";
+  const loadout = preview ? PREVIEW_LOADOUT : wearLoadout ? savedLoadout : null;
+  const accent = useMemo(() => architectIdentity(null).accent, []);
+  const body = useRef<RapierRigidBody>(null);
+  const visual = useRef<THREE.Group>(null);
+  const character = useRef<CharacterHandle>(null);
+  const { world, rapier } = useRapier();
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const avatar = suspend(() => resolveAvatar(), ["avatar"]);
+  useEffect(() => useProto.getState().set({ avatar: { label: avatar.label, placeholder: avatar.placeholder } }), [avatar]);
+
+  const sim = useMemo(
+    () => ({
+      yaw: spawnYaw,
+      vx: 0,
+      vz: 0,
+      vy: 0,
+      speed: 0,
+      grounded: true,
+      kcc: null as KinematicCharacterController | null,
+      collider: null as Collider | null,
+      faceTarget: null as null | { x: number; z: number },
+      nearest: null as null | string,
+      cam: { yaw: spawnYaw + Math.PI, pitch: 0.18, dist: 4.4, idle: 0 },
+      camPos: new THREE.Vector3(),
+      camInit: false,
+      pendingTeleport: null as null | { x: number; y: number; z: number },
+      airborneFor: 1,
+      groundRay: new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }),
+    }),
+    [spawnYaw, rapier],
+  );
+
+  useEffect(() => {
+    const kcc = world.createCharacterController(0.02);
+    kcc.setUp({ x: 0, y: 1, z: 0 });
+    kcc.setMaxSlopeClimbAngle((46 * Math.PI) / 180);
+    kcc.setMinSlopeSlideAngle((50 * Math.PI) / 180);
+    kcc.enableAutostep(0.32, 0.15, false);
+    kcc.enableSnapToGround(0.35);
+    kcc.setApplyImpulsesToDynamicBodies(true);
+    kcc.setCharacterMass(75);
+    sim.kcc = kcc;
+    return () => {
+      world.removeCharacterController(kcc);
+      sim.kcc = null;
+    };
+  }, [world, sim]);
+
+  // leaving a world: no stale interaction prompt / panel from it
+  useEffect(() => () => useProto.getState().set({ prompt: null, panel: null }), []);
+
+  // generic world reactions (from any world/data source): facial expression + a wave for celebrations
+  useEffect(() => {
+    return playerReactions.on((r) => {
+      if (r === "surprise") character.current?.setExpression("surprised", 1.5);
+      else {
+        character.current?.setExpression("happy", 3);
+        if (r === "celebrate") input.gesture = true;
+      }
+    });
+  }, []);
+
+  // dev-only hooks for automated tests (teleport + telemetry); stripped from production builds
+  useEffect(() => {
+    if (!DEV) return;
+    const w = window as unknown as { __protoPlayer?: unknown };
+    w.__protoPlayer = {
+      telemetry,
+      anim: () => character.current?.controller.current,
+      /** Dev: tune the controller live (experiments only). */
+      kcc: () => sim.kcc,
+      /** Dev: run one controller query from the current position and report collisions. */
+      moveQuery: (dx: number, dy: number, dz: number) => {
+        if (!sim.kcc || !sim.collider) return null;
+        sim.kcc.computeColliderMovement(sim.collider, { x: dx, y: dy, z: dz }, rapier.QueryFilterFlags.EXCLUDE_SENSORS);
+        const m = sim.kcc.computedMovement();
+        const cols = [];
+        for (let i = 0; i < sim.kcc.numComputedCollisions(); i++) {
+          const c = sim.kcc.computedCollision(i);
+          if (!c) continue;
+          const col = c.collider;
+          cols.push({ n: c.normal1, pos: col?.translation(), half: (col?.shape as unknown as { halfExtents?: unknown })?.halfExtents });
+        }
+        return { move: m, grounded: sim.kcc.computedGrounded(), cols };
+      },
+      /** Dev: which collider does the capsule hit when moving from (x,y,z) along (dx,dz)? */
+      probe: (x: number, y: number, z: number, dx: number, dz: number, dist = 1) => {
+        const shape = new rapier.Capsule(CAPSULE.halfHeight, CAPSULE.radius);
+        const hit = world.castShape({ x, y: y + FOOT, z }, { x: 0, y: 0, z: 0, w: 1 }, { x: dx, y: 0, z: dz }, shape, 0, dist, true, rapier.QueryFilterFlags.EXCLUDE_SENSORS, undefined, sim.collider ?? undefined);
+        if (!hit) return null;
+        const c = hit.collider;
+        const sh = c.shape as unknown as { halfExtents?: { x: number; y: number; z: number }; radius?: number; halfHeight?: number; type: number };
+        return { toi: hit.time_of_impact, pos: c.translation(), rot: c.rotation(), type: sh.type, half: sh.halfExtents, radius: sh.radius, halfHeight: sh.halfHeight, normal: hit.normal1 };
+      },
+      teleport: (x: number, y: number, z: number, yaw = sim.yaw) => {
+        // applied inside the next physics step, on the body that step is simulating
+        sim.pendingTeleport = { x, y: y + FOOT, z };
+        sim.yaw = yaw;
+        sim.cam.yaw = yaw + Math.PI;
+        sim.vx = sim.vz = sim.vy = 0;
+        sim.camInit = false;
+      },
+    };
+  }, [sim]);
+
+  useBeforePhysicsStep(() => {
+    const rb = body.current;
+    const ch = character.current;
+    if (!rb || !ch || !sim.kcc) return;
+    const dt = Math.min(world.timestep || 1 / 60, 0.1);
+    sim.collider ??= rb.collider(0);
+    if (sim.pendingTeleport) {
+      rb.setTranslation(sim.pendingTeleport, true);
+      rb.setNextKinematicTranslation(sim.pendingTeleport);
+      sim.pendingTeleport = null;
+      return;
+    }
+    autopilotStep(dt);
+    const mv = readMove();
+    const edges = consumeEdges();
+
+    // camera-relative intent -> world direction
+    const cy = sim.cam.yaw;
+    const fx = -Math.sin(cy);
+    const fz = -Math.cos(cy);
+    const rx = -fz;
+    const rz = fx;
+    let dx = rx * mv.x + fx * mv.y;
+    let dz = rz * mv.x + fz * mv.y;
+    const dl = Math.hypot(dx, dz);
+    if (dl > 1e-4) {
+      dx /= dl;
+      dz /= dl;
+    }
+    const desiredYaw = dl > 1e-4 ? Math.atan2(dx, dz) : sim.yaw;
+
+    // interaction target (nearest in range) — facing it is part of the interaction
+    const p = rb.translation();
+    let best: string | null = null;
+    let bestD = Infinity;
+    for (const it of interactables.values()) {
+      const d = Math.hypot(it.x - p.x, it.z - p.z);
+      if (d < it.radius && d < bestD && Math.abs(it.y - (p.y - FOOT)) < 1.5) {
+        best = it.id;
+        bestD = d;
+      }
+    }
+    if (best !== sim.nearest) {
+      sim.nearest = best;
+      useProto.getState().set({ prompt: best ? interactables.get(best)!.label : null });
+    }
+    const wantInteract = edges.interact && !!best && sim.grounded;
+    if (wantInteract) {
+      const it = interactables.get(best!)!;
+      sim.faceTarget = { x: it.x, z: it.z };
+    }
+
+    // ---- animation first: it decides whether movement is locked (turn / stop / interaction)
+    const frame = ch.step(
+      {
+        dt,
+        speed: sim.speed,
+        inputMag: mv.mag,
+        grounded: sim.grounded,
+        vy: sim.vy,
+        turnAngle: dl > 1e-4 ? wrap(desiredYaw - sim.yaw) : 0,
+        interact: wantInteract,
+        gesture: edges.gesture,
+      },
+      Math.max(0, (sim.speed - WALK) / (RUN - WALK)),
+    );
+    if (frame.events.includes("contact") && sim.nearest) interactables.get(sim.nearest)?.onContact();
+    if (frame.events.some((e) => e.startsWith("state:"))) useProto.getState().set({ animState: frame.state });
+    if (frame.state !== "interact") sim.faceTarget = null;
+
+    // ---- horizontal motion
+    let mx = 0;
+    let mz = 0;
+    if (frame.lockMovement) {
+      sim.vx = sim.vz = 0;
+      if (frame.root) {
+        const c = Math.cos(sim.yaw);
+        const s = Math.sin(sim.yaw);
+        mx = frame.root.dx * c + frame.root.dz * s;
+        mz = -frame.root.dx * s + frame.root.dz * c;
+        sim.yaw = wrap(sim.yaw + frame.root.dyaw);
+      }
+      if (sim.faceTarget) sim.yaw = wrap(sim.yaw + wrap(Math.atan2(sim.faceTarget.x - p.x, sim.faceTarget.z - p.z) - sim.yaw) * (1 - Math.exp(-10 * dt)));
+    } else {
+      const target = mv.mag * (mv.run ? RUN : WALK);
+      const tvx = dx * target;
+      const tvz = dz * target;
+      const accel = target > sim.speed ? 7 : 9;
+      sim.vx = damp(sim.vx, tvx, accel, dt);
+      sim.vz = damp(sim.vz, tvz, accel, dt);
+      // turn toward the move direction; slower at speed for a natural arc
+      const turnK = 10 - 4 * Math.min(1, sim.speed / RUN);
+      if (dl > 1e-4) sim.yaw = wrap(sim.yaw + wrap(desiredYaw - sim.yaw) * (1 - Math.exp(-turnK * dt)));
+      mx = sim.vx * dt;
+      mz = sim.vz * dt;
+    }
+
+    // ---- vertical: gravity + jump
+    if (edges.jump && sim.grounded && !frame.lockMovement) {
+      sim.vy = JUMP_V;
+      sim.grounded = false;
+      sim.airborneFor = 0;
+      // snap-to-ground would pull the take-off straight back down
+      sim.kcc.disableSnapToGround();
+    }
+    // Gravity only in the air. On the ground a strong downward push cancels slope climbing in the KCC;
+    // a tiny nudge + snap-to-ground keeps the character glued to stairs/ramps going down as well.
+    if (sim.grounded && sim.vy <= 0) sim.vy = 0;
+    else sim.vy -= GRAVITY * dt;
+    const dy = sim.grounded && sim.vy <= 0 ? -0.02 : sim.vy * dt;
+
+    sim.kcc.computeColliderMovement(sim.collider!, { x: mx, y: dy, z: mz }, rapier.QueryFilterFlags.EXCLUDE_SENSORS);
+    const m = sim.kcc.computedMovement();
+    const wasGrounded = sim.grounded;
+    // right after take-off the KCC can still report "grounded" (within its offset): ignore that while
+    // the character is rising, so the landing logic can't cancel the jump
+    sim.airborneFor += dt;
+    sim.grounded = sim.kcc.computedGrounded() && !(sim.vy > 0 && sim.airborneFor < 0.25);
+    if (sim.grounded && sim.vy < 0) sim.vy = 0;
+    if (!sim.grounded && sim.vy > 0 && m.y < sim.vy * dt * 0.5) sim.vy = 0; // head bump
+    if (!wasGrounded && sim.grounded) {
+      sim.vy = 0;
+      sim.kcc.enableSnapToGround(0.35);
+    }
+    const next = { x: p.x + m.x, y: p.y + m.y, z: p.z + m.z };
+    // Rapier's KCC does not depenetrate: against curved colliders it can sink a few cm into the
+    // floor. A downward ray from the capsule centre restores the feet onto the surface below.
+    if (sim.vy <= 0) {
+      sim.groundRay.origin = next;
+      const hit = world.castRay(sim.groundRay, FOOT + 0.25, true, rapier.QueryFilterFlags.EXCLUDE_SENSORS, undefined, sim.collider!);
+      if (hit) {
+        const pen = FOOT - hit.timeOfImpact;
+        if (pen > 0.04) next.y += pen - 0.01;
+      }
+    }
+    rb.setNextKinematicTranslation(next);
+
+    // measured speed (after collisions) drives the animation
+    const measured = Math.hypot(m.x, m.z) / dt;
+    sim.speed = damp(sim.speed, frame.lockMovement ? measured : Math.min(measured, Math.hypot(sim.vx, sim.vz) + 0.05), 18, dt);
+    if (sim.speed < 0.02) sim.speed = 0;
+  });
+
+  useAfterPhysicsStep(() => {
+    const rb = body.current;
+    if (!rb || !visual.current) return;
+    const p = rb.translation();
+    visual.current.position.set(p.x, p.y - FOOT, p.z);
+    visual.current.rotation.y = sim.yaw;
+    Object.assign(telemetry, { x: p.x, y: p.y - FOOT, z: p.z, yaw: sim.yaw, speed: sim.speed, grounded: sim.grounded, camYaw: sim.cam.yaw });
+  });
+
+  // ---- follow camera (render loop): orbit by drag, gentle auto-align behind while moving, collision-aware
+  const ray = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }), [rapier]);
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.1);
+    const c = sim.cam;
+    if (input.lookDX || input.lookDY) {
+      c.yaw -= input.lookDX * 0.006;
+      c.pitch = Math.max(-0.35, Math.min(0.9, c.pitch + input.lookDY * 0.004));
+      input.lookDX = input.lookDY = 0;
+      c.idle = 0;
+    } else c.idle += dt;
+    if (sim.speed > 0.5 && c.idle > 1.2) {
+      const behind = sim.yaw + Math.PI;
+      c.yaw += wrap(behind - c.yaw) * (1 - Math.exp(-0.9 * dt)) * Math.min(1, sim.speed / RUN + 0.3);
+    }
+    if (PORTRAIT || FRONT) {
+      c.yaw = sim.yaw + (FRONT ? 0.6 : 0);
+      c.pitch = FRONT ? 0.08 : 0.05;
+      c.dist = FRONT ? 3.4 : 0.85;
+    }
+    const tx = telemetry.x;
+    const ty = telemetry.y + (PORTRAIT ? 1.66 : FRONT ? 1.0 : 1.55);
+    const tz = telemetry.z;
+    const dir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
+    let dist = c.dist + (sim.speed > WALK + 0.3 && !PORTRAIT && !FRONT ? 0.5 : 0);
+    ray.origin = { x: tx, y: ty, z: tz };
+    ray.dir = { x: dir.x, y: dir.y, z: dir.z };
+    const hit = world.castRay(ray, dist + 0.3, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC | rapier.QueryFilterFlags.EXCLUDE_SENSORS, undefined, sim.collider ?? undefined);
+    if (hit) dist = Math.max(0.6, Math.min(dist, hit.timeOfImpact - 0.25));
+    const want = new THREE.Vector3(tx + dir.x * dist, ty + dir.y * dist, tz + dir.z * dist);
+    if (!sim.camInit) {
+      sim.camPos.copy(want);
+      sim.camInit = true;
+    }
+    // pull in fast (avoid clipping), ease out slowly
+    const k = want.distanceTo(new THREE.Vector3(tx, ty, tz)) < sim.camPos.distanceTo(new THREE.Vector3(tx, ty, tz)) ? 20 : 6;
+    sim.camPos.lerp(want, 1 - Math.exp(-k * dt));
+    camera.position.copy(sim.camPos);
+    camera.lookAt(tx, ty - (PORTRAIT ? 0.02 : 0.1), tz);
+  });
+
+  return (
+    <>
+      <RigidBody ref={body} type="kinematicPosition" colliders={false} position={spawn} enabledRotations={[false, false, false]}>
+        <CapsuleCollider args={[CAPSULE.halfHeight, CAPSULE.radius]} />
+      </RigidBody>
+      <group ref={visual}>
+        <Character ref={character} url={avatar.url} loadout={loadout} accent={accent} />
+      </group>
+    </>
+  );
+}

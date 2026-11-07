@@ -42,6 +42,14 @@ export function requestAIPlan(input: PlanInput, today: string) {
   return post<{ plan: PlanProposal; fixes: string[]; source: string }>("/api/ai/plan", { input, today });
 }
 
+export function requestGoalTurn(input: import("../goalplan/ai-schema").GoalTurnInput) {
+  return post<{ turn: import("../goalplan/ai-schema").GoalTurnOutput }>("/api/ai/goal", { action: "turn", input });
+}
+
+export function requestGoalPlan(input: import("../goalplan/ai-schema").GoalPlanInput) {
+  return post<{ plan: import("../goalplan/schema").GoalPlan; fixes: string[] }>("/api/ai/goal", { action: "plan", input });
+}
+
 export function requestAIAnswer(question: string, context: AIContext) {
   return post<{ answer: string; source: string }>("/api/ai/ask", { question, context });
 }

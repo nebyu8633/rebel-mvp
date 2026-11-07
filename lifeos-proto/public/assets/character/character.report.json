@@ -1,0 +1,160 @@
+{
+  "source": "Microsoft Rocketbox Male_Adult_01 (MIT)",
+  "rawExportBytes": 8382384,
+  "glbBytes": 1666960,
+  "glbKtx2Bytes": 3271368,
+  "triangles": 7440,
+  "bones": 81,
+  "morphTargets": [
+    "eyeBlinkLeft",
+    "eyeBlinkRight",
+    "mouthSmileLeft",
+    "mouthSmileRight",
+    "jawOpen",
+    "browInnerUp",
+    "browDownLeft",
+    "browDownRight",
+    "eyeWideLeft",
+    "eyeWideRight",
+    "mouthFunnel",
+    "mouthPucker",
+    "mouthFrownLeft",
+    "mouthFrownRight",
+    "viseme_aa",
+    "viseme_O",
+    "viseme_PP",
+    "viseme_FF"
+  ],
+  "textureSize": 1024,
+  "textures": [
+    {
+      "name": "body_color",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 168042
+    },
+    {
+      "name": "body_normal",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 914904
+    },
+    {
+      "name": "body_orm",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 33877
+    },
+    {
+      "name": "head_color",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 142045
+    },
+    {
+      "name": "head_normal",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 815454
+    },
+    {
+      "name": "head_orm",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 58490
+    },
+    {
+      "name": "opacity_color",
+      "mime": "image/ktx2",
+      "ktx2Bytes": 201700
+    }
+  ],
+  "clips": {
+    "idle": {
+      "kind": "loop",
+      "duration": 11.6667,
+      "speed": 0
+    },
+    "walk": {
+      "kind": "loop",
+      "duration": 1.2,
+      "speed": 1.0117
+    },
+    "run": {
+      "kind": "loop",
+      "duration": 0.7333,
+      "speed": 2.8797
+    },
+    "walk_start": {
+      "kind": "oneshot",
+      "duration": 0.9667,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 0.607,
+        "yaw": 0
+      }
+    },
+    "walk_stop": {
+      "kind": "oneshot",
+      "duration": 2,
+      "rootTotal": {
+        "dx": 0.0355,
+        "dz": 1.3908,
+        "yaw": 0
+      }
+    },
+    "run_start": {
+      "kind": "oneshot",
+      "duration": 0.6333,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 0.5719,
+        "yaw": 0
+      }
+    },
+    "run_stop": {
+      "kind": "oneshot",
+      "duration": 1.2667,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 1.6275,
+        "yaw": 0
+      }
+    },
+    "turn_left_90": {
+      "kind": "oneshot",
+      "duration": 2.3333,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 0,
+        "yaw": 1.5708
+      }
+    },
+    "turn_right_90": {
+      "kind": "oneshot",
+      "duration": 2.1667,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 0,
+        "yaw": -1.5708
+      }
+    },
+    "interact": {
+      "kind": "oneshot",
+      "duration": 6.2,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 0,
+        "yaw": 0
+      }
+    },
+    "wave": {
+      "kind": "oneshot",
+      "duration": 2.8333,
+      "rootTotal": {
+        "dx": 0,
+        "dz": 0,
+        "yaw": 0
+      }
+    },
+    "jump_air": {
+      "kind": "pose",
+      "duration": 1,
+      "placeholder": true
+    }
+  }
+}

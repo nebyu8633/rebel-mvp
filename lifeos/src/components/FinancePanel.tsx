@@ -7,7 +7,7 @@ import { addFinanceEntry } from "@/lib/actions";
 import { formatILS, monthsLeft, scenarioTable, sortEntries, summarizeAccount } from "@/lib/finance";
 import { formatHebDate } from "@/lib/dates";
 import { useToday } from "@/hooks/useToday";
-import { Badge, Button, Field, Input, Select, confirmDialog, cx } from "./ui";
+import { Badge, Button, Details, Field, Input, Select, confirmDialog, cx } from "./ui";
 import { LineChart } from "./charts";
 
 const KIND_LABELS: Record<FinanceEntry["kind"], string> = { deposit: "הפקדה", withdrawal: "משיכה", valuation: "עדכון שווי/יתרה" };
@@ -55,6 +55,7 @@ export function FinanceEntries({ accountId, portfolio }: { accountId: string; po
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const entries = sortEntries(Object.values(db.financeEntries).filter((e) => e.accountId === accountId)).reverse();
   const summary = summarizeAccount(Object.values(db.financeEntries).filter((e) => e.accountId === accountId));
 
@@ -104,14 +105,15 @@ export function FinanceEntries({ accountId, portfolio }: { accountId: string; po
           רישום
         </Button>
       </div>
-      <p className="text-xs text-stone-500">
+      <Details label="מה ההבדל בין הסוגים">
         {portfolio
           ? "״עדכון שווי״ = השווי הכולל של התיק לפי הדיווח שלך. הפקדות נרשמות בנפרד, כך שאפשר להבחין בין כסף שהוכנס לבין שינויי שוק."
           : "״עדכון יתרה״ מתקן את היתרה לסכום המדויק; הפקדות ומשיכות מעדכנות אותה."}
-      </p>
+      </Details>
       {entries.length > 0 && (
+        <>
         <ul className="divide-y hairline text-sm">
-          {entries.slice(0, 30).map((e) => (
+          {entries.slice(0, showAll ? 60 : 5).map((e) => (
             <li key={e.id} className="flex items-center gap-3 py-2">
               <span className="w-20 shrink-0 text-xs text-stone-500">{formatHebDate(e.date)}</span>
               <Badge tone={e.kind === "deposit" ? "accent" : e.kind === "withdrawal" ? "rose" : "indigo"}>{KIND_LABELS[e.kind]}</Badge>
@@ -131,6 +133,12 @@ export function FinanceEntries({ accountId, portfolio }: { accountId: string; po
             </li>
           ))}
         </ul>
+        {entries.length > 5 && (
+          <button className="text-xs text-accent-700" onClick={() => setShowAll((v) => !v)}>
+            {showAll ? "פחות" : `כל ${entries.length} הרישומים`}
+          </button>
+        )}
+        </>
       )}
     </div>
   );
@@ -141,38 +149,33 @@ export function PortfolioScenarios({ accountId, target, deadline }: { accountId:
   const today = useToday();
   const entries = Object.values(db.financeEntries).filter((e) => e.accountId === accountId);
   if (!entries.length)
-    return <p className="text-sm text-stone-500">רשמו את שווי התיק הנוכחי כדי לחשב כמה צריך להפקיד בחודש.</p>;
+    return <p className="text-sm text-stone-500">רשמו שווי נוכחי כדי לחשב הפקדה חודשית.</p>;
   const s = summarizeAccount(entries);
   const months = monthsLeft(today, deadline);
   const rows = scenarioTable(s.currentValue, target, months);
+  const max = Math.max(1, ...rows.map((r) => r.monthly));
   return (
     <div>
-      <p className="mb-2 text-sm text-stone-600 dark:text-stone-300">
-        הפקדה חודשית נדרשת כדי להגיע ל-{formatILS(target)} בעוד {months} חודשים, לפי הנחות תשואה שונות:
-      </p>
-      <div className="overflow-hidden rounded-xl border hairline">
-        <table className="w-full text-sm">
-          <thead className="bg-stone-50 text-xs text-stone-500 dark:bg-white/[0.03]">
-            <tr>
-              <th className="px-3 py-2 text-start font-medium">תרחיש (הנחה)</th>
-              <th className="px-3 py-2 text-start font-medium">תשואה שנתית מונחת</th>
-              <th className="px-3 py-2 text-start font-medium">הפקדה חודשית</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t hairline">
-                <td className="px-3 py-2">{r.label}</td>
-                <td className="ltr-nums px-3 py-2 text-start">{(r.annualRate * 100).toFixed(0)}%</td>
-                <td className="ltr-nums px-3 py-2 text-start font-semibold">{formatILS(r.monthly)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mb-2 flex items-baseline justify-between text-sm">
+        <span className="font-medium">הפקדה חודשית נדרשת</span>
+        <span className="text-xs text-stone-500">{months} חודשים · יעד {formatILS(target)}</span>
       </div>
-      <p className="mt-2 text-xs text-stone-500">
-        המחשה בלבד, לא ייעוץ השקעות ולא תחזית. התשואה בפועל עלולה להיות נמוכה יותר ואף שלילית; שווי התיק עשוי לרדת. החישוב מניח תשואה קבועה והפקדה בסוף כל חודש.
-      </p>
+      <ul className="space-y-1.5" aria-label="הפקדה חודשית לפי תרחיש תשואה">
+        {rows.map((r) => (
+          <li key={r.id} className="flex items-center gap-2 text-sm">
+            <span className="w-20 shrink-0 text-xs text-stone-500">
+              {r.label} <span className="ltr-nums">{(r.annualRate * 100).toFixed(0)}%</span>
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-stone-100 dark:bg-white/10">
+              <div className="h-full rounded-full bg-[var(--series-1)]" style={{ width: `${(r.monthly / max) * 100}%` }} />
+            </div>
+            <span className="ltr-nums w-20 shrink-0 text-end font-semibold">{formatILS(r.monthly)}</span>
+          </li>
+        ))}
+      </ul>
+      <Details className="mt-2" label="המחשה בלבד — לא תחזית">
+        לא ייעוץ השקעות. התשואה בפועל עלולה להיות נמוכה יותר ואף שלילית; שווי התיק עשוי לרדת. החישוב מניח תשואה קבועה והפקדה בסוף כל חודש.
+      </Details>
     </div>
   );
 }

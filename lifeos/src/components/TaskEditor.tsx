@@ -9,6 +9,10 @@ import { Button, Field, Input, Modal, Segmented, Select, Textarea, Toggle, confi
 import { RecurrenceEditor, defaultRule } from "./RecurrenceEditor";
 import { formatHebDate } from "@/lib/dates";
 import { blockingDependencies } from "@/lib/tasks";
+import { RemindersEditor } from "./RemindersEditor";
+import { EVIDENCE_LABEL } from "@/lib/game/evidence";
+import { needsEvaluation } from "@/lib/game/evaluate";
+import { EvaluationSummary, TaskEvaluationView } from "./game/TaskEvaluation";
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {
   planned: "מתוכנן",
@@ -41,6 +45,7 @@ export function TaskEditorHost() {
 function TaskEditor({ onClose }: { onClose: () => void }) {
   const req = useUI((s) => s.editor)!;
   const db = useStore((s) => s.db);
+  const [stage, setStage] = useState<"edit" | "eval">("edit");
   const today = useToday();
   const inst = req.instance;
   const initial = useMemo(() => req.task ?? inst?.task ?? blankTask({ date: today, ...req.defaults }), [req, inst, today]);
@@ -68,6 +73,7 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
     .sort((a, b) => a.order - b.order);
   const depCandidates = Object.values(db.tasks).filter((t) => t.id !== form.id && !t.recurrence && (t.status !== "completed" || form.dependsOn.includes(t.id)));
   const blocked = blockingDependencies(db, form);
+  const parentCandidates = Object.values(db.tasks).filter((t) => t.id !== form.id && !t.recurrence && t.parentTaskId !== form.id && t.status !== "completed" && (!form.goalId || t.goalId === form.goalId)).slice(0, 60);
 
   async function submit() {
     setBusy(true);
@@ -92,7 +98,11 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
         return setErrors({ recurrence: "יש לבחור יום גיבוי" });
       if (r.data.deadline && r.data.date && r.data.date > r.data.deadline)
         return setErrors({ deadline: "התאריך המתוכנן מאוחר מהדדליין" });
-      if (await saveTask(r.data)) onClose();
+      if (await saveTask(r.data)) {
+        // new or changed scope → show the difficulty evaluation (AI) before closing
+        if (needsEvaluation(r.data.id)) setStage("eval");
+        else onClose();
+      }
     } finally {
       setBusy(false);
     }
@@ -122,6 +132,13 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
   }
 
   const occurrenceMode = inst?.recurring && scope === "one";
+
+  if (stage === "eval")
+    return (
+      <Modal open onClose={onClose} title={`הערכת קושי: ${form.title}`} wide>
+        <TaskEvaluationView taskId={form.id} autoRun onDone={onClose} />
+      </Modal>
+    );
 
   return (
     <Modal
@@ -297,16 +314,59 @@ function TaskEditor({ onClose }: { onClose: () => void }) {
               </Field>
             )}
 
+            {!isNew && (
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-stone-50 px-3 py-2 dark:bg-white/5">
+                <span className="text-sm">
+                  קושי ו-XP: <EvaluationSummary taskId={form.id} />
+                </span>
+                <button type="button" className="text-sm font-medium text-accent-700 dark:text-accent-200" onClick={() => setStage("eval")} data-testid="open-evaluation">
+                  פרטים והבהרה
+                </button>
+              </div>
+            )}
+
             <button type="button" className="text-sm font-medium text-accent-700 dark:text-accent-200" onClick={() => setShowMore((s) => !s)} aria-expanded={showMore}>
-              {showMore ? "פחות פרטים" : "עוד פרטים: דדליין, הערות, תלויות"}
+              {showMore ? "פחות פרטים" : "עוד פרטים: הוכחה ו-XP, תזכורות, דדליין, הערות"}
             </button>
 
             {showMore && (
               <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="הוכחת ביצוע" hint={form.evidence === "none" ? "XP מתקבל מיד עם הסימון" : "XP מתקבל אחרי אישור ההוכחה"}>
+                    <Select value={form.evidence} onChange={(e) => set({ evidence: e.target.value as Task["evidence"] })}>
+                      {Object.entries(EVIDENCE_LABEL).map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  {!isNew && !form.recurrence && (
+                    <Field label="תת־משימה של">
+                      <Select value={form.parentTaskId ?? ""} onChange={(e) => set({ parentTaskId: e.target.value || null })}>
+                        <option value="">— משימה עצמאית —</option>
+                        {parentCandidates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.title}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  )}
+                </div>
+                {form.evidence !== "none" && form.evidence !== "manual" && (
+                  <Field label="מה צריך להיראות בהוכחה (רשות)">
+                    <Input value={form.evidenceCriteria} onChange={(e) => set({ evidenceCriteria: e.target.value })} maxLength={500} placeholder="למשל: תמונה של הספר פתוח בעמוד שהגעת אליו" />
+                  </Field>
+                )}
+                <div>
+                  <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">תזכורות נוספות</span>
+                  {isNew ? <p className="text-xs text-stone-500">אפשר להוסיף תזכורות נוספות אחרי השמירה.</p> : <RemindersEditor taskId={form.id} />}
+                </div>
                 <Field label="דדליין (רשות)" error={errors.deadline}>
                   <Input type="date" value={form.deadline ?? ""} onChange={(e) => set({ deadline: e.target.value || null })} />
                 </Field>
-                <Field label="למה זה חשוב" hint="יוצג ליד המשימה כתזכורת לקשר שלה למטרה">
+                <Field label="למה זה חשוב">
                   <Input value={form.rationale} onChange={(e) => set({ rationale: e.target.value })} maxLength={600} />
                 </Field>
                 <Field label="הערות">

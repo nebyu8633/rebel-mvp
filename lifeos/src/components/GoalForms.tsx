@@ -9,6 +9,7 @@ import { latestWeight } from "@/lib/goals";
 import { useToday } from "@/hooks/useToday";
 import { Button, Field, Input, Modal, Select, Textarea, cx } from "./ui";
 import { GOAL_COLORS } from "@/lib/goals";
+import { REGIONS, REGION_BY_ID, regionOfGoal } from "@/lib/game/regions";
 
 export function blankGoal(today: string): Goal {
   const n = nowIso();
@@ -28,6 +29,7 @@ export function blankGoal(today: string): Goal {
     manualValue: null,
     financeAccountId: null,
     info: {},
+    region: null,
     color: "slate",
     order: 99,
     createdAt: n,
@@ -74,7 +76,7 @@ export function GoalForm({ goal, onClose }: { goal: Goal; onClose: () => void })
         <Field label="שם המטרה" error={errors.title}>
           <Input value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="למשל: לרוץ 10 ק״מ" />
         </Field>
-        <Field label="למה זה חשוב לי" hint="משפט קצר שיופיע כתזכורת">
+        <Field label="למה זה חשוב לי">
           <Input value={f.why} onChange={(e) => set({ why: e.target.value })} maxLength={500} />
         </Field>
         <Field label="תיאור">
@@ -121,6 +123,16 @@ export function GoalForm({ goal, onClose }: { goal: Goal; onClose: () => void })
             </Field>
           </div>
         )}
+        <Field label="אזור בעולם המשחק" hint="לאן זורם ה-XP של המטרה">
+          <Select value={f.region ?? ""} onChange={(e) => set({ region: (e.target.value || null) as Goal["region"] })}>
+            <option value="">אוטומטי ({REGION_BY_ID[regionOfGoal({ ...f, region: null })].name})</option>
+            {REGIONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="סטטוס">
             <Select value={f.status} onChange={(e) => set({ status: e.target.value as Goal["status"] })}>

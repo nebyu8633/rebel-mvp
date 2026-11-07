@@ -1,5 +1,5 @@
 import type { CollectionName, DB, EntityOf } from "../types";
-import { hydrate, type Repository } from "./repo";
+import { hydrate, type BatchOp, type Repository } from "./repo";
 
 const KEY = "lifeos:db:v1";
 const QUARANTINE_KEY = "lifeos:quarantine:v1";
@@ -52,6 +52,24 @@ export class LocalRepository implements Repository {
     delete next[id];
     this.raw[collection] = next;
     this.persist();
+  }
+
+  async applyBatch(ops: BatchOp[]) {
+    const prev = this.raw;
+    const next: Record<string, Record<string, unknown>> = { ...prev };
+    for (const o of ops) {
+      const col = { ...(next[o.collection] ?? {}) };
+      if (o.op === "put") col[o.entity.id] = o.entity;
+      else delete col[o.id];
+      next[o.collection] = col;
+    }
+    this.raw = next;
+    try {
+      this.persist(); // single write → all-or-nothing
+    } catch (e) {
+      this.raw = prev;
+      throw e;
+    }
   }
 
   onExternalChange(cb: () => void) {

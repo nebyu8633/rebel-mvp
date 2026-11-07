@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, Download, Upload, LogOut } from "lucide-react";
+import { Plus, Trash2, Download, Upload, LogOut, UserRound, Clock, Repeat, UtensilsCrossed, Bell, Sparkles, Cloud, HardDrive, Gamepad2 } from "lucide-react";
 import { useStore, useSettings } from "@/lib/store/store";
 import { updateSettings, saveTask, uid } from "@/lib/actions";
 import { SEED_IDS } from "@/lib/seed";
@@ -10,7 +10,9 @@ import { LocalRepository } from "@/lib/store/local";
 import { hydrate } from "@/lib/store/repo";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import type { CollectionName, MealReminder } from "@/lib/types";
-import { Badge, Button, Card, Field, Input, PageHeader, SectionTitle, Select, Toggle, confirmDialog } from "@/components/ui";
+import { Badge, Button, Card, Details, Disclosure, Field, Input, PageHeader, Select, Toggle, confirmDialog } from "@/components/ui";
+import { PushToggle } from "@/components/PushToggle";
+import { NotifySettings, XpSettings } from "@/components/game/NotifySettings";
 
 export default function SettingsPage() {
   const settings = useSettings();
@@ -90,16 +92,15 @@ export default function SettingsPage() {
   const setReminders = (r: MealReminder[]) => updateSettings({ mealReminders: r });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <PageHeader title="הגדרות" />
 
-      <Card>
-        <SectionTitle>כללי</SectionTitle>
+      <Disclosure id="s-general" icon={<UserRound size={16} />} title="כללי" summary={`${settings.displayName || "ללא שם"} · ${settings.timezone}`}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="שם">
             <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name !== settings.displayName && updateSettings({ displayName: name.trim() })} maxLength={60} />
           </Field>
-          <Field label="אזור זמן" hint={`השעה עכשיו: ${nowInZone(settings.timezone).time}. כל התאריכים והתזכורות מחושבים לפיו.`}>
+          <Field label="אזור זמן" hint={`עכשיו ${nowInZone(settings.timezone).time}`}>
             <Select value={settings.timezone} onChange={(e) => isValidTimeZone(e.target.value) && updateSettings({ timezone: e.target.value })}>
               {zones.map((z) => (
                 <option key={z} value={z}>
@@ -109,11 +110,10 @@ export default function SettingsPage() {
             </Select>
           </Field>
         </div>
-        <p className="mt-2 text-xs text-stone-500">השבוע מתחיל ביום ראשון.</p>
-      </Card>
+      </Disclosure>
 
-      <Card>
-        <SectionTitle hint="כמה זמן פנוי למשימות בכל יום. משמש לאזהרות עומס, לשיבוץ תוכניות ולתוכנית התאוששות. ריק = לא הוגדר.">זמינות</SectionTitle>
+      <Disclosure id="s-availability" icon={<Clock size={16} />} title="זמינות" summary={availabilitySummary(settings.availability)}>
+        <p className="mb-3 text-xs text-stone-500">שעות פנויות למשימות בכל יום. ריק = לא הוגדר.</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {WEEKDAYS_HE.map((d, i) => (
             <Field key={i} label={d}>
@@ -134,10 +134,10 @@ export default function SettingsPage() {
             </Field>
           ))}
         </div>
-      </Card>
+        <Details className="mt-2" label="למה זה חשוב">משמש לאזהרות עומס, לשיבוץ תוכניות ולתוכנית התאוששות.</Details>
+      </Disclosure>
 
-      <Card>
-        <SectionTitle hint="שגרות הן משימות חוזרות רגילות — אפשר גם לערוך אותן במסך המשימות.">שגרות</SectionTitle>
+      <Disclosure id="s-routines" icon={<Repeat size={16} />} title="שגרות" summary={[grocery && `קניות: ${WEEKDAYS_HE[grocery.recurrence?.byWeekday?.[0] ?? 4]}`, review && `סיכום: ${WEEKDAYS_HE[review.recurrence?.byWeekday?.[0] ?? 5]}`].filter(Boolean).join(" · ")}>
         <div className="space-y-4">
           {grocery ? (
             <div className="grid gap-3 sm:grid-cols-3">
@@ -175,25 +175,25 @@ export default function SettingsPage() {
               </Field>
             </div>
           ) : null}
-          <p className="text-sm text-stone-500">
-            ימי הכנת אוכל (מועדף וגיבוי) — בעמוד <a className="text-accent-700" href="/meals?tab=prep">אוכל וקניות ← הכנה</a>.
-          </p>
+          <a className="inline-block text-sm text-accent-700" href="/meals?tab=prep">
+            ימי הכנת אוכל ←
+          </a>
         </div>
-      </Card>
+      </Disclosure>
 
-      <Card>
-        <SectionTitle
-          hint="רק שעות שתגדירו. אין שעות ברירת מחדל."
-          action={
-            <Button size="sm" variant="ghost" onClick={() => setReminders([...reminders, { id: uid(), label: "ארוחה", time: "13:00", enabled: false }])}>
-              <Plus size={14} /> תזכורת
-            </Button>
-          }
-        >
-          תזכורות ארוחות
-        </SectionTitle>
+      <Disclosure
+        id="s-meals"
+        icon={<UtensilsCrossed size={16} />}
+        title="תזכורות ארוחות"
+        summary={reminders.filter((r) => r.enabled).map((r) => r.time).join(" · ") || "אין"}
+        action={
+          <Button size="icon" variant="ghost" aria-label="תזכורת ארוחה חדשה" onClick={() => setReminders([...reminders, { id: uid(), label: "ארוחה", time: "13:00", enabled: false }])}>
+            <Plus size={16} />
+          </Button>
+        }
+      >
         {reminders.length === 0 ? (
-          <p className="text-sm text-stone-500">לא הוגדרו תזכורות ארוחות.</p>
+          <p className="text-sm text-stone-500">אין. רק שעות שתגדירו (+).</p>
         ) : (
           <ul className="space-y-2">
             {reminders.map((r) => (
@@ -208,47 +208,34 @@ export default function SettingsPage() {
             ))}
           </ul>
         )}
-      </Card>
+      </Disclosure>
 
-      <Card>
-        <SectionTitle>התראות</SectionTitle>
+      <Disclosure id="s-notify" icon={<Bell size={16} />} title="התראות" summary={[settings.notifyInApp && "באפליקציה", settings.notifyBrowser && perm === "granted" && "דפדפן"].filter(Boolean).join(" · ") || "כבויות"}>
         <Toggle checked={settings.notifyInApp} onChange={(v) => updateSettings({ notifyInApp: v })} label="תזכורות בתוך האפליקציה" />
         <Toggle checked={settings.notifyBrowser && perm === "granted"} onChange={(v) => void enableBrowser(v)} label="התראות דפדפן" disabled={perm === "unsupported"} />
         <Field label="ברירת מחדל לתזכורת (דקות לפני)" className="mt-2 max-w-xs">
           <Input type="number" min={0} max={1440} defaultValue={settings.defaultReminderMinutes} onBlur={(e) => updateSettings({ defaultReminderMinutes: Math.max(0, Math.min(1440, Number(e.target.value) || 0)) })} />
         </Field>
-        <div className="mt-3 rounded-xl bg-stone-50 p-3 text-xs leading-relaxed text-stone-600 dark:bg-white/[0.03] dark:text-stone-300">
-          <b>חשוב לדעת:</b> התזכורות פועלות כל עוד LifeOS פתוח בלשונית כלשהי בדפדפן (גם ברקע). כשכל הלשוניות סגורות — לא תצא תזכורת, ותזכורת שהוחמצה ביותר מ-10 דקות לא תוצג בדיעבד. אין כרגע שרת Push, ולכן אין
-          התחייבות להתראות כשהאפליקציה סגורה. בטלפון: מומלץ ״הוספה למסך הבית״; ב-iOS התראות דפדפן נתמכות רק לאפליקציה שהותקנה למסך הבית. כל תזכורת נשלחת פעם אחת בלבד, גם אם פתוחות כמה לשוניות.
-          {perm === "denied" && <div className="mt-1 text-rose-600">ההרשאה להתראות נחסמה בדפדפן — יש לאפשר אותה בהגדרות האתר.</div>}
-        </div>
-        {settings.notifyBrowser && perm === "granted" && (
-          <Button size="sm" className="mt-3" onClick={() => new Notification("LifeOS", { body: "בדיקת התראה ✓", lang: "he", dir: "rtl" })}>
-            שליחת התראת בדיקה
-          </Button>
-        )}
+        {perm === "denied" && <p className="mt-2 text-xs text-rose-600">ההרשאה נחסמה בדפדפן — יש לאפשר בהגדרות האתר.</p>}
+        <NotifySettings />
+        <PushToggle />
+      </Disclosure>
+
+      <Disclosure id="s-game" icon={<Gamepad2 size={16} />} title="משחק" summary="טבלת XP">
+        <XpSettings />
+      </Disclosure>
+
+      <Card className="flex items-center gap-3 py-3.5">
+        <Sparkles size={16} className="text-stone-400" />
+        <span className="text-[15px] font-semibold">עוזר AI</span>
+        {ai == null ? <span className="text-sm text-stone-500">…</span> : ai ? <Badge tone="accent">מחובר</Badge> : <Badge>לא מוגדר</Badge>}
+        <Details className="ms-auto" label="מידע">המפתח נשמר רק בשרת (ANTHROPIC_API_KEY) ולא נשלח לדפדפן. בלי מפתח עובד מנוע בסיסי.</Details>
       </Card>
 
-      <Card>
-        <SectionTitle>עוזר AI</SectionTitle>
-        <p className="text-sm">
-          {ai == null ? "בודק…" : ai ? <Badge tone="accent">מחובר (Anthropic, דרך השרת)</Badge> : <Badge>לא מוגדר</Badge>}
-        </p>
-        <p className="mt-2 text-xs text-stone-500">
-          המפתח נשמר רק בשרת (משתנה הסביבה ANTHROPIC_API_KEY) ולעולם לא נשלח לדפדפן. בלי מפתח, המתכנן והעוזר עובדים עם מנוע בסיסי ללא AI.
-        </p>
-      </Card>
-
-      <Card id="data">
-        <SectionTitle>נתונים</SectionTitle>
-        <p className="mb-3 text-sm">
-          {mode === "supabase" ? (
-            <>הנתונים נשמרים בענן (Supabase), מוגנים בהתחברות ובהרשאות ברמת השורה.</>
-          ) : (
-            <>
-              <b>מצב מקומי:</b> הנתונים נשמרים רק בדפדפן הזה (localStorage). ניקוי נתוני האתר ימחק אותם, והם לא מסתנכרנים בין מכשירים. מומלץ לגבות מדי פעם.
-            </>
-          )}
+      <div id="data">
+      <Disclosure id="s-data" icon={mode === "supabase" ? <Cloud size={16} /> : <HardDrive size={16} />} title="נתונים" summary={mode === "supabase" ? "בענן" : "מקומי · בדפדפן הזה"}>
+        <p className="mb-3 text-sm text-stone-600 dark:text-stone-300">
+          {mode === "supabase" ? "שמורים בענן, מוגנים בהתחברות." : "שמורים רק בדפדפן הזה — מומלץ לגבות."}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button onClick={exportData}>
@@ -272,7 +259,15 @@ export default function SettingsPage() {
             </Button>
           )}
         </div>
-      </Card>
+      </Disclosure>
+      </div>
     </div>
   );
+}
+
+function availabilitySummary(av: Array<number | null>) {
+  const set = av.filter((a) => a != null) as number[];
+  if (!set.length) return "לא הוגדרה";
+  const total = set.reduce((s, a) => s + a, 0);
+  return `${Math.round((total / 60) * 10) / 10} שע׳ בשבוע`;
 }

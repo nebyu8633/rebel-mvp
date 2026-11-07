@@ -1,0 +1,19 @@
+{
+  "name": "lifeos-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Capacitor shell for testing the LifeOS web app (incl. /play) on real iOS/Android devices",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/core": "^7.4.0",
+    "@capacitor/ios": "^7.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.0"
+  }
+}

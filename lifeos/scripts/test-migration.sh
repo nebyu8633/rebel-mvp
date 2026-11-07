@@ -67,4 +67,111 @@ do $$ begin
   begin perform 1 from goals; raise exception 'anon can read'; exception when insufficient_privilege then null; end;
 end $$;
 SQL
+$PSQL <<'SQL'
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+-- apply_batch: success path, user_id forced to caller even if the payload lies
+select apply_batch('[
+  {"op":"upsert","table":"goals","row":{"user_id":"22222222-2222-2222-2222-222222222222","id":"g2","title":"מטרה ב","kind":"learning","status":"planning","start_date":"2026-11-01","target_date":"2027-11-01","description":"","why":"","start_confirmed":true,"unit":"","info":{},"color":"teal","order":0,"created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}},
+  {"op":"upsert","table":"goal_plan_versions","row":{"id":"v1","goal_id":"g2","version":1,"status":"draft","plan":{"a":1},"created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}},
+  {"op":"upsert","table":"tasks","row":{"id":"pt:g2:t1","title":"משימה","goal_id":"g2","plan_version_id":"v1","notes":"","priority":"medium","status":"planned","rationale":"","depends_on":[],"source":"planner","history":[],"created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}},
+  {"op":"upsert","table":"reminders","row":{"id":"rm1","task_id":"pt:g2:t1","kind":"before_start","minutes":15,"enabled":true,"created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}}
+]'::jsonb);
+do $$ begin
+  if (select user_id from goals where id='g2') <> '11111111-1111-1111-1111-111111111111' then raise exception 'user_id not forced'; end if;
+  if (select count(*) from reminders) <> 1 then raise exception 'batch insert failed'; end if;
+end $$;
+-- idempotent retry: same ops again must not duplicate
+select apply_batch('[{"op":"upsert","table":"tasks","row":{"id":"pt:g2:t1","title":"משימה מעודכנת","goal_id":"g2","notes":"","priority":"high","status":"planned","rationale":"","depends_on":[],"source":"planner","history":[],"created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-02T00:00:00Z"}}]'::jsonb);
+do $$ begin
+  if (select count(*) from tasks where id='pt:g2:t1') <> 1 or (select priority from tasks where id='pt:g2:t1') <> 'high' then raise exception 'upsert not idempotent'; end if;
+end $$;
+-- atomicity: second op violates a FK → the first op must be rolled back too
+do $$ begin
+  begin
+    perform apply_batch('[
+      {"op":"upsert","table":"goal_progress_records","row":{"id":"p1","goal_id":"g2","metric_key":"main","date":"2026-11-02","value":5,"note":"","created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}},
+      {"op":"upsert","table":"reminders","row":{"id":"bad","task_id":"no-such-task","kind":"at","enabled":true,"created_at":"2026-11-01T00:00:00Z","updated_at":"2026-11-01T00:00:00Z"}}
+    ]'::jsonb);
+    raise exception 'expected failure';
+  exception when foreign_key_violation then null; end;
+  if (select count(*) from goal_progress_records) <> 0 then raise exception 'batch not atomic'; end if;
+end $$;
+-- non-whitelisted table rejected
+do $$ begin
+  begin perform apply_batch('[{"op":"delete","table":"push_deliveries","id":"x"}]'::jsonb); raise exception 'expected rejection';
+  exception when raise_exception then if sqlerrm not like 'table not allowed%' then raise; end if; end;
+end $$;
+-- approved plan versions are immutable
+update goal_plan_versions set status='approved', approved_at=now() where id='v1';
+do $$ begin
+  begin update goal_plan_versions set plan='{"b":2}' where id='v1'; raise exception 'expected immutability error';
+  exception when raise_exception then if sqlerrm not like 'approved plan versions are immutable%' then raise; end if; end;
+end $$;
+update goal_plan_versions set status='superseded' where id='v1';
+-- another user cannot touch it through apply_batch either
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select apply_batch('[{"op":"delete","table":"tasks","id":"pt:g2:t1"}]'::jsonb);
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$ begin if (select count(*) from tasks where id='pt:g2:t1') <> 1 then raise exception 'cross-user delete via batch'; end if; end $$;
+SQL
+$PSQL <<'SQL'
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+-- partial rows: defaults apply (an older client that doesn't know the new columns still works)
+select apply_batch('[{"op":"upsert","table":"tasks","row":{"id":"pt:g2:t9","title":"חדש","goal_id":"g2"}}]'::jsonb);
+do $$ begin if (select evidence from tasks where id='pt:g2:t9') <> 'none' then raise exception 'default not applied'; end if; end $$;
+-- the XP ledger can no longer be written by users (server-only): batch and direct writes are refused
+do $$ begin
+  begin perform apply_batch('[{"op":"upsert","table":"xp_events","row":{"id":"task:pt:g2:t9","kind":"task","ref_id":"pt:g2:t9","title":"x","amount":999,"region":"knowledge","attribute":"intelligence","at":"2026-11-03T10:00:00Z"}}]'::jsonb);
+    raise exception 'xp_events writable through apply_batch';
+  exception when raise_exception then if sqlerrm not like 'table not allowed%' then raise; end if; end;
+  begin insert into xp_events (id, kind, ref_id, title, amount, attribute, at) values ('task:fake','task','fake','x',999,'discipline',now());
+    raise exception 'xp_events directly writable';
+  exception when insufficient_privilege then null; end;
+  begin insert into task_evaluations (id, task_id, original_description, dims, score, difficulty, estimated_minutes, xp, explanation, source, repeat_key, content_hash, evaluation_version)
+      values ('pt:g2:t9','pt:g2:t9','x','{}',5,5,60,150,'x','ai','k','h',1);
+    raise exception 'task_evaluations writable by user';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+-- the server (service role / owner) writes them; deterministic ids keep awards idempotent
+insert into xp_events (user_id, id, kind, ref_id, title, amount, region, attribute, at, detail, eval_version) values ('11111111-1111-1111-1111-111111111111','task:pt:g2:t9','task','pt:g2:t9','x',25,'knowledge','intelligence','2026-11-03T10:00:00Z','רמה 3',1) on conflict (user_id, id) do update set amount = excluded.amount;
+insert into xp_events (user_id, id, kind, ref_id, title, amount, region, attribute, at) values ('11111111-1111-1111-1111-111111111111','task:pt:g2:t9','task','pt:g2:t9','x',25,'knowledge','intelligence','2026-11-03T10:00:00Z') on conflict (user_id, id) do update set amount = excluded.amount;
+insert into xp_events (user_id, id, kind, ref_id, title, amount, attribute, at) values ('11111111-1111-1111-1111-111111111111','unlock:ms:m1:hero','unlock','hero:knowledge:rare','גיבור נדיר',0,'intelligence',now());
+insert into task_evaluations (user_id, id, task_id, original_description, dims, score, difficulty, estimated_minutes, xp, explanation, source, repeat_key, content_hash, evaluation_version)
+  values ('11111111-1111-1111-1111-111111111111','pt:g2:t9','pt:g2:t9','חדש','{"time":3,"complexity":3,"effort":3,"scope":3,"significance":3}',3,3,60,32,'x','ai','t:חדש','abcd1234',1);
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+  if (select count(*) from xp_events) <> 2 then raise exception 'duplicate xp'; end if;
+  if (select count(*) from task_evaluations) <> 1 then raise exception 'owner cannot read own evaluation'; end if;
+end $$;
+insert into task_evidence (id, task_id, instance_key, status, kind, file_ref) values ('ev1','pt:g2:t9','pt:g2:t9','submitted','photo','11111111-1111-1111-1111-111111111111/ev1.jpg');
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  if (select count(*) from task_evidence) <> 0 or (select count(*) from xp_events) <> 0 or (select count(*) from task_evaluations) <> 0 then raise exception 'game data leak across users'; end if;
+end $$;
+SQL
+$PSQL <<'SQL'
+set role authenticated;
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+-- saved teams: player-writable through apply_batch
+select apply_batch('[{"op":"upsert","table":"arena_teams","row":{"id":"t1","name":"צוות","heroes":["aegis","sage","vita"]}}]'::jsonb);
+do $$ begin
+  if (select count(*) from arena_teams) <> 1 then raise exception 'arena team not saved'; end if;
+  -- results & hero XP: never writable by the player
+  begin perform apply_batch('[{"op":"upsert","table":"arena_profiles","row":{"id":"arena","hero_xp":{"aegis":99999}}}]'::jsonb); raise exception 'arena_profiles writable';
+  exception when raise_exception then if sqlerrm not like 'table not allowed%' then raise; end if; end;
+  begin insert into arena_matches (id, mode, map_id, won, draw, result, duration, played_at) values ('m','duel','vault',true,false,'{}',1,now()); raise exception 'arena_matches writable';
+  exception when insufficient_privilege then null; end;
+  begin insert into arena_profiles (id) values ('arena'); raise exception 'arena_profiles insert allowed';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+insert into arena_matches (user_id, id, mode, map_id, won, draw, result, duration, played_at) values ('11111111-1111-1111-1111-111111111111','m1','duel','vault',true,false,'{}',90,now());
+set role authenticated;
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$ begin if (select count(*) from arena_matches) + (select count(*) from arena_teams) <> 0 then raise exception 'arena data leak across users'; end if; end $$;
+SQL
 echo "migration + RLS checks: OK"

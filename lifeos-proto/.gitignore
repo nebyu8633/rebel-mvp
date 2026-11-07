@@ -1,0 +1,7 @@
+node_modules
+dist
+assets-src
+*.log
+android
+ios
+public/avatar-private

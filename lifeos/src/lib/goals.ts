@@ -1,6 +1,8 @@
 import type { DB, Goal, MotorcycleInfo, WeightLog } from "./types";
 import { summarizeAccount, motorcycleCost } from "./finance";
 import { diffDays } from "./dates";
+import { addDays as _addDays } from "./dates";
+import { instancesInRange as _inst, overdueInstances as _over, mostImportant as _most, type TaskInstance } from "./tasks";
 
 export interface GoalProgress {
   /** 0..1, or null when it cannot be computed honestly (missing data). */
@@ -51,12 +53,16 @@ export function goalProgress(db: DB, goal: Goal, today: string): GoalProgress {
       };
     }
     case "portfolio":
+    case "purchase":
     case "motorcycle": {
       const acc = goal.financeAccountId ? db.financeAccounts[goal.financeAccountId] : null;
       const entries = acc ? Object.values(db.financeEntries).filter((e) => e.accountId === acc.id) : [];
       const summary = summarizeAccount(entries);
       let target = goal.targetValue;
       const missing: string[] = [];
+      if (goal.kind === "purchase") {
+        if (target == null) missing.push("מחיר יעד");
+      }
       if (goal.kind === "motorcycle") {
         const cost = motorcycleCost((goal.info ?? {}) as Partial<MotorcycleInfo>);
         target = cost.complete || cost.upfront > 0 ? cost.upfront : null;
@@ -77,14 +83,16 @@ export function goalProgress(db: DB, goal: Goal, today: string): GoalProgress {
       };
     }
     default: {
-      const { startValue: s, targetValue: t, manualValue: c } = goal;
+      // measurable outcome: latest manual progress record (or the legacy manual value)
+      const rec = Object.values(db.progressRecords ?? {})
+        .filter((r) => r.goalId === goal.id && r.metricKey === "main")
+        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.createdAt < b.createdAt ? 1 : -1))[0];
+      const c = rec?.value ?? goal.manualValue;
+      const { startValue: s, targetValue: t } = goal;
       if (s == null || t == null || c == null || t === s) {
-        const ms = Object.values(db.milestones).filter((m) => m.goalId === goal.id);
-        if (ms.length) {
-          const done = ms.filter((m) => m.status === "done").length;
-          return { fraction: done / ms.length, current: done, target: ms.length, start: 0, unit: "אבני דרך", label: `${done}/${ms.length} אבני דרך`, missing: [], timeElapsed: te };
-        }
-        return { fraction: null, current: c, target: t, start: s, unit: goal.unit, label: "", missing: ["ערך יעד ונוכחי"], timeElapsed: te };
+        // No measurable data → no percentage. Milestone/task completion is shown separately, never as goal achievement.
+        const missing = t == null ? ["מדד יעד מספרי"] : c == null ? ["עדכון ערך נוכחי"] : ["ערך התחלתי"];
+        return { fraction: null, current: c ?? null, target: t, start: s, unit: goal.unit, label: "", missing, timeElapsed: te };
       }
       return { fraction: clamp((c - s) / (t - s)), current: c, target: t, start: s, unit: goal.unit, label: "", missing: [], timeElapsed: te };
     }
@@ -137,3 +145,32 @@ export const GOAL_STATUS: Record<Goal["status"], { label: string; tone: "amber" 
   done: { label: "הושגה", tone: "indigo" },
 };
 
+
+// ───────── Snapshot for compact cards ─────────
+
+export interface GoalSnapshot {
+  progress: GoalProgress;
+  nextMilestone: { id: string; title: string; targetDate: string | null } | null;
+  nextAction: TaskInstance | null;
+  plan: "none" | "draft" | "active";
+  milestonesDone: number;
+  milestonesTotal: number;
+}
+
+/** Everything a compact goal card needs: progress, next milestone, next action. */
+export function goalSnapshot(db: DB, goal: Goal, today: string): GoalSnapshot {
+  const ms = Object.values(db.milestones)
+    .filter((m) => m.goalId === goal.id)
+    .sort((a, b) => (a.targetDate ?? "9999") < (b.targetDate ?? "9999") ? -1 : a.order - b.order);
+  const next = ms.find((m) => m.status !== "done") ?? null;
+  const pool = [..._over(db, today), ..._inst(db, today, _addDays(today, 30), today)].filter((i) => i.task.goalId === goal.id && i.task.id !== `rv:${goal.id}`);
+  const versions = Object.values(db.planVersions ?? {}).filter((v) => v.goalId === goal.id);
+  return {
+    progress: goalProgress(db, goal, today),
+    nextMilestone: next ? { id: next.id, title: next.title, targetDate: next.targetDate } : null,
+    nextAction: _most(db, pool, today),
+    plan: versions.some((v) => v.status === "approved") ? "active" : versions.some((v) => v.status === "draft") ? "draft" : "none",
+    milestonesDone: ms.filter((m) => m.status === "done").length,
+    milestonesTotal: ms.length,
+  };
+}

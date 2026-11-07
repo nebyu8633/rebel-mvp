@@ -8,7 +8,7 @@ import { addDays, startOfWeek, WEEKDAYS_HE, WEEKDAYS_SHORT_HE, weekday, formatHe
 import { habitDueOn } from "@/lib/tasks";
 import { describeFrequency, streak, weekCompletion } from "@/lib/habits";
 import { deleteHabit, nowIso, setHabitLog, uid } from "@/lib/actions";
-import { Button, Card, EmptyState, Field, Input, Modal, PageHeader, Select, confirmDialog, cx } from "@/components/ui";
+import { Button, Card, Details, EmptyState, Field, Input, Modal, PageHeader, Select, confirmDialog, cx } from "@/components/ui";
 
 export default function HabitsPage() {
   const db = useStore((s) => s.db);
@@ -25,7 +25,6 @@ export default function HabitsPage() {
     <div>
       <PageHeader
         title="הרגלים"
-        subtitle="יום שפוספס הוא לא כישלון — ״דילוג״ לא שובר רצף."
         actions={
           <Button variant="primary" onClick={() => setEditing(blank())}>
             <Plus size={16} /> הרגל חדש
@@ -95,7 +94,7 @@ export default function HabitsPage() {
               </Card>
             );
           })}
-          <p className="text-xs text-stone-500">לחיצה על יום: בוצע ← דילוג ← ניקוי.</p>
+          <Details label="איך מסמנים">לחיצה על יום: בוצע ← דילוג ← ניקוי. דילוג לא שובר רצף.</Details>
         </div>
       )}
       {editing && <HabitForm habit={editing} onClose={() => setEditing(null)} />}

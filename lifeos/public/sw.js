@@ -17,3 +17,17 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+
+// Web Push (sent by /api/cron/reminders when configured). Works while the browser is running,
+// even if no LifeOS tab is open.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "LifeOS", body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "LifeOS", { body: data.body || "", tag: data.tag, lang: "he", dir: "rtl", icon: "/icon.svg", data: { href: data.href || "/" } }),
+  );
+});

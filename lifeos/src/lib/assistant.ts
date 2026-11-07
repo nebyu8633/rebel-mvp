@@ -36,44 +36,44 @@ export function basicAnswer(db: DB, q: string, today: string): BasicAnswer {
       const top = mostImportant(db, [...overdue, ...todayList], today);
       const load = dayLoad(db, today, todayList);
       const open = [...overdue, ...todayList].filter((i) => isOpen(i.status));
-      if (!open.length) return { intent, text: "אין משימות פתוחות להיום. אפשר לבחור משימה מרשימת ״ללא תאריך״ או לקדם אבן דרך באחת המטרות.", actions: [{ kind: "tasks", label: "לרשימת המשימות" }] };
-      const lines = [`הדבר החשוב ביותר: **${top!.title}**${top!.task.goalId && db.goals[top!.task.goalId] ? ` (מקדם את ${db.goals[top!.task.goalId].title})` : ""}.`];
+      if (!open.length) return { intent, text: "אין משימות פתוחות היום.", actions: [{ kind: "tasks", label: "לרשימת המשימות" }] };
+      const lines = [`**${top!.title}**${top!.task.goalId && db.goals[top!.task.goalId] ? ` · ${db.goals[top!.task.goalId].title}` : ""}`];
       const rest = open.filter((i) => i.key !== top!.key).slice(0, 3);
-      if (rest.length) lines.push(`אחר כך: ${rest.map((i) => i.title).join(" · ")}.`);
+      if (rest.length) lines.push(`אחר כך: ${rest.map((i) => i.title).join(" · ")}`);
       if (load.availableMinutes != null)
-        lines.push(load.over ? `שימו לב: מתוכננות ${formatDuration(load.plannedMinutes)} — יותר מ-${formatDuration(load.availableMinutes)} הפנויות. כדאי לדחות משימה בעדיפות נמוכה.` : `העומס היום: ${formatDuration(load.plannedMinutes) || "קל"} מתוך ${formatDuration(load.availableMinutes)} פנויות.`);
-      if (overdue.length) lines.push(`יש ${overdue.length} משימות באיחור — תוכנית התאוששות יכולה לפזר אותן בצורה ריאלית.`);
+        lines.push(load.over ? `⚠ ${formatDuration(load.plannedMinutes)} מתוך ${formatDuration(load.availableMinutes)} — כדאי לדחות משהו.` : `עומס: ${formatDuration(load.plannedMinutes) || "קל"} / ${formatDuration(load.availableMinutes)}`);
+      if (overdue.length) lines.push(`${overdue.length} באיחור.`);
       return { intent, text: lines.join("\n"), actions: overdue.length ? [{ kind: "recovery", label: "תוכנית התאוששות" }] : [] };
     }
     case "recover": {
       const plan = buildRecoveryPlan(db, today);
-      if (!plan.actions.length) return { intent, text: "לא מצאתי משימות שפוספסו בשבועיים האחרונים.", actions: [] };
+      if (!plan.actions.length) return { intent, text: "אין משימות שפוספסו.", actions: [] };
       const lines = plan.actions.slice(0, 8).map((a) => `• ${a.title} — ${a.action === "move" ? relativeDayLabel(a.date!, today) : a.action === "skip" ? "דילוג (חוזרת)" : "ללא תאריך"}`);
-      return { intent, text: `הצעה לפריסה מחדש (לפי חשיבות וזמן פנוי, לא הכול מחר):\n${lines.join("\n")}${plan.warnings.length ? `\n\n${plan.warnings.join("\n")}` : ""}`, actions: [{ kind: "recovery", label: "לבדוק ולהחיל" }] };
+      return { intent, text: `פריסה מוצעת:\n${lines.join("\n")}${plan.warnings.length ? `\n\n${plan.warnings.join("\n")}` : ""}`, actions: [{ kind: "recovery", label: "לבדוק ולהחיל" }] };
     }
     case "grocery": {
       const ws = startOfWeek(today);
       const entries = Object.values(db.mealPlan).filter((e) => e.date >= ws && e.date <= addDays(ws, 6));
       const approved = db.mealWeeks[ws]?.approved;
-      if (!entries.length) return { intent, text: "אין עדיין תפריט לשבוע הזה. בונים תפריט בעמוד ״אוכל וקניות״, מאשרים, והרשימה נוצרת אוטומטית.", actions: [{ kind: "groceries", label: "לתפריט השבועי" }] };
+      if (!entries.length) return { intent, text: "אין תפריט לשבוע. בונים ומאשרים — והרשימה נוצרת לבד.", actions: [{ kind: "groceries", label: "לתפריט השבועי" }] };
       return {
         intent,
-        text: approved ? `התפריט לשבוע מאושר (${entries.length} ארוחות). אפשר ליצור/לעדכן את רשימת הקניות — מרכיבים זהים מאוחדים בלי כפילויות.` : `יש ${entries.length} ארוחות בתפריט השבוע, אבל הוא עדיין לא אושר. אשרו אותו ואז צרו רשימה.`,
+        text: approved ? `תפריט מאושר (${entries.length} ארוחות).` : `${entries.length} ארוחות בתפריט — עוד לא אושר.`,
         actions: [{ kind: "groceries", label: "לרשימת הקניות" }],
       };
     }
     case "progress": {
       const lines = Object.values(db.goals).map((g) => {
         const p = goalProgress(db, g, today);
-        return `• ${g.title}: ${p.fraction != null ? `${Math.round(p.fraction * 100)}% (עבר ${Math.round(p.timeElapsed * 100)}% מהזמן)` : `עוד אין מספיק נתונים — חסר: ${p.missing.join(", ")}`}`;
+        return `• ${g.title}: ${p.fraction != null ? `${Math.round(p.fraction * 100)}% (עבר ${Math.round(p.timeElapsed * 100)}% מהזמן)` : `חסר: ${p.missing.join(", ")}`}`;
       });
       const st = weekStats(db, startOfWeek(today), today);
       lines.push(`\nהשבוע: ${st.completed} מתוך ${st.planned} משימות הושלמו${st.missed ? `, ${st.missed} פוספסו` : ""}.`);
       return { intent, text: lines.join("\n"), actions: [{ kind: "progress", label: "למסך ההתקדמות" }] };
     }
     case "breakdown":
-      return { intent, text: "המתכנן מפרק מטרה לאבני דרך, יעדים חודשיים ושבועיים ומשימות — ומציג הכול לאישור לפני שמשהו נכנס ללוח.", actions: [{ kind: "planner", label: "לפתוח את המתכנן" }] };
+      return { intent, text: "מתחילים שיחת תכנון קצרה — והתוכנית מוצגת לאישור.", actions: [{ kind: "planner", label: "לפתוח את המתכנן" }] };
     default:
-      return { intent, text: "המנוע הבסיסי עונה על: מה להתמקד היום, סידור מחדש של משימות שפוספסו, רשימת קניות, התקדמות במטרות ופירוק מטרה. לשאלות חופשיות צריך לחבר מפתח AI.", actions: [] };
+      return { intent, text: "אפשר לשאול על: מיקוד היום, סידור מחדש, קניות, התקדמות, פירוק מטרה. (שאלות חופשיות — עם AI.)", actions: [] };
   }
 }

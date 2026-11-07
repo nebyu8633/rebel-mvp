@@ -1,7 +1,7 @@
 "use client";
-import { forwardRef, useEffect, useId, useRef, type ReactNode } from "react";
+import { forwardRef, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { create } from "zustand";
-import { X } from "lucide-react";
+import { X, ChevronDown, Info } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 /** Join class names; later Tailwind classes override conflicting earlier ones (e.g. w-20 beats w-full). */
@@ -310,4 +310,121 @@ export function Spinner({ className }: { className?: string }) {
 
 export function Skeleton({ className }: { className?: string }) {
   return <div className={cx("animate-pulse rounded-xl bg-stone-200/70 dark:bg-white/5", className)} />;
+}
+
+// ───────── Progressive disclosure ─────────
+
+/**
+ * Expandable card section: a one-line header (icon, title, short summary) that opens to the full
+ * content. Closed by default so screens show essentials first. Open state is remembered per id.
+ */
+export function Disclosure({
+  id,
+  title,
+  icon,
+  summary,
+  defaultOpen = false,
+  forceOpen = false,
+  action,
+  children,
+  className,
+}: {
+  id?: string;
+  title: ReactNode;
+  icon?: ReactNode;
+  summary?: ReactNode;
+  defaultOpen?: boolean;
+  /** Keep open while true (e.g. in edit mode). */
+  forceOpen?: boolean;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  const key = id ? `lifeos:open:${id}` : null;
+  const [openState, setOpen] = useState(defaultOpen);
+  const open = openState || forceOpen;
+  useEffect(() => {
+    if (!key) return;
+    try {
+      const v = localStorage.getItem(key);
+      if (v != null) setOpen(v === "1");
+    } catch {
+      /* ignore */
+    }
+  }, [key]);
+  const toggle = () => {
+    setOpen((o) => {
+      try {
+        if (key) localStorage.setItem(key, o ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !o;
+    });
+  };
+  const contentId = useId();
+  return (
+    <section className={cx("surface overflow-hidden rounded-2xl border", className)}>
+      <div className="flex items-center gap-2 pe-3">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls={contentId}
+          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-start transition-colors hover:bg-stone-50/70 dark:hover:bg-white/[0.02]"
+        >
+          {icon && <span className="shrink-0 text-stone-400">{icon}</span>}
+          <span className="shrink-0 text-[15px] font-semibold text-stone-900 dark:text-stone-100">{title}</span>
+          {summary != null && <span className="min-w-0 flex-1 truncate text-sm text-stone-500">{summary}</span>}
+          <ChevronDown size={18} className={cx("ms-auto shrink-0 text-stone-400 transition-transform duration-200", open && "rotate-180")} aria-hidden />
+        </button>
+        {action}
+      </div>
+      {open && (
+        <div id={contentId} className="animate-in border-t hairline px-4 pb-4 pt-3">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Inline "more" toggle for an optional explanation — hidden until requested. */
+export function Details({ label = "פרטים", children, className }: { label?: string; children: ReactNode; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={cx("text-xs", className)}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200">
+        <Info size={13} /> {open ? "הסתרה" : label}
+      </button>
+      {open && <div className="animate-in mt-1.5 rounded-xl bg-stone-50 p-2.5 leading-relaxed text-stone-600 dark:bg-white/[0.03] dark:text-stone-300">{children}</div>}
+    </div>
+  );
+}
+
+/** Compact number + label tile. */
+export function Stat({ label, value, tone, sub }: { label: string; value: ReactNode; tone?: "pos" | "neg" | "warn"; sub?: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-stone-50 px-3 py-2.5 dark:bg-white/[0.03]">
+      <div className="truncate text-[11px] text-stone-500">{label}</div>
+      <div className={cx("ltr-nums truncate text-start text-base font-semibold", tone === "pos" && "text-accent-700", tone === "neg" && "text-rose-600", tone === "warn" && "text-amber-700")}>{value}</div>
+      {sub && <div className="truncate text-[11px] text-stone-500">{sub}</div>}
+    </div>
+  );
+}
+
+/** Small circular progress (for compact cards). value 0..1 or null (no data). */
+export function Ring({ value, size = 44, stroke = 5, colorClass = "text-accent-600", label }: { value: number | null; size?: number; stroke?: number; colorClass?: string; label: string }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = value == null ? null : Math.round(Math.min(1, Math.max(0, value)) * 100);
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={pct == null ? `${label}: אין נתונים` : `${label}: ${pct}%`}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-stone-200 dark:text-white/10" />
+        {pct != null && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} className={cx("transition-[stroke-dashoffset] duration-500", colorClass)} />}
+      </svg>
+      <span className="ltr-nums absolute inset-0 flex items-center justify-center text-[11px] font-semibold">{pct == null ? "—" : `${pct}%`}</span>
+    </div>
+  );
 }

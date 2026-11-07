@@ -27,6 +27,8 @@ import type { RecoveryAction } from "./recovery";
 import type { PlanProposal } from "./planner/schema";
 import { schedulePlanTasks } from "./planner/validate";
 import { dayLoad } from "./tasks";
+import { isVerified } from "./game/engine";
+import { useGameUI } from "./game/ui";
 
 export const uid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -59,6 +61,12 @@ export function blankTask(partial: Partial<Task> = {}): Task {
     source: "user",
     completedAt: null,
     history: [{ at: n, action: "created" }],
+    planVersionId: null,
+    evidence: "none",
+    evidenceCriteria: "",
+    xpSize: "auto",
+    parentTaskId: null,
+    actualMinutes: null,
     createdAt: n,
     updatedAt: n,
     ...partial,
@@ -123,8 +131,13 @@ export async function setInstanceStatus(inst: TaskInstance, status: TaskStatus):
 export async function toggleComplete(inst: TaskInstance): Promise<void> {
   const done = inst.status === "completed";
   const ok = await setInstanceStatus(inst, done ? "planned" : "completed");
-  if (ok && !done)
-    S().toast("סומן כהושלם", "success", { label: "ביטול", run: () => void setInstanceStatus({ ...inst, status: "completed" }, "planned") });
+  if (!ok || done) return;
+  const undo = { label: "ביטול", run: () => void setInstanceStatus({ ...inst, status: "completed" }, "planned") };
+  if (inst.task.evidence !== "none" && !isVerified(S().db, inst.task, inst.key)) {
+    // XP waits for the evidence the task asks for; the player can add it now or later
+    S().toast("הושלם · ה-XP ימתין להוכחה", "success", undo, { label: "הוספת הוכחה", run: () => useGameUI.getState().openEvidence(inst.key, false) });
+    useGameUI.getState().openEvidence(inst.key, false);
+  } else S().toast("סומן כהושלם", "success", undo);
 }
 
 /** Move one instance. date=null → back to the inbox (status "postponed"). */
@@ -181,6 +194,7 @@ export async function deleteTask(taskId: string) {
   const db = S().db;
   const items: Array<[CollectionName, string]> = [["tasks", taskId]];
   for (const o of Object.values(db.occurrences)) if (o.taskId === taskId) items.push(["occurrences", o.id]);
+  for (const r of Object.values(db.reminders)) if (r.taskId === taskId) items.push(["reminders", r.id]);
   // remove dangling dependency references
   const dependents = Object.values(db.tasks).filter((t) => t.dependsOn.includes(taskId));
   for (const d of dependents) await saveTask({ ...d, dependsOn: d.dependsOn.filter((x) => x !== taskId) });
@@ -339,6 +353,7 @@ export async function approvePlan(a: PlanApproval): Promise<{ ok: boolean; warni
       targetDate: m.targetDate,
       status: idx === 0 && existingCount === 0 ? "active" : "pending",
       order: existingCount + idx,
+      planVersionId: null,
       createdAt: n,
       updatedAt: n,
     };

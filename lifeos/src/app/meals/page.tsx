@@ -36,7 +36,7 @@ function Meals() {
 
   return (
     <div>
-      <PageHeader title="אוכל וקניות" subtitle="בונים ומאשרים תפריט ← רשימת קניות נוצרת ממנו ← תזכורות קניות והכנה." />
+      <PageHeader title="אוכל וקניות" />
       <div className="-mx-1 mb-4 overflow-x-auto px-1">
         <Segmented
           value={tab}
@@ -93,7 +93,7 @@ function PlanTab({ week, onGroceries }: { week: string; onGroceries: () => void 
           <>
             <CheckCircle2 className="text-accent-600" size={20} />
             <span className="flex-1 text-sm">
-              התפריט אושר.{changedAfterApproval && <span className="text-amber-700"> בוצעו שינויים אחרי האישור — כדאי לעדכן את רשימת הקניות.</span>}
+              מאושר{changedAfterApproval && <span className="text-amber-700"> · שונה מאז — לעדכן קניות</span>}
             </span>
             <Button size="sm" onClick={() => setWeekApproved(week, false)}>
               ביטול אישור
@@ -112,7 +112,7 @@ function PlanTab({ week, onGroceries }: { week: string; onGroceries: () => void 
           </>
         ) : (
           <>
-            <span className="flex-1 text-sm text-stone-600 dark:text-stone-300">{entries.length ? `${entries.length} ארוחות בתפריט. אחרי אישור תיווצר רשימת קניות.` : "התפריט ריק. מוסיפים ארוחות מהספרייה לכל יום."}</span>
+            <span className="flex-1 text-sm text-stone-600 dark:text-stone-300">{entries.length ? `${entries.length} ארוחות · לא מאושר` : "התפריט ריק"}</span>
             <Button
               size="sm"
               variant="primary"
@@ -131,7 +131,7 @@ function PlanTab({ week, onGroceries }: { week: string; onGroceries: () => void 
       </Card>
 
       {meals.length === 0 && (
-        <EmptyState title="ספריית הארוחות ריקה">קודם מוסיפים ארוחות (עם מרכיבים וכמויות) בלשונית ״ארוחות״. האפליקציה לא ממציאה תפריט.</EmptyState>
+        <EmptyState title="אין ארוחות בספרייה">מוסיפים בלשונית ״ארוחות״.</EmptyState>
       )}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -307,16 +307,16 @@ function GroceriesTab({ week, onPlan }: { week: string; onPlan: () => void }) {
 
   return (
     <div className="space-y-4">
-      {weekday(today) >= 4 && week === addDays(startOfWeek(today), 7) && <p className="text-xs text-stone-500">הקניות של חמישי מכסות את התפריט של השבוע הבא.</p>}
+      {weekday(today) >= 4 && week === addDays(startOfWeek(today), 7) && <p className="text-xs text-stone-500">קניות חמישי ← תפריט השבוע הבא</p>}
       <Card className="flex flex-wrap items-center gap-3 py-3">
         {approved ? (
           <>
-            <span className="flex-1 text-sm">הרשימה מבוססת על התפריט המאושר. מרכיב שחוזר בכמה ארוחות מופיע פעם אחת עם הכמות המצטברת.</span>
+            <span className="flex flex-1 items-center gap-1.5 text-sm"><CheckCircle2 size={16} className="text-accent-600" /> מהתפריט המאושר, בלי כפילויות</span>
             <Button
               size="sm"
               onClick={async () => {
                 const r = await generateGroceryList(week);
-                toast(`עודכן מהתפריט: ${r.count} פריטים${r.removed ? `, ${r.removed} הוסרו` : ""}. סימוני ״נקנה״ ותיקוני כמות נשמרו.`, "success");
+                toast(`עודכן: ${r.count} פריטים${r.removed ? `, ${r.removed} הוסרו` : ""}`, "success");
               }}
             >
               עדכון מהתפריט
@@ -324,7 +324,7 @@ function GroceriesTab({ week, onPlan }: { week: string; onPlan: () => void }) {
           </>
         ) : (
           <>
-            <span className="flex-1 text-sm text-stone-600 dark:text-stone-300">התפריט לשבוע הזה עדיין לא אושר — הרשימה תיווצר ממנו אחרי אישור.</span>
+            <span className="flex-1 text-sm text-stone-600 dark:text-stone-300">התפריט עוד לא אושר</span>
             <Button size="sm" variant="primary" onClick={onPlan}>
               לתפריט
             </Button>
@@ -386,7 +386,7 @@ function PrepTab() {
   return (
     <div className="space-y-4">
       <Card>
-        <SectionTitle hint="העדפה גמישה — לא שלושה סבבים חובה בשבוע. אם היום המועדף מתפספס, המשימה עוברת ליום הגיבוי.">ימי הכנה</SectionTitle>
+        <SectionTitle hint="אם המועדף מתפספס — עוברים ליום הגיבוי">ימי הכנה</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:max-w-md">
           <Field label="יום מועדף">
             <Select value={settings?.mealPrepDay ?? ""} onChange={(e) => void setDays(e.target.value === "" ? null : Number(e.target.value), settings?.mealPrepBackupDay ?? null)}>
@@ -441,7 +441,7 @@ function PrepTab() {
         ))}
       {noPrep.length > 0 && (
         <Card>
-          <SectionTitle hint="אפשר לשייך יום הכנה בתפריט השבועי">ללא יום הכנה ({noPrep.length})</SectionTitle>
+          <SectionTitle>ללא יום הכנה ({noPrep.length})</SectionTitle>
           <ul className="space-y-1 text-sm text-stone-600 dark:text-stone-300">
             {noPrep.map((e) => (
               <li key={e.id}>
@@ -483,7 +483,7 @@ function MealsTab() {
       </div>
       {meals.length === 0 ? (
         <EmptyState title="אין ארוחות בספרייה" action={<Button variant="primary" onClick={() => setEditing(blank())}>הוספת ארוחה</Button>}>
-          ארוחות שאתם אוהבים, עם מרכיבים וכמויות. מהן נבנים התפריט ורשימת הקניות.
+          עם מרכיבים וכמויות — מהן נבנים התפריט והקניות.
         </EmptyState>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -619,7 +619,7 @@ function PantryTab() {
   }
   return (
     <Card>
-      <SectionTitle hint="אופציונלי. מה שיש בבית יורד אוטומטית מרשימת הקניות (באותה יחידת מידה).">מזווה</SectionTitle>
+      <SectionTitle hint="יורד אוטומטית מרשימת הקניות">מזווה</SectionTitle>
       {items.length > 0 && (
         <ul className="mb-4 divide-y hairline">
           {items.map((p) => (

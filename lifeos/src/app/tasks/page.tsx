@@ -9,7 +9,7 @@ import { addDays, formatHebDate, relativeDayLabel } from "@/lib/dates";
 import { instancesInRange, isOpen, overdueInstances, singleInstance, unscheduledTasks, type TaskInstance } from "@/lib/tasks";
 import { describeRule, nextOccurrence } from "@/lib/recurrence";
 import { saveTask } from "@/lib/actions";
-import { Badge, Button, Card, EmptyState, Input, PageHeader, Segmented, Select, Toggle } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, PageHeader, Segmented, Select, Toggle, Disclosure } from "@/components/ui";
 import { TaskRow } from "@/components/TaskRow";
 import { RecoveryModal } from "@/components/RecoveryModal";
 
@@ -67,7 +67,6 @@ function Tasks() {
     <div>
       <PageHeader
         title="משימות"
-        subtitle="כל המשימות — אותם נתונים כמו בלוח השנה ובדף היום."
         actions={
           <Button variant="primary" onClick={() => openEditor({ defaults: { date: view === "inbox" ? null : today } })}>
             <Plus size={16} /> משימה חדשה
@@ -118,16 +117,29 @@ function Tasks() {
           <EmptyState title="אין משימות ב-30 הימים הקרובים" />
         ) : (
           <div className="space-y-4">
-            {groups.map(([label, list]) => (
-              <Card key={label} className="py-3">
-                <h3 className="mb-1 text-sm font-semibold text-stone-500">{label}</h3>
-                <div className="-mx-2">
-                  {list.map((i) => (
-                    <TaskRow key={i.key} inst={i} showDate={label === "בהמשך"} />
-                  ))}
-                </div>
-              </Card>
-            ))}
+            {groups.map(([label, list]) =>
+              label === "בהמשך" ? (
+                <Disclosure key={label} id="tasks-later" title="בהמשך" summary={`${list.length} משימות`}>
+                  <div className="-mx-2">
+                    {list.map((i) => (
+                      <TaskRow key={i.key} inst={i} showDate />
+                    ))}
+                  </div>
+                </Disclosure>
+              ) : (
+                <Card key={label} className="py-3">
+                  <h3 className="mb-1 flex items-center justify-between text-sm font-semibold text-stone-500">
+                    {label}
+                    <span className="text-xs font-normal">{list.filter((i) => i.status === "completed").length}/{list.length}</span>
+                  </h3>
+                  <div className="-mx-2">
+                    {list.map((i) => (
+                      <TaskRow key={i.key} inst={i} />
+                    ))}
+                  </div>
+                </Card>
+              ),
+            )}
           </div>
         ))}
 

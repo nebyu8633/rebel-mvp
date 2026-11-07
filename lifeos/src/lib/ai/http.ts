@@ -14,10 +14,10 @@ export function aiErrorResponse(e: unknown) {
 }
 
 /** Auth + rate limit guard shared by AI routes. Returns a user or a ready error response. */
-export async function guard(): Promise<{ userId: string } | NextResponse> {
+export async function guard(bucket = "ai", limit = 12): Promise<{ userId: string } | NextResponse> {
   const user = await getRequestUser();
   if (!user) return NextResponse.json({ error: "יש להתחבר", code: "unauthenticated" }, { status: 401 });
-  const rl = checkRateLimit(user.id);
+  const rl = checkRateLimit(bucket === "ai" ? user.id : `${bucket}:${user.id}`, limit);
   if (!rl.ok) return NextResponse.json({ error: "יותר מדי בקשות. נסו שוב בעוד רגע.", code: "rate_limited", retryAfter: rl.retryAfter }, { status: 429 });
   return { userId: user.id };
 }

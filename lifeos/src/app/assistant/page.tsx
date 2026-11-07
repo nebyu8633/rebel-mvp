@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Send, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { useToday } from "@/hooks/useToday";
@@ -34,6 +34,16 @@ function Rich({ text }: { text: string }) {
 }
 
 export default function AssistantPage() {
+  return (
+    <Suspense>
+      <Assistant />
+    </Suspense>
+  );
+}
+
+function Assistant() {
+  const params = useSearchParams();
+  const asked = useRef(false);
   const db = useStore((s) => s.db);
   const toast = useStore((s) => s.toast);
   const today = useToday();
@@ -47,6 +57,13 @@ export default function AssistantPage() {
   useEffect(() => {
     aiConfigured().then(setAi);
   }, []);
+  useEffect(() => {
+    const q = params.get("q");
+    if (q && ai != null && !asked.current) {
+      asked.current = true;
+      void ask(q);
+    }
+  }, [ai, params]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [msgs]);
@@ -79,7 +96,7 @@ export default function AssistantPage() {
 
   async function runAction(kind: BasicAnswer["actions"][number]["kind"]) {
     if (kind === "recovery") setRecovery(true);
-    else if (kind === "planner") router.push("/goals/plan");
+    else if (kind === "planner") router.push("/goals/new");
     else if (kind === "progress") router.push("/progress?review=1");
     else if (kind === "tasks") router.push("/tasks");
     else if (kind === "groceries") {
@@ -99,11 +116,11 @@ export default function AssistantPage() {
         subtitle={
           ai == null ? "…" : ai ? (
             <span className="flex items-center gap-2">
-              <Badge tone="indigo">AI מחובר</Badge> רואה רק את הנתונים שלך, ולא משנה דבר בלי אישורך.
+              <Badge tone="indigo">AI</Badge> רואה רק את הנתונים שלך
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              <Badge>מנוע בסיסי</Badge> לא הוגדר מפתח AI — תשובות מבוססות כללים על הנתונים שלך.
+              <Badge>מנוע בסיסי</Badge> ללא AI
             </span>
           )
         }
@@ -111,7 +128,6 @@ export default function AssistantPage() {
       <div className="flex-1 space-y-3">
         {msgs.length === 0 && (
           <Card>
-            <p className="mb-3 text-sm text-stone-600 dark:text-stone-300">אפשר לשאול למשל:</p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <button key={s} onClick={() => void ask(s)} className="rounded-full border hairline px-3 py-1.5 text-sm hover:border-accent-500">
