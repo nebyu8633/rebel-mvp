@@ -16,7 +16,7 @@ import { Batched } from "../../../world/Batched";
 import { Tree } from "../../../world/Trees";
 import { interactables, type Quality } from "../../../store";
 import { telemetry } from "../../../player/Player";
-import { playerReactions } from "../../../engine/events";
+import { gameEvents, playerReactions } from "../../../engine/events";
 import { goToWorld, worldAvailable } from "../../../engine/worldStore";
 import { useAetheria } from "../../store";
 import { useAetheriaUi } from "../../ui/uiStore";
@@ -40,6 +40,8 @@ import {
 import { BOUND_R, CONSOLES, FLOOR_Y, FRAGMENT, GALLERY, OBS, PEDESTAL, SIGIL_WALL, STAIR, WAYSTONE, around, insideObservatory, onGallery, stepAt, stepRun } from "./layout";
 import { forceGlyph, kingdomGlyph } from "./glyphs";
 import { FutureEcho } from "./FutureEcho";
+import { E, FIRST_TOUCH, MEM, echoDialogueFor, echoWaits } from "../../content/echoAwakening";
+import { useDialogue } from "../../ui/dialogueRunner";
 
 const RESONANCE_S = 10;
 const smooth = (a: number, b: number, x: number) => {
@@ -657,6 +659,7 @@ function Story() {
           }
         } else if (canResonate(s) && !resonance.running) {
           resonance.running = true;
+          gameEvents.emit("resonance");
           resonance.t = 0;
           interactables.delete("fragment");
           playerReactions.emit("surprise");
@@ -715,20 +718,66 @@ function Story() {
   return null;
 }
 
+// ------------------------------------------------------------------ the Future Echo: behaviour + story hooks
+const ECHO_ANCHORS = [around(95, 6.4), around(30, 6.4), around(-45, 6.5)].map((p) => ({ x: p.x, y: GALLERY.y, z: p.z }));
+const ECHO_WAIT = (() => {
+  const p = around(25, 6.35);
+  return { x: p.x, y: GALLERY.y, z: p.z };
+})();
+
+function EchoController() {
+  const world = useAetheria((s) => s.world);
+  const hydrated = useAetheria((s) => s.hydrated);
+  const inDialogue = useDialogue((s) => !!s.defId);
+  const waiting = echoWaits(world);
+  const offer = echoDialogueFor(world);
+
+  // narrative memory: every return to the sanctuary is remembered
+  const counted = useRef(false); // refs survive StrictMode's simulated remount, so this counts once per visit
+  useEffect(() => {
+    if (!hydrated || counted.current) return;
+    counted.current = true;
+    useAetheria.getState().dispatch([{ type: "count", key: MEM.visits }]);
+  }, [hydrated]);
+
+  // the Echo can be spoken to (or touched) when the story offers a conversation
+  useEffect(() => {
+    if (!offer || inDialogue) {
+      interactables.delete("echo");
+      return;
+    }
+    // centred on the Echo itself: the gallery is narrow, so any reachable spot beside it is within the radius
+    const front = ECHO_WAIT;
+    interactables.set("echo", {
+      id: "echo",
+      label: offer === FIRST_TOUCH ? "הושיטו יד אל הד העתיד" : "לדבר עם הד העתיד",
+      x: front.x,
+      y: GALLERY.y,
+      z: front.z,
+      radius: 2.4,
+      onContact: () => useDialogue.getState().open(offer),
+    });
+    return () => void interactables.delete("echo");
+  }, [offer, inDialogue]);
+
+  // approaching the waiting Echo is a story beat
+  const acc = useRef(0);
+  useFrame((_, dt) => {
+    acc.current += dt;
+    if (acc.current < 0.25) return;
+    acc.current = 0;
+    const s = useAetheria.getState().world;
+    if (!echoWaits(s) || s.flags.includes(E.approached)) return;
+    if (Math.abs(telemetry.y - GALLERY.y) < 1.2 && Math.hypot(telemetry.x - ECHO_WAIT.x, telemetry.z - ECHO_WAIT.z) < 3.6) useAetheria.getState().dispatch([{ type: "setFlag", flag: E.approached }]);
+  });
+
+  return <FutureEcho stage={world.echo} anchors={ECHO_ANCHORS} waitAnchor={ECHO_WAIT} waiting={waiting || world.echo !== "silent_observer"} inDialogue={inDialogue} />;
+}
+
 export function SanctuaryScene({ quality }: { quality: Quality }) {
   const world = useAetheria((s) => s.world);
   const done = world.flags.includes(F.resonance);
-  const echoVisible = world.echo !== "dormant";
-  const anchors = useMemo(() => {
-    const a = around(95, 6.4);
-    const b = around(30, 6.4);
-    const c = around(-45, 6.5);
-    return [
-      { x: a.x, y: GALLERY.y, z: a.z },
-      { x: b.x, y: GALLERY.y, z: b.z },
-      { x: c.x, y: GALLERY.y, z: c.z },
-    ];
-  }, []);
+
   const trees = useMemo(() => {
     const r = rng(9);
     const out: { x: number; z: number; s: number }[] = [];
@@ -760,7 +809,7 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
       <Dome />
       <SigilWall />
       <MemoryShards />
-      <FutureEcho anchors={anchors} visible={echoVisible} />
+      <EchoController />
       {trees.map((t) => (
         <Tree key={t.s} x={t.x} z={t.z} seed={t.s} height={5.5 + (t.s % 3) * 1.2} shadows={quality !== "low"} />
       ))}

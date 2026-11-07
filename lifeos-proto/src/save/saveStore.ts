@@ -15,6 +15,8 @@ const WorldStateSchema = z.object({
   journal: z.array(z.object({ id: z.string().max(64), at: z.string() })).max(2000),
   echo: z.enum(ECHO_STAGES),
   history: z.array(z.object({ at: z.string(), action: z.string(), detail: z.string().max(200) })).max(500),
+  // added in Phase 2; older v1 saves simply have no memory yet
+  memory: z.record(z.string().max(64), z.union([z.string().max(64), z.number(), z.boolean()])).default({}),
 });
 const LoadoutSchema = z.object({
   base: z.enum(["auto", "placeholder", "personal"]),

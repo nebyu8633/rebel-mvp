@@ -7,7 +7,10 @@ import { useAetheria } from "../store";
 import { useAetheriaUi } from "./uiStore";
 import { questStatus } from "../core/quests";
 import { ECHO_TITLES } from "../core/model";
-import { FIRST_RESONANCE, JOURNAL, SIGILS, F, memoryShards } from "../content/firstResonance";
+import { SIGILS, F, memoryShards } from "../content/firstResonance";
+import { JOURNAL, currentQuest } from "../content";
+import { MEM } from "../content/echoAwakening";
+import { useDialogue } from "./dialogueRunner";
 import { useProto } from "../../store";
 import { ActionButtons, Stick } from "../../ui/Controls";
 import { WorldSwitcher } from "../../ui/WorldUi";
@@ -21,23 +24,26 @@ const CSS = `
 .ae-modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.4);pointer-events:auto}
 .ae-modal>.ae-p{width:min(580px,92vw);max-height:80vh;overflow:auto;padding:16px 18px}
 @keyframes aeIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes aeFrag{0%,92%,100%{opacity:1;transform:none;filter:none}93%{opacity:.55;transform:translateX(2px);filter:blur(.6px)}96%{opacity:.85;transform:translateX(-1px)}}
+.ae-frag{animation:aeFrag 2.3s infinite steps(1)}
 `;
 
 function QuestTracker() {
   const world = useAetheria((s) => s.world);
-  const st = questStatus(FIRST_RESONANCE, world);
+  const quest = currentQuest(world);
+  const st = questStatus(quest, world);
   return (
     <div className="ae-p" style={{ padding: "10px 14px", maxWidth: 300 }} data-testid="quest">
-      <div className="ae-t" style={{ fontSize: 13 }}>✦ {FIRST_RESONANCE.title}</div>
+      <div className="ae-t" style={{ fontSize: 13 }}>✦ {quest.title}</div>
       {st.state === "active" && (
         <div style={{ fontSize: 13, marginTop: 4 }}>
           {st.step.text}
           <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
-            שלב {st.index + 1} מתוך {FIRST_RESONANCE.steps.length}
+            שלב {st.index + 1} מתוך {quest.steps.length}
           </div>
         </div>
       )}
-      {st.state === "complete" && <div style={{ fontSize: 13, marginTop: 4 }}>הושלם. שש הממלכות נחשפו.</div>}
+      {st.state === "complete" && <div style={{ fontSize: 13, marginTop: 4 }}>{quest.id === "first_resonance" ? "הושלם. שש הממלכות נחשפו." : "הושלם. ההד זוכר אותך."}</div>}
       {world.echo !== "dormant" && <div style={{ fontSize: 11, marginTop: 6, color: "#9fd8ff" }}>הד העתיד: {ECHO_TITLES[world.echo]}</div>}
     </div>
   );
@@ -80,6 +86,11 @@ function Panels() {
               יומן האדריכל
             </div>
             {world.journal.length === 0 && <div style={{ opacity: 0.7, fontSize: 13 }}>היומן עדיין ריק.</div>}
+            {typeof world.memory?.[MEM.bond] === "string" && (
+              <div style={{ fontSize: 12, color: "#c4a7ff", marginBottom: 8 }}>
+                הקשר עם ההד: {{ form: "צורה", change: "שינוי", connection: "חיבור" }[world.memory[MEM.bond] as string]}
+              </div>
+            )}
             {world.journal.map((j) => (
               <div key={j.id} style={{ marginBottom: 12 }}>
                 <div className="ae-t" style={{ fontSize: 14 }}>
@@ -154,6 +165,55 @@ function Settings() {
   );
 }
 
+const ECHO_STAGE_STYLE: Record<string, { name: string; color: string; glow: string }> = {
+  silent_observer: { name: "הצופה השקט", color: "#bfeeff", glow: "rgba(159,227,255,.6)" },
+  fragmented_mind: { name: "התודעה המפוצלת", color: "#d9c8ff", glow: "rgba(196,167,255,.75)" },
+  future_companion: { name: "בן הלוויה העתידי", color: "#ffe9b8", glow: "rgba(255,226,160,.6)" },
+};
+
+/** Conversation panel. The Echo's lines flicker like a broken signal while it is the Fragmented Mind. */
+function DialoguePanel({ touch }: { touch: boolean }) {
+  const view = useDialogue((s) => s.view);
+  const pick = useDialogue((s) => s.pick);
+  const close = useDialogue((s) => s.close);
+  const echo = useAetheria((s) => s.world.echo);
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    setShown(0);
+    if (!view) return;
+    const t = setInterval(() => setShown((n) => (n >= view.text.length ? n : n + 2)), 28);
+    return () => clearInterval(t);
+  }, [view]);
+  if (!view) return null;
+  const typing = shown < view.text.length;
+  const style = ECHO_STAGE_STYLE[echo] ?? ECHO_STAGE_STYLE.silent_observer;
+  const isEcho = view.speaker === "echo";
+  const advance = () => (typing ? setShown(view.text.length) : view.continues ? pick(null) : undefined);
+  return (
+    <div className="ae-p" data-testid="dialogue" onClick={advance} style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: touch ? 196 : 36, width: "min(620px, 94vw)", padding: "14px 18px", pointerEvents: "auto", borderColor: isEcho ? style.glow : "rgba(214,180,110,.35)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: isEcho ? style.color : "#e9c987" }}>{isEcho ? `הד העתיד · ${style.name}` : "✦"}</span>
+        <button className="ae-btn" style={{ padding: "2px 9px" }} onClick={(e) => (e.stopPropagation(), close())} aria-label="סגור">
+          ✕
+        </button>
+      </div>
+      <div className={isEcho && echo === "fragmented_mind" ? "ae-frag" : undefined} style={{ fontSize: isEcho ? 17 : 15, lineHeight: 1.6, minHeight: 50, fontStyle: isEcho ? "normal" : "italic", color: isEcho ? style.color : "#f3ead7", textShadow: isEcho ? `0 0 12px ${style.glow}` : "none" }}>
+        {view.text.slice(0, shown)}
+      </div>
+      {!typing && view.choices.length > 0 && (
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          {view.choices.map((c) => (
+            <button key={c.id} className="ae-btn" data-testid={`choice-${c.id}`} onClick={(e) => (e.stopPropagation(), pick(c.id))} style={{ textAlign: "right", fontSize: 14, padding: "9px 12px" }}>
+              › {c.text}
+            </button>
+          ))}
+        </div>
+      )}
+      {!typing && view.continues && <div style={{ fontSize: 11, opacity: 0.55, marginTop: 8 }}>{view.ends ? "הקישו לסיום" : "הקישו להמשך"}</div>}
+    </div>
+  );
+}
+
 export function AetheriaHud({ touch }: { touch: boolean }) {
   const prompt = useProto((s) => s.prompt);
   const setPanel = useAetheriaUi((s) => s.setPanel);
@@ -187,6 +247,7 @@ export function AetheriaHud({ touch }: { touch: boolean }) {
         </div>
       )}
       <TitleCard />
+      <DialoguePanel touch={touch} />
       <Panels />
       {touch && (
         <div style={{ pointerEvents: "auto" }}>

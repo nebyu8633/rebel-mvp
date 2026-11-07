@@ -16,3 +16,17 @@ export const playerReactions = {
     return () => void handlers.delete(h);
   },
 };
+
+/** World-level events from the player and the story (the Echo and other characters react to them). */
+export type GameEvent = "wave" | "jump" | "resonance";
+type GameHandler = (e: GameEvent) => void;
+const gameHandlers = new Set<GameHandler>();
+export const gameEvents = {
+  emit(e: GameEvent) {
+    for (const h of gameHandlers) h(e);
+  },
+  on(h: GameHandler): () => void {
+    gameHandlers.add(h);
+    return () => void gameHandlers.delete(h);
+  },
+};
