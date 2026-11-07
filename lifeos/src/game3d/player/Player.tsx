@@ -16,10 +16,12 @@ import { Character, type CharacterHandle } from "../character/Character";
 import { consumeEdges, input, readMove } from "./input";
 import { interactables, params, useProto } from "../store";
 import { autopilotStep } from "./autopilot";
-import { characterEvents } from "../progression/useProgression";
+import { playerReactions } from "../engine/events";
 import { suspend } from "suspend-react";
 import { resolveAvatar } from "../avatar/avatarSource";
 import { DEV } from "../config";
+import { useAetheria } from "../aetheria/store";
+import { architectIdentity, type Loadout } from "../avatar/loadout";
 
 export const CAPSULE = { halfHeight: 0.6, radius: 0.3 };
 const FOOT = CAPSULE.halfHeight + CAPSULE.radius; // centre -> feet
@@ -51,7 +53,14 @@ export interface PlayerTelemetry {
 }
 export const telemetry: PlayerTelemetry = { x: 0, y: 0, z: 0, yaw: 0, speed: 0, grounded: true, camYaw: 0 };
 
-export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYaw = Math.PI }) {
+/** Dev preview of the Living Architect's starter equipment in any world (`?wear=1`). */
+const PREVIEW_LOADOUT: Loadout = { base: "auto", tier: 1, equipped: { mainHand: "architect_staff", neck: "origin_pendant", shoulders: "sentinel_pauldrons", offHand: "wayfinder_lantern" } };
+
+export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYaw = Math.PI, wearLoadout = false }: { spawn?: [number, number, number]; spawnYaw?: number; wearLoadout?: boolean }) {
+  const savedLoadout = useAetheria((s) => s.loadout);
+  const preview = DEV && params.get("wear") === "1";
+  const loadout = preview ? PREVIEW_LOADOUT : wearLoadout ? savedLoadout : null;
+  const accent = useMemo(() => architectIdentity(null).accent, []);
   const body = useRef<RapierRigidBody>(null);
   const visual = useRef<THREE.Group>(null);
   const character = useRef<CharacterHandle>(null);
@@ -96,18 +105,18 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
     };
   }, [world, sim]);
 
-  // world reactions to (mock) verified LifeOS events: facial expression + a wave for milestones
+  // leaving a world: no stale interaction prompt / panel from it
+  useEffect(() => () => useProto.getState().set({ prompt: null, panel: null }), []);
+
+  // generic world reactions (from any world/data source): facial expression + a wave for celebrations
   useEffect(() => {
-    characterEvents.onReaction = (kind) => {
-      if (kind === "revert") character.current?.setExpression("surprised", 1.5);
+    return playerReactions.on((r) => {
+      if (r === "surprise") character.current?.setExpression("surprised", 1.5);
       else {
         character.current?.setExpression("happy", 3);
-        if (kind === "celebrate") input.gesture = true;
+        if (r === "celebrate") input.gesture = true;
       }
-    };
-    return () => {
-      characterEvents.onReaction = null;
-    };
+    });
   }, []);
 
   // dev-only hooks for automated tests (teleport + telemetry); stripped from production builds
@@ -313,7 +322,7 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
         <CapsuleCollider args={[CAPSULE.halfHeight, CAPSULE.radius]} />
       </RigidBody>
       <group ref={visual}>
-        <Character ref={character} url={avatar.url} />
+        <Character ref={character} url={avatar.url} loadout={loadout} accent={accent} />
       </group>
     </>
   );

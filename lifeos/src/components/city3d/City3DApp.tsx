@@ -22,6 +22,8 @@ import { BenchPanel, BenchProbe, bench } from "@/game3d/ui/Bench";
 import { params, useProto, type Quality } from "@/game3d/store";
 import type { LifeOSSnapshot } from "@/game3d/data/lifeos";
 import { buildSnapshot } from "./snapshot";
+import { mockSnapshot } from "@/game3d/data/mock";
+import { LIVE_DATA } from "@/game3d/config";
 
 const DPR: Record<Quality, number> = { high: 2, medium: 1.5, low: 1 };
 
@@ -78,9 +80,11 @@ function Loader() {
 }
 
 export default function City3DApp() {
-  const db = useStore((s) => s.db);
+  // Demo data by default. Live (read-only) LifeOS data only when explicitly enabled at build time;
+  // in demo mode the store is not read at all.
+  const db = useStore((s) => (LIVE_DATA ? s.db : null));
   const today = useToday();
-  const snapshot: LifeOSSnapshot = useMemo(() => buildSnapshot(db, today), [db, today]);
+  const snapshot: LifeOSSnapshot = useMemo(() => (LIVE_DATA && db ? buildSnapshot(db, today) : mockSnapshot()), [db, today]);
   const quality = useProto((s) => s.quality);
   const showColliders = useProto((s) => s.debug.showColliders);
   const [el, setEl] = useState<HTMLDivElement | null>(null);

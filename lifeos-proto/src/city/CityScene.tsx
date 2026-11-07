@@ -11,7 +11,7 @@ import { usePBR } from "../world/materials";
 import { rng, worldBox, worldCylinder, worldDisc } from "../world/geometry";
 import { Batched } from "../world/Batched";
 import { Tree } from "../world/Trees";
-import { AVENUE, DISTRICTS, FOUNTAIN, PLAZA, TOWER, dirOf, gatePos, isUnlocked, type DistrictDef } from "./layout";
+import { AVENUE, DISTRICTS, FOUNTAIN, PLAZA, TOWER, developmentStage, dirOf, gatePos, type DistrictDef } from "./layout";
 import { FACADE_TILE_M, logoTexture, mullionTexture, signTexture, windowTexture } from "./textures";
 import { interactables, useProto, type Quality } from "../store";
 import { emitMockEvent } from "../progression/useProgression";
@@ -236,21 +236,20 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
 function Gate({ d, snapshot }: { d: DistrictDef; snapshot: LifeOSSnapshot }) {
   const g = gatePos(d);
   const progress = snapshot.domainProgress[d.id];
-  const open = isUnlocked(d, snapshot.domainProgress);
+  const stage = developmentStage(progress);
   const next = snapshot.milestones.find((m) => m.region === d.id && !m.done);
   const pylon = usePBR("granite", { tint: 0x9aa0a8 });
-  const accent = useMemo(() => glow(d.color, 3), [d.color]);
+  const accent = useMemo(() => glow(d.color, 1.2 + stage.level * 0.8), [d.color, stage.level]);
   const sign = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
-        map: signTexture({ title: d.name, subtitle: d.subtitle, accent: d.accent, progress, locked: !open, footer: open ? "פתוח · לחצו לפרטים" : `נפתח ב־${Math.round(d.unlockAt * 100)}%${next ? ` · ${next.title}` : ""}` }),
+        map: signTexture({ title: d.name, subtitle: d.subtitle, accent: d.accent, progress, footer: `שלב פיתוח: ${stage.label}${next ? ` · הבא: ${next.title}` : ""}` }),
         transparent: true,
         toneMapped: false,
         side: THREE.DoubleSide,
       }),
-    [d, progress, open, next],
+    [d, progress, stage, next],
   );
-  const barrier = useMemo(() => new THREE.MeshBasicMaterial({ color: d.color, transparent: true, opacity: 0.22, toneMapped: false, side: THREE.DoubleSide, depthWrite: false }), [d.color]);
   useEffect(() => {
     const inside = gatePos(d, AVENUE.gateR - 3);
     interactables.set(`gate-${d.id}`, { id: `gate-${d.id}`, label: `${d.name} — מטרות, אבני דרך והתקדמות`, x: inside.x, y: 0, z: inside.z, radius: 3.2, onContact: () => useProto.getState().set({ panel: `district:${d.id}` }) });
@@ -262,7 +261,6 @@ function Gate({ d, snapshot }: { d: DistrictDef; snapshot: LifeOSSnapshot }) {
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[0.6, 4, 0.6]} position={[-half, 4, 0]} />
         <CuboidCollider args={[0.6, 4, 0.6]} position={[half, 4, 0]} />
-        {!open && <CuboidCollider args={[AVENUE.w / 2, 2, 0.1]} position={[0, 2, 0.4]} />}
       </RigidBody>
       {[-half, half].map((x) => (
         <mesh key={x} material={pylon} position={[x, 4, 0]} castShadow receiveShadow>
@@ -281,11 +279,6 @@ function Gate({ d, snapshot }: { d: DistrictDef; snapshot: LifeOSSnapshot }) {
       <mesh material={sign} position={[0, 6.6, -0.1]} rotation-y={Math.PI} userData={{ noBatch: true }}>
         <planeGeometry args={[6, 3]} />
       </mesh>
-      {!open && (
-        <mesh material={barrier} position={[0, 2, 0.4]} userData={{ noBatch: true }}>
-          <planeGeometry args={[AVENUE.w, 4]} />
-        </mesh>
-      )}
     </group>
   );
 }

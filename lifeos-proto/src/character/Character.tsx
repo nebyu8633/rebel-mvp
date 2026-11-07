@@ -13,6 +13,9 @@ import { ThreeAnimator } from "./threeAnimator";
 import type { CharacterMeta } from "./clipMeta";
 import { gltfExtensions } from "../lib/loaders";
 import { useProto } from "../store";
+import { itemById, type Loadout } from "../avatar/loadout";
+import { RECIPES, disposeObject } from "../avatar/recipes";
+import { attach, attachmentMatrix, findBone } from "../avatar/attach";
 
 export interface CharacterHandle {
   step(i: AnimInput, exertion: number): AnimFrame;
@@ -21,7 +24,7 @@ export interface CharacterHandle {
 }
 
 /** Renders any avatar GLB carrying `lifeosProto` clip metadata (placeholder or the user's retargeted avatar). */
-export const Character = forwardRef<CharacterHandle, { url: string; castShadow?: boolean }>(function Character({ url, castShadow = true }, ref) {
+export const Character = forwardRef<CharacterHandle, { url: string; castShadow?: boolean; loadout?: Loadout | null; accent?: string }>(function Character({ url, castShadow = true, loadout = null, accent = "#4fc3ff" }, ref) {
   const gl = useThree((s) => s.gl);
   const gltf = useGLTF(url, false, true, gltfExtensions(gl));
   const rootMotionStops = useProto((s) => s.debug.rootMotionStops);
@@ -57,6 +60,35 @@ export const Character = forwardRef<CharacterHandle, { url: string; castShadow?:
     rig.animator.start();
     return () => rig.animator.stop();
   }, [rig]);
+
+  // Living Architect equipment: rigid items attached to canonical bones, placed in the shared idle pose
+  useEffect(() => {
+    if (!loadout) return;
+    const ids = Object.values(loadout.equipped).filter((x): x is string => !!x);
+    if (!ids.length) return;
+    rig.animator.applyReferencePose("idle", 0);
+    rig.scene.updateMatrixWorld(true);
+    const detachers: (() => void)[] = [];
+    for (const id of ids) {
+      const item = itemById(id);
+      if (!item || item.visual.kind !== "procedural" || item.minTier > loadout.tier) continue;
+      const recipe = RECIPES[item.visual.recipe];
+      if (!recipe) continue;
+      const sides = item.visual.mirror ? [item.visual.bone, item.visual.mirror] : [item.visual.bone];
+      sides.forEach((boneName, i) => {
+        const bone = findBone(rig.scene, boneName);
+        if (!bone) return;
+        const built = recipe({ accent, tier: loadout.tier, mirrored: i === 1 });
+        built.object.name = `item:${id}`;
+        const off = attach(bone, built.object, attachmentMatrix(bone, rig.scene, built.placement));
+        detachers.push(() => {
+          off();
+          disposeObject(built.object);
+        });
+      });
+    }
+    return () => detachers.forEach((d) => d());
+  }, [rig, loadout, accent]);
 
   useImperativeHandle(
     ref,

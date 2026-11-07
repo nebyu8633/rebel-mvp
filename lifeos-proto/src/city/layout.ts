@@ -19,17 +19,15 @@ export interface DistrictDef {
   bearing: number;
   color: number;
   accent: string;
-  /** domain progress (0..1) at which the district gate opens in this slice */
-  unlockAt: number;
 }
 
 export const DISTRICTS: DistrictDef[] = [
-  { id: "knowledge", name: "רובע הידע", subtitle: "ספריות, אקדמיה, מעבדות", bearing: -38, color: 0x3f8cff, accent: "#3f8cff", unlockAt: 0.2 },
-  { id: "career", name: "רובע הקריירה", subtitle: "מגדלי משרדים, סטודיו", bearing: 38, color: 0x8b5cf6, accent: "#8b5cf6", unlockAt: 0.2 },
-  { id: "wealth", name: "רובע העושר", subtitle: "בורסה, בנקים, השקעות", bearing: 95, color: 0xf5b301, accent: "#f5b301", unlockAt: 0.5 },
-  { id: "health", name: "רובע הבריאות", subtitle: "פארק, מסלולים, ספא", bearing: 145, color: 0x22c55e, accent: "#22c55e", unlockAt: 0.2 },
-  { id: "social", name: "רובע החברה", subtitle: "בתי קפה, אמפיתיאטרון", bearing: -145, color: 0xff5ea8, accent: "#ff5ea8", unlockAt: 0.2 },
-  { id: "mind", name: "רובע הנפש", subtitle: "גני זן, מקדש שקט", bearing: -95, color: 0x14b8a6, accent: "#14b8a6", unlockAt: 0.4 },
+  { id: "knowledge", name: "רובע הידע", subtitle: "ספריות, אקדמיה, מעבדות", bearing: -38, color: 0x3f8cff, accent: "#3f8cff" },
+  { id: "career", name: "רובע הקריירה", subtitle: "מגדלי משרדים, סטודיו", bearing: 38, color: 0x8b5cf6, accent: "#8b5cf6" },
+  { id: "wealth", name: "רובע העושר", subtitle: "בורסה, בנקים, השקעות", bearing: 95, color: 0xf5b301, accent: "#f5b301" },
+  { id: "health", name: "רובע הבריאות", subtitle: "פארק, מסלולים, ספא", bearing: 145, color: 0x22c55e, accent: "#22c55e" },
+  { id: "social", name: "רובע החברה", subtitle: "בתי קפה, אמפיתיאטרון", bearing: -145, color: 0xff5ea8, accent: "#ff5ea8" },
+  { id: "mind", name: "רובע הנפש", subtitle: "גני זן, מקדש שקט", bearing: -95, color: 0x14b8a6, accent: "#14b8a6" },
 ];
 
 /** Unit vector of a bearing (north = -Z, clockwise toward +X). */
@@ -63,4 +61,19 @@ export function locate(x: number, z: number): Location {
   return best ? { kind: "avenue", district: best } : { kind: "edge" };
 }
 
-export const isUnlocked = (d: DistrictDef, progress: Record<Domain, number>) => progress[d.id] >= d.unlockAt;
+/**
+ * District development stage from real-life progress. Purely visual and informational: every
+ * district is always open (no access is ever gated by real-life activity).
+ */
+export const STAGES = [
+  { level: 0, label: "יסודות", from: 0 },
+  { level: 1, label: "בבנייה", from: 0.25 },
+  { level: 2, label: "מתפתח", from: 0.5 },
+  { level: 3, label: "פורח", from: 0.8 },
+] as const;
+export type Stage = (typeof STAGES)[number];
+export function developmentStage(progress: number): Stage {
+  let s: Stage = STAGES[0];
+  for (const st of STAGES) if (progress >= st.from) s = st;
+  return s;
+}

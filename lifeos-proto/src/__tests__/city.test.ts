@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DISTRICTS, locate, gatePos, isUnlocked, SPAWN, TOWER, dirOf } from "../city/layout";
+import { DISTRICTS, locate, gatePos, developmentStage, STAGES, SPAWN, TOWER, dirOf } from "../city/layout";
 import { mockSnapshot, MockLifeOSAdapter } from "../data/mock";
 import { DOMAINS, domainProgress, nextGoal, overallProgress } from "../data/lifeos";
 
@@ -46,15 +46,31 @@ describe("mock LifeOS data (read-only view)", () => {
     const n = nextGoal(s.goals)!;
     expect(s.goals.filter((g) => g.status === "active" && g.progress < 1).every((g) => g.targetDate >= n.targetDate)).toBe(true);
   });
-  it("the slice shows both open and locked districts", () => {
+  it("development stages are monotonic and cover 0..1 (visual only, never a lock)", () => {
+    expect(developmentStage(0).level).toBe(0);
+    expect(developmentStage(1).level).toBe(STAGES.length - 1);
+    let prev = -1;
+    for (let p = 0; p <= 1.0001; p += 0.05) {
+      const l = developmentStage(p).level;
+      expect(l).toBeGreaterThanOrEqual(prev);
+      prev = l;
+    }
     const s = mockSnapshot();
-    const open = DISTRICTS.filter((d) => isUnlocked(d, s.domainProgress)).length;
-    expect(open).toBeGreaterThan(0);
-    expect(open).toBeLessThan(6);
+    expect(new Set(DISTRICTS.map((d) => developmentStage(s.domainProgress[d.id]).level)).size).toBeGreaterThan(1);
   });
   it("keeps World Progress separate from Life XP", () => {
     const s = mockSnapshot();
     expect(Object.keys(s.world)).not.toContain("lifeXp");
     expect(Object.keys(s.world)).not.toContain("xp");
+  });
+});
+
+describe("data providers", () => {
+  it("defaults to demo and only goes live when explicitly enabled", async () => {
+    const { selectProvider } = await import("../data/providers");
+    const live = { kind: "lifeos" as const, load: async () => mockSnapshot() };
+    expect(selectProvider({ liveEnabled: false, live }).kind).toBe("mock");
+    expect(selectProvider({ liveEnabled: true, live: null }).kind).toBe("mock");
+    expect(selectProvider({ liveEnabled: true, live }).kind).toBe("lifeos");
   });
 });

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useProgress } from "@react-three/drei";
 import { useProto, type Quality } from "../store";
 import { emitMockCorrection } from "../progression/useProgression";
+import { WorldSwitcher } from "./WorldUi";
 
 const panel: React.CSSProperties = { background: "rgba(8,12,18,0.72)", borderRadius: 12, padding: "8px 12px", fontSize: 13, lineHeight: 1.5, border: "1px solid rgba(255,255,255,0.08)" };
 
@@ -40,6 +41,7 @@ export function Hud({ touch }: { touch: boolean }) {
                   <option value="low">נמוכה</option>
                 </select>
               </label>
+              <WorldSwitcher />
               <button onClick={emitMockCorrection} style={{ fontSize: 12 }}>
                 שלח אירוע תיקון (ביטול אימות אחרון)
               </button>

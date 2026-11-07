@@ -1,4 +1,5 @@
 /**
+ * LIVE data provider (off by default — see LIVE_DATA in src/game3d/config.ts).
  * Read-only bridge: the existing LifeOS store (db) -> the 3D city's LifeOSSnapshot.
  * Uses only data the app already shows (goals, milestones, tasks, the XP ledger via splitProgress).
  * Writes nothing, computes no new XP. Life XP = LifeOS-origin ledger events only; World Progress

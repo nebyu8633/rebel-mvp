@@ -41,6 +41,18 @@ export class ThreeAnimator {
     this.mixer.update(0);
   }
 
+  /**
+   * Pose the skeleton with a single clip at `time` (reference pose for rig-agnostic attachments).
+   * The controller's next frame overwrites it, so this is invisible to the player.
+   */
+  applyReferencePose(clip = "idle", time = 0) {
+    for (const [name, a] of this.actions) {
+      a.weight = name === clip ? 1 : 0;
+      if (name === clip) a.time = time;
+    }
+    this.mixer.update(0);
+  }
+
   applyMorphs(values: Record<string, number>) {
     for (const m of this.morphMeshes) {
       const dict = m.morphTargetDictionary!;

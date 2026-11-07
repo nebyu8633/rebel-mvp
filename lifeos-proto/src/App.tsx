@@ -2,41 +2,29 @@ import { Suspense, useEffect, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import * as THREE from "three";
-import { World } from "./world/World";
-import { CityScene } from "./city/CityScene";
-import { SPAWN } from "./city/layout";
-import { MockLifeOSAdapter } from "./data/mock";
-import { suspend } from "suspend-react";
-import { GameHud } from "./ui/GameHud";
 import { Lighting } from "./world/Lighting";
 import { Player } from "./player/Player";
 import { bindKeyboard } from "./player/input";
-import { ActionButtons, Stick, useLookDrag } from "./ui/Controls";
-import { Hud, Loader } from "./ui/Hud";
+import { useLookDrag } from "./ui/Controls";
+import { Loader } from "./ui/Hud";
 import { BenchPanel, BenchProbe, bench } from "./ui/Bench";
 import { params, useProto, type Quality } from "./store";
 import { DEV } from "./config";
+import { useWorlds } from "./engine/worldStore";
+import { getWorld } from "./worlds/registry";
+import { registerBuiltInWorlds } from "./worlds";
+import { TransitionOverlay } from "./ui/WorldUi";
+import { flushSave, useAetheria } from "./aetheria/store";
 
 const isTouch = typeof window !== "undefined" && (matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && !matchMedia("(hover: hover)").matches));
 const pinned = params.get("q") as Quality | null;
 const initialQuality: Quality = pinned ?? (isTouch ? "medium" : "high");
 const DPR: Record<Quality, number> = { high: 2, medium: 1.5, low: 1 };
 
-/** `?scene=test` = the physics test scene (stairs/ramps/door); default = the LifeOS city slice. */
-const SCENE = params.get("scene") === "test" ? "test" : "city";
-const adapter = new MockLifeOSAdapter();
-
-function CityWorld({ quality }: { quality: Quality }) {
-  const snapshot = suspend(() => adapter.load(), ["lifeos-snapshot"]);
-  const set = useProto((s) => s.set);
-  useEffect(() => set({ snapshot }), [snapshot, set]);
-  return (
-    <>
-      <CityScene quality={quality} snapshot={snapshot} />
-      <Player spawn={[SPAWN.x, 1, SPAWN.z]} spawnYaw={SPAWN.yaw} />
-    </>
-  );
-}
+registerBuiltInWorlds();
+/** `?world=<id>` picks the starting world (`?scene=test` kept for compatibility). */
+const startWorld = params.get("world") ?? (params.get("scene") === "test" ? "test" : "city");
+useWorlds.getState().setCurrent(getWorld(startWorld) ? startWorld : "city");
 
 function Ready() {
   const set = useProto((s) => s.set);
@@ -81,12 +69,26 @@ function RendererSetup({ quality }: { quality: Quality }) {
 
 export default function App() {
   const quality = useProto((s) => s.quality);
+  const worldId = useWorlds((s) => s.current);
+  const world = getWorld(worldId)!;
   const showColliders = useProto((s) => s.debug.showColliders);
   const [el, setEl] = useState<HTMLDivElement | null>(null);
   const benchOn = params.has("bench");
   useEffect(() => {
     useProto.getState().set({ quality: initialQuality });
-    return bindKeyboard();
+    void useAetheria.getState().hydrate();
+    const save = () => void flushSave();
+    window.addEventListener("pagehide", save);
+    // persist AETHERIA state whenever the player leaves a world
+    const unsubWorld = useWorlds.subscribe((st, prev) => {
+      if (st.phase === "out" && prev.phase !== "out") void flushSave();
+    });
+    const unbind = bindKeyboard();
+    return () => {
+      unbind();
+      unsubWorld();
+      window.removeEventListener("pagehide", save);
+    };
   }, []);
   useLookDrag(el);
   return (
@@ -96,31 +98,21 @@ export default function App() {
           <RendererSetup quality={quality} />
           <BenchProbe />
           <Suspense fallback={null}>
-            <Lighting quality={quality} preset={SCENE === "city" ? "dusk" : "day"} />
-            <Physics timeStep="vary" debug={showColliders}>
-              {SCENE === "city" ? (
-                <CityWorld quality={quality} />
-              ) : (
-                <>
-                  <World quality={quality} />
-                  <Player />
-                </>
-              )}
+            <Lighting quality={quality} preset={world.light} />
+            {/* keyed by world: physics, colliders, interactables and the player are rebuilt on every switch */}
+            <Physics key={world.id} timeStep="vary" debug={showColliders}>
+              <world.Scene quality={quality} />
+              <Player spawn={[world.spawn.x, world.spawn.y + 1, world.spawn.z]} spawnYaw={world.spawn.yaw} wearLoadout={world.wearsLoadout} />
             </Physics>
             <Ready />
           </Suspense>
         </Canvas>
       </div>
-      {SCENE === "city" ? <GameHud touch={isTouch || params.has("touch")} /> : <Hud touch={isTouch} />}
-      {SCENE === "test" && (isTouch || params.has("touch")) && (
-        <>
-          <Stick />
-          <ActionButtons />
-        </>
-      )}
+      <world.Hud key={world.id} touch={isTouch || params.has("touch")} />
       {(benchOn || params.has("stats")) && <BenchPanel auto={benchOn} />}
       <Governor />
       <Loader />
+      <TransitionOverlay />
     </div>
   );
 }

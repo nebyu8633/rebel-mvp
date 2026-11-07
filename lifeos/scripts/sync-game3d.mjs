@@ -14,7 +14,8 @@ const DST = join(APP, "src", "game3d");
 const PUB = join(APP, "public", "game3d");
 
 // prototype-only entry points / test scene / tests stay out of the app
-const SKIP = new Set(["main.tsx", "App.tsx", "vite-env.d.ts", "config.ts", "__tests__", "ui/Hud.tsx", "world/World.tsx", "data/mock.ts"]);
+// worlds/index.tsx registers the prototype's test scene (not shipped in the app)
+const SKIP = new Set(["main.tsx", "App.tsx", "vite-env.d.ts", "config.ts", "__tests__", "ui/Hud.tsx", "world/World.tsx", "worlds/index.tsx"]);
 
 rmSync(DST, { recursive: true, force: true });
 cpSync(SRC, DST, {
@@ -32,6 +33,11 @@ export const DEV = process.env.NODE_ENV !== "production";
 export const HDRI = { day: "/game3d/hdri/esplanade.exr", dusk: "/game3d/hdri/sunset.exr" };
 /** No mock events inside the real app. */
 export const DEMO_EVENTS = false;
+/**
+ * Live LifeOS data in the 3D city (read-only). OFF by default: demo data is shown unless
+ * NEXT_PUBLIC_GAME3D_LIVE_DATA=true is set explicitly at build time.
+ */
+export const LIVE_DATA = process.env.NEXT_PUBLIC_GAME3D_LIVE_DATA === "true";
 `,
 );
 writeFileSync(join(DST, "README.md"), "# game3d (generated)\n\nCopied from `lifeos-proto/src` by `npm run sync:game3d`. Do not edit here — edit the prototype and re-sync.\nOnly `config.ts` is app-specific.\n");

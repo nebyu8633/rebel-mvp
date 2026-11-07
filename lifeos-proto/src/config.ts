@@ -12,3 +12,5 @@ export const DEV: boolean = import.meta.env.DEV;
 export const HDRI = { day: esplanade, dusk: sunset };
 /** Kiosk that emits sample (mock) verified events — prototype only. */
 export const DEMO_EVENTS = true;
+/** Live LifeOS data (read-only) — off by default; the prototype has no live provider. */
+export const LIVE_DATA = false;

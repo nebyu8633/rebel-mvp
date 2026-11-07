@@ -4,8 +4,7 @@
  */
 import { LifeEventSink, MockLifeEventSource, type Domain } from "./lifeEvents";
 import { useProto } from "../store";
-
-export const characterEvents = { onReaction: null as null | ((kind: "celebrate" | "light_window" | "revert") => void) };
+import { playerReactions } from "../engine/events";
 
 const source = new MockLifeEventSource();
 const sink = new LifeEventSink(true);
@@ -14,7 +13,7 @@ source.subscribe((e) => {
   const r = sink.accept(e);
   if (!r.ok || !r.reaction) return;
   useProto.getState().pushReaction(r.reaction);
-  characterEvents.onReaction?.(r.reaction.kind);
+  playerReactions.emit(r.reaction.kind === "revert" ? "surprise" : r.reaction.kind === "celebrate" ? "celebrate" : "acknowledge");
 });
 
 const DOMS: Domain[] = ["knowledge", "health", "career", "social", "mind", "wealth"];

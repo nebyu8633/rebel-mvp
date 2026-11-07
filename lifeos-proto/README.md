@@ -33,6 +33,27 @@ The default scene is the LifeOS city: central plaza, the LifeOS tower (lobby wit
 - World Progress (discoveries, unlocked buildings, city construction) is shown separately and labelled "game progress · not Life XP". There is no Energy meter.
 - `?scene=test` switches to the physics test scene (stairs, ramps, door).
 
+## AETHERIA layer (foundation)
+
+AETHERIA is the fantasy layer of the same game; the modern city is the real-life layer. Structure:
+
+| Module | Responsibility |
+|---|---|
+| `src/worlds/` + `src/engine/worldStore.ts` | World registry (`reality` / `aetheria` / `dev`), shared host (canvas, physics, player, camera), transitions (`fade`, `resonance`). `?world=<id>` |
+| `src/aetheria/core/` | Pure TS: canon (6 kingdoms = 6 LifeOS domains, 3 forces, Echo stages), rules engine (`apply`: validates every change, append-only history), quests, real-life enrichment |
+| `src/aetheria/store.ts` | AETHERIA state, separate from the engine/city store, autosave |
+| `src/save/saveStore.ts` | Versioned, Zod-validated save; local only (no DB). A corrupted save is moved to a backup, never deleted |
+| `src/avatar/loadout.ts` + `attach.ts` + `recipes.ts` | The Living Architect: slots, items, visual tier, identity from the LifeOS profile (read-only). Items attach by canonical bones, so they work on any skeleton. `?wear=1` previews in dev |
+| `src/engine/events.ts` | Generic reaction channel (the engine doesn't know where an event came from) |
+| `src/data/providers.ts` | Demo by default; live data only with explicit configuration |
+
+Enforced rules (with tests):
+- An essential quest that depends on a `life:` flag fails validation.
+- Only the enrichment pipeline may write `life:` flags.
+- A real-life correction cancels the bonus but keeps the history.
+- The Echo advances only forward, one stage at a time.
+- Real-life progress in the city changes how a district looks, never access to it.
+
 ## Personal avatar (local only)
 
 1. Create the avatar in Avaturn yourself and export it as a **GLB in T-pose**.

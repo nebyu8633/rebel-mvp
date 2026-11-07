@@ -10,12 +10,13 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useProto } from "../store";
-import { DISTRICTS, PLAZA, TOWER, AVENUE, dirOf, gatePos, isUnlocked, locate, type DistrictDef } from "../city/layout";
+import { DISTRICTS, PLAZA, TOWER, AVENUE, developmentStage, dirOf, gatePos, locate, type DistrictDef } from "../city/layout";
 import { nextGoal, overallProgress, type Domain, type LifeOSSnapshot } from "../data/lifeos";
 import { telemetry } from "../player/Player";
 import { emitMockCorrection } from "../progression/useProgression";
 import { ActionButtons, Stick } from "./Controls";
 import { DEMO_EVENTS } from "../config";
+import { WorldSwitcher } from "./WorldUi";
 
 const CSS = `
 .hud{position:absolute;inset:0;pointer-events:none;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#eef3f8;direction:rtl}
@@ -144,12 +145,11 @@ function Districts({ s }: { s: LifeOSSnapshot }) {
       <h4>✦ 6 רובעי חיים</h4>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
         {DISTRICTS.map((d) => {
-          const open = isUnlocked(d, s.domainProgress);
+          const st = developmentStage(s.domainProgress[d.id]);
           return (
-            <button key={d.id} className="tile" onClick={() => set({ panel: `district:${d.id}` })} style={{ borderColor: open ? d.accent + "88" : "rgba(255,255,255,.1)", opacity: open ? 1 : 0.7 }}>
+            <button key={d.id} className="tile" onClick={() => set({ panel: `district:${d.id}` })} style={{ borderColor: d.accent + (st.level >= 2 ? "cc" : "66") }}>
               <div style={{ fontSize: 18 }}>
                 {ICON[d.id]}
-                {!open && " 🔒"}
               </div>
               <div style={{ fontSize: 12, fontWeight: 700 }}>{d.name.replace("רובע ה", "")}</div>
               <div className="bar" style={{ marginTop: 4, height: 5 }}>
@@ -250,8 +250,7 @@ function MiniMap({ s, size = 150 }: { s: LifeOSSnapshot; size?: number }) {
       // avenues
       for (const d of DISTRICTS) {
         const v = dirOf(d.bearing);
-        const open = isUnlocked(d, s.domainProgress);
-        g.strokeStyle = open ? d.accent : "#555";
+        g.strokeStyle = d.accent;
         g.lineWidth = AVENUE.w;
         g.globalAlpha = 0.55;
         g.beginPath();
@@ -260,7 +259,7 @@ function MiniMap({ s, size = 150 }: { s: LifeOSSnapshot; size?: number }) {
         g.stroke();
         g.globalAlpha = 1;
         const gp = gatePos(d);
-        g.fillStyle = open ? d.accent : "#777";
+        g.fillStyle = d.accent;
         g.beginPath();
         g.arc(gp.x, gp.z, 2.4, 0, Math.PI * 2);
         g.fill();
@@ -323,16 +322,16 @@ function BottomBar() {
 function DistrictPanel({ d, s }: { d: DistrictDef; s: LifeOSSnapshot }) {
   const goals = s.goals.filter((g) => g.region === d.id);
   const ms = s.milestones.filter((m) => m.region === d.id);
-  const open = isUnlocked(d, s.domainProgress);
+  const st = developmentStage(s.domainProgress[d.id]);
   return (
     <>
       <h3 style={{ margin: "0 0 4px", color: d.accent }}>
-        {ICON[d.id]} {d.name} {!open && "🔒"}
+        {ICON[d.id]} {d.name}
       </h3>
       <div style={{ fontSize: 13, opacity: 0.8 }}>{d.subtitle}</div>
       <div style={{ margin: "10px 0", display: "flex", alignItems: "center", gap: 12 }}>
         <Ring value={s.domainProgress[d.id]} color={d.accent} />
-        <div style={{ fontSize: 13 }}>{open ? "הרובע פתוח. בשלב הזה ניתן לבקר בשדרה ובשער." : `הרובע ייפתח כשההתקדמות בתחום תגיע ל־${pct(d.unlockAt)}.`}</div>
+        <div style={{ fontSize: 13 }}>שלב פיתוח: <b>{st.label}</b>. הרובע תמיד פתוח; ההתקדמות בחיים משנה את המראה שלו, לא את הגישה אליו.</div>
       </div>
       <b style={{ fontSize: 13 }}>מטרות נוכחיות</b>
       {goals.length === 0 && <div style={{ fontSize: 13, opacity: 0.7 }}>אין מטרות פעילות בתחום.</div>}
@@ -409,7 +408,7 @@ function Panel({ s }: { s: LifeOSSnapshot }) {
           <div style={{ fontSize: 13 }}>
             {DISTRICTS.map((d) => (
               <div key={d.id}>
-                <span style={{ color: d.accent }}>●</span> {d.name} · {pct(s.domainProgress[d.id])} {isUnlocked(d, s.domainProgress) ? "" : "🔒"}
+                <span style={{ color: d.accent }}>●</span> {d.name} · {pct(s.domainProgress[d.id])} · {developmentStage(s.domainProgress[d.id]).label}
               </div>
             ))}
           </div>
@@ -443,6 +442,7 @@ function Settings() {
       {open && (
         <div className="gp" style={{ position: "absolute", top: 48, left: 0, width: 250, padding: 10, fontSize: 12, display: "grid", gap: 5 }}>
           <div>דמות: {avatar?.label ?? "…"}</div>
+          <WorldSwitcher />
           <label>
             איכות{" "}
             <select value={quality} onChange={(e) => set({ quality: e.target.value as typeof quality })}>
@@ -560,6 +560,11 @@ export function GameHud({ touch }: { touch: boolean }) {
             </div>
           )}
         </>
+      )}
+      {s.source === "mock" && (
+        <div data-testid="demo-badge" style={{ position: "absolute", top: narrow ? 108 : 14, left: "50%", transform: "translateX(-50%)", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 10, background: "rgba(250,204,21,.18)", border: "1px solid rgba(250,204,21,.5)", color: "#fde68a" }}>
+          מצב הדגמה · נתונים לדוגמה
+        </div>
       )}
       <Prompt touch={touch} />
       <Panel s={s} />
