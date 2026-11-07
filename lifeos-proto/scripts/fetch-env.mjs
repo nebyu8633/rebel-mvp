@@ -26,6 +26,12 @@ export const SETS = {
   grass: { src: "Grass004", ...acg("Grass004", { ao: "AmbientOcclusion.ktx2" }) },
   leaf: { src: "Leaf001", ...acg("Leaf001", { opacity: "Opacity.ktx2" }) },
   metal: { src: "PaintedMetal004", ...acg("PaintedMetal004", { metalness: "Metalness.ktx2" }) },
+  // AETHERIA — The First Sanctuary
+  ruinwall: { src: "castle_wall_slates", ...ph("castle_wall_slates") },
+  ruinfloor: { src: "monastery_stone_floor", ...ph("monastery_stone_floor") },
+  rock: { src: "mossy_rock", ...ph("mossy_rock") },
+  meadow: { src: "leafy_grass", ...ph("leafy_grass") },
+  mosspath: { src: "mossy_cobblestone", ...ph("mossy_cobblestone") },
 };
 
 async function get(url, dest) {

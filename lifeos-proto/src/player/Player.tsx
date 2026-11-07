@@ -84,6 +84,7 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
       cam: { yaw: spawnYaw + Math.PI, pitch: 0.18, dist: 4.4, idle: 0 },
       camPos: new THREE.Vector3(),
       camInit: false,
+      pendingTeleport: null as null | { x: number; y: number; z: number },
       groundRay: new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }),
     }),
     [spawnYaw, rapier],
@@ -127,7 +128,8 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
       telemetry,
       anim: () => character.current?.controller.current,
       teleport: (x: number, y: number, z: number, yaw = sim.yaw) => {
-        body.current?.setTranslation({ x, y: y + FOOT, z }, true);
+        // applied inside the next physics step, on the body that step is simulating
+        sim.pendingTeleport = { x, y: y + FOOT, z };
         sim.yaw = yaw;
         sim.cam.yaw = yaw + Math.PI;
         sim.vx = sim.vz = sim.vy = 0;
@@ -142,6 +144,12 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
     if (!rb || !ch || !sim.kcc) return;
     const dt = Math.min(world.timestep || 1 / 60, 0.1);
     sim.collider ??= rb.collider(0);
+    if (sim.pendingTeleport) {
+      rb.setTranslation(sim.pendingTeleport, true);
+      rb.setNextKinematicTranslation(sim.pendingTeleport);
+      sim.pendingTeleport = null;
+      return;
+    }
     autopilotStep(dt);
     const mv = readMove();
     const edges = consumeEdges();

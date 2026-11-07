@@ -57,7 +57,7 @@ function RendererSetup({ quality }: { quality: Quality }) {
   const scene = useThree((s) => s.scene);
   const setDpr = useThree((s) => s.setDpr);
   useEffect(() => {
-    if (DEV) Object.assign(window, { __proto3d: { gl, scene } });
+    if (DEV) Object.assign(window, { __proto3d: { gl, scene }, __aetheria: useAetheria, __worlds: useWorlds });
   }, [gl, scene]);
   useEffect(() => {
     gl.toneMapping = THREE.AgXToneMapping;

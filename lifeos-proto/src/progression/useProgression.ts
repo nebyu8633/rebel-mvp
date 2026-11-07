@@ -5,11 +5,15 @@
 import { LifeEventSink, MockLifeEventSource, type Domain } from "./lifeEvents";
 import { useProto } from "../store";
 import { playerReactions } from "../engine/events";
+import { useAetheria } from "../aetheria/store";
+import { ENRICHMENT_RULES } from "../aetheria/content/firstResonance";
 
 const source = new MockLifeEventSource();
 const sink = new LifeEventSink(true);
 const emitted: string[] = [];
 source.subscribe((e) => {
+  // optional AETHERIA enrichment (memories / world details); never required for any content
+  useAetheria.getState().ingestLifeEvent(e, ENRICHMENT_RULES);
   const r = sink.accept(e);
   if (!r.ok || !r.reaction) return;
   useProto.getState().pushReaction(r.reaction);

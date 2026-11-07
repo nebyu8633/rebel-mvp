@@ -7,7 +7,7 @@ import { useThree } from "@react-three/fiber";
 import { suspend } from "suspend-react";
 import { asset, getKTX2 } from "../lib/loaders";
 
-export type SetName = "plaza" | "street" | "sidewalk" | "plaster" | "brick" | "granite" | "wood" | "bark" | "grass" | "leaf" | "metal";
+export type SetName = "plaza" | "street" | "sidewalk" | "plaster" | "brick" | "granite" | "wood" | "bark" | "grass" | "leaf" | "metal" | "ruinwall" | "ruinfloor" | "rock" | "meadow" | "mosspath";
 const MAPS: Record<SetName, string[]> = {
   plaza: ["color", "normal", "roughness", "ao"],
   street: ["color", "normal", "roughness", "ao"],
@@ -20,6 +20,11 @@ const MAPS: Record<SetName, string[]> = {
   grass: ["color", "normal", "roughness", "ao"],
   leaf: ["color", "normal", "roughness", "opacity"],
   metal: ["color", "normal", "roughness", "metalness"],
+  ruinwall: ["color", "normal", "roughness", "ao"],
+  ruinfloor: ["color", "normal", "roughness", "ao"],
+  rock: ["color", "normal", "roughness", "ao"],
+  meadow: ["color", "normal", "roughness", "ao"],
+  mosspath: ["color", "normal", "roughness", "ao"],
 };
 
 export interface MatOpts {
