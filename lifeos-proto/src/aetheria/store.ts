@@ -15,6 +15,9 @@ interface AetheriaState {
   enrichment: EnrichmentLedger;
   /** last rejection from the rules engine (for debugging / UI feedback) */
   lastRejection: string | null;
+  /** set when the last save could not be written (private browsing, storage full) */
+  saveError: string | null;
+  /** Applies actions through the rules engine. Returns true only if the world actually changed. */
   dispatch(actions: Action[]): boolean;
   equipItem(id: string): boolean;
   unequipSlot(slot: Slot): void;
@@ -36,7 +39,7 @@ function scheduleSave() {
   pending = setTimeout(() => {
     pending = null;
     const { world, loadout, enrichment, hydrated } = useAetheria.getState();
-    if (hydrated) void saveStore.save({ world, loadout, enrichment });
+    if (hydrated) void persist({ world, loadout, enrichment });
   }, 250);
 }
 /** Write immediately (e.g. before a world transition or page hide). */
@@ -44,7 +47,33 @@ export async function flushSave() {
   if (pending) clearTimeout(pending);
   pending = null;
   const { world, loadout, enrichment, hydrated } = useAetheria.getState();
-  if (hydrated) await saveStore.save({ world, loadout, enrichment });
+  if (hydrated) await persist({ world, loadout, enrichment });
+}
+async function persist(d: { world: WorldState; loadout: Loadout; enrichment: EnrichmentLedger }) {
+  try {
+    await saveStore.save(d);
+    if (useAetheria.getState().saveError) useAetheria.setState({ saveError: null });
+  } catch (e) {
+    useAetheria.setState({ saveError: e instanceof Error ? e.message : "save failed" });
+  }
+}
+
+/**
+ * Save when the page is hidden/closed. iOS Safari may discard background tabs without firing
+ * `pagehide`, so `visibilitychange` (hidden) is the reliable signal. Returns an unsubscribe.
+ */
+export function bindSaveOnHide(): () => void {
+  if (typeof document === "undefined") return () => {};
+  const onVis = () => {
+    if (document.visibilityState === "hidden") void flushSave();
+  };
+  const onHide = () => void flushSave();
+  document.addEventListener("visibilitychange", onVis);
+  window.addEventListener("pagehide", onHide);
+  return () => {
+    document.removeEventListener("visibilitychange", onVis);
+    window.removeEventListener("pagehide", onHide);
+  };
 }
 
 export const useAetheria = create<AetheriaState>((set, get) => ({
@@ -53,16 +82,16 @@ export const useAetheria = create<AetheriaState>((set, get) => ({
   loadout: defaultLoadout(),
   enrichment: emptyLedger(),
   lastRejection: null,
+  saveError: null,
   dispatch(actions) {
     const r = applyAll(get().world, actions);
     if (!r.ok) {
       set({ lastRejection: r.reason });
       return false;
     }
-    if (r.changed) {
-      set({ world: r.state, lastRejection: null });
-      scheduleSave();
-    }
+    if (!r.changed) return false;
+    set({ world: r.state, lastRejection: null });
+    scheduleSave();
     return true;
   },
   equipItem(id) {

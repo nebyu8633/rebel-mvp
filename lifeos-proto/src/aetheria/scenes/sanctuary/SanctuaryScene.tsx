@@ -440,7 +440,8 @@ function Astrolabe() {
     if (light.current) light.current.intensity = 6 + (touched ? 6 : 0) + smooth(0, 0.35, p) * 40 - smooth(0.7, 1, p) * 28;
     if (beam.current) {
       const m = beam.current.material as THREE.MeshBasicMaterial;
-      m.opacity = smooth(0.08, 0.3, p) * (0.85 - smooth(0.75, 1, p) * 0.55);
+      // strong during the event, then a faint lingering glow (it was a near-opaque column on iPhone)
+      m.opacity = smooth(0.08, 0.3, p) * (0.85 - smooth(0.72, 1, p) * 0.75);
       beam.current.visible = m.opacity > 0.01;
     }
   });

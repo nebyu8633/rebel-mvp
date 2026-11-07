@@ -14,7 +14,8 @@ import { useWorlds } from "./engine/worldStore";
 import { getWorld } from "./worlds/registry";
 import { registerBuiltInWorlds } from "./worlds";
 import { TransitionOverlay } from "./ui/WorldUi";
-import { flushSave, useAetheria } from "./aetheria/store";
+import { bindSaveOnHide, flushSave, useAetheria } from "./aetheria/store";
+import { ContextLossOverlay, ContextLossProbe } from "./ui/ContextGuard";
 
 const isTouch = typeof window !== "undefined" && (matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && !matchMedia("(hover: hover)").matches));
 const pinned = params.get("q") as Quality | null;
@@ -77,8 +78,7 @@ export default function App() {
   useEffect(() => {
     useProto.getState().set({ quality: initialQuality });
     void useAetheria.getState().hydrate();
-    const save = () => void flushSave();
-    window.addEventListener("pagehide", save);
+    const unbindSave = bindSaveOnHide();
     // persist AETHERIA state whenever the player leaves a world
     const unsubWorld = useWorlds.subscribe((st, prev) => {
       if (st.phase === "out" && prev.phase !== "out") void flushSave();
@@ -87,7 +87,7 @@ export default function App() {
     return () => {
       unbind();
       unsubWorld();
-      window.removeEventListener("pagehide", save);
+      unbindSave();
     };
   }, []);
   useLookDrag(el);
@@ -97,6 +97,7 @@ export default function App() {
         <Canvas shadows="percentage" camera={{ fov: 55, near: 0.1, far: 900, position: [0, 3, 22] }} gl={{ antialias: quality !== "low", powerPreference: "high-performance" }} dpr={Math.min(DPR[initialQuality], window.devicePixelRatio || 1)}>
           <RendererSetup quality={quality} />
           <BenchProbe />
+          <ContextLossProbe beforeReload={flushSave} />
           <Suspense fallback={null}>
             <Lighting quality={quality} preset={world.light} />
             {/* keyed by world: physics, colliders, interactables and the player are rebuilt on every switch */}
@@ -113,6 +114,7 @@ export default function App() {
       <Governor />
       <Loader />
       <TransitionOverlay />
+      <ContextLossOverlay />
     </div>
   );
 }

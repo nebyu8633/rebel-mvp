@@ -16,6 +16,8 @@ import { bindKeyboard } from "@/game3d/player/input";
 import { useLookDrag } from "@/game3d/ui/Controls";
 import { BenchPanel, BenchProbe, bench } from "@/game3d/ui/Bench";
 import { setWorldNavigator } from "@/game3d/engine/worldStore";
+import { ContextLossOverlay, ContextLossProbe } from "@/game3d/ui/ContextGuard";
+import { flushSave } from "@/game3d/aetheria/store";
 import { params, useProto, type Quality } from "@/game3d/store";
 
 const DPR: Record<Quality, number> = { high: 2, medium: 1.5, low: 1 };
@@ -113,6 +115,7 @@ export function World3DHost({ scene, hud, light, spawn, wearLoadout, loadingText
         <Canvas shadows="percentage" camera={{ fov: 55, near: 0.1, far: 900, position: [spawn.x, 3, spawn.z + 6] }} gl={{ antialias: quality !== "low", powerPreference: "high-performance" }} dpr={Math.min(DPR[env.initial], window.devicePixelRatio || 1)}>
           <RendererSetup quality={quality} />
           <BenchProbe />
+          <ContextLossProbe beforeReload={flushSave} />
           <Suspense fallback={null}>
             <Lighting quality={quality} preset={light} />
             <Physics timeStep="vary" debug={showColliders}>
@@ -127,6 +130,7 @@ export function World3DHost({ scene, hud, light, spawn, wearLoadout, loadingText
       {(params.has("bench") || params.has("stats")) && <BenchPanel auto={params.has("bench")} />}
       <Governor pinned={!!env.pinned} />
       <Loader text={loadingText} />
+      <ContextLossOverlay />
     </div>
   );
 }

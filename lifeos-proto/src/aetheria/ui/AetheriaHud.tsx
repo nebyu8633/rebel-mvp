@@ -158,6 +158,7 @@ export function AetheriaHud({ touch }: { touch: boolean }) {
   const prompt = useProto((s) => s.prompt);
   const setPanel = useAetheriaUi((s) => s.setPanel);
   const discovered = useAetheria((s) => s.world.flags.includes(F.kingdoms));
+  const saveError = useAetheria((s) => s.saveError);
   return (
     <div className="ae">
       <style>{CSS}</style>
@@ -178,6 +179,11 @@ export function AetheriaHud({ touch }: { touch: boolean }) {
       {prompt && (
         <div className="ae-p" data-testid="prompt" style={{ position: "absolute", left: "50%", bottom: touch ? 180 : 40, transform: "translateX(-50%)", padding: "8px 14px", fontSize: 14, whiteSpace: "nowrap" }}>
           {touch ? "״פעולה״" : "E"} — {prompt}
+        </div>
+      )}
+      {saveError && (
+        <div className="ae-p" data-testid="save-error" style={{ position: "absolute", top: 60, left: 10, maxWidth: 280, padding: "6px 10px", fontSize: 12, borderColor: "rgba(255,120,120,.6)" }}>
+          ההתקדמות לא נשמרת במכשיר הזה (גלישה פרטית או אחסון מלא). אפשר להמשיך לשחק, אבל ההתקדמות תאבד בסגירה.
         </div>
       )}
       <TitleCard />
