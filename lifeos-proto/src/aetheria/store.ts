@@ -7,6 +7,7 @@ import { applyAll, initialWorldState, type Action, type WorldState } from "./cor
 import { applyLifeEvent, emptyLedger, type EnrichmentLedger, type EnrichmentRule } from "./core/enrichment";
 import { defaultLoadout, equip, unequip, validateLoadout, MAX_TIER, type Loadout, type Slot } from "../avatar/loadout";
 import { LocalSaveStore, MemoryKV, type SaveStore } from "../save/saveStore";
+import { RULES } from "./content";
 
 interface AetheriaState {
   hydrated: boolean;
@@ -84,7 +85,7 @@ export const useAetheria = create<AetheriaState>((set, get) => ({
   lastRejection: null,
   saveError: null,
   dispatch(actions) {
-    const r = applyAll(get().world, actions);
+    const r = applyAll(get().world, actions, undefined, RULES);
     if (!r.ok) {
       set({ lastRejection: r.reason });
       return false;

@@ -2,11 +2,14 @@
 import type { QuestDef } from "../core/quests";
 import { FIRST_RESONANCE, JOURNAL as J1, type JournalText } from "./firstResonance";
 import { ECHO_AWAKENING, ECHO_JOURNAL } from "./echoAwakening";
+import { GATE_JOURNAL, GATE_SITES, SLEEPING_GATE } from "./sleepingGate";
 import { questStatus } from "../core/quests";
-import type { WorldState } from "../core/state";
+import type { Rules, WorldState } from "../core/state";
 
-export const QUESTS: QuestDef[] = [FIRST_RESONANCE, ECHO_AWAKENING];
-export const JOURNAL: Record<string, JournalText> = { ...J1, ...ECHO_JOURNAL };
+export const QUESTS: QuestDef[] = [FIRST_RESONANCE, ECHO_AWAKENING, SLEEPING_GATE];
+export const JOURNAL: Record<string, JournalText> = { ...J1, ...ECHO_JOURNAL, ...GATE_JOURNAL };
+/** World rules the engine validates against (resonance sites). */
+export const RULES: Rules = { sites: { ...GATE_SITES } };
 
 /** The quest to show in the tracker: the first visible, unfinished one (or the last completed). */
 export function currentQuest(s: WorldState): QuestDef {

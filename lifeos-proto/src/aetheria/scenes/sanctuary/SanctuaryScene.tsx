@@ -37,7 +37,12 @@ import {
   onTerrace,
   onTouchFragment,
 } from "../../content/firstResonance";
-import { BOUND_R, CONSOLES, FLOOR_Y, FRAGMENT, GALLERY, OBS, PEDESTAL, SIGIL_WALL, STAIR, WAYSTONE, around, insideObservatory, onGallery, stepAt, stepRun } from "./layout";
+import { BOUND_R, CONSOLES, FLOOR_Y, FRAGMENT, GALLERY, OBS, PEDESTAL, SIGIL_WALL, STAIR, WAYSTONE, around, insideObservatory, nearGate, GATE_VIEW, angDist, onGallery, stepAt, stepRun } from "./layout";
+import { SleepingGate } from "./SleepingGate";
+import { ResonanceFx } from "../../fx/ResonanceFx";
+import { casts, FORCE_FX } from "../../fx/casts";
+import { canLearn, onLearn } from "../../content/sleepingGate";
+import { JOURNAL as ALL_JOURNAL } from "../../content";
 import { forceGlyph, kingdomGlyph } from "./glyphs";
 import { FutureEcho } from "./FutureEcho";
 import { E, FIRST_TOUCH, MEM, echoDialogueFor, echoWaits } from "../../content/echoAwakening";
@@ -73,7 +78,9 @@ function Terrain() {
       const ang = Math.atan2(z, x);
       let ripple = 0;
       for (const b of bumps) ripple += Math.sin(ang * b.f + b.a) * b.amp;
-      const hills = smooth(38, 52, d) * (3 + ripple * 0.9);
+      // the rim parts in front of the Sleeping Gate so its bridge and the isles are visible
+      const notch = 1 - 0.85 * (1 - smooth(0.16, 0.36, angDist(ang, GATE_VIEW)));
+      const hills = smooth(38, 52, d) * (3 + ripple * 0.9) * notch;
       const cliff = -smooth(62, 78, d) * 60;
       p.setY(i, d < 34 ? Math.sin(x * 0.15) * Math.cos(z * 0.13) * 0.04 : hills + cliff);
       uv.setXY(i, x / 4, z / 4);
@@ -110,6 +117,7 @@ function Terrain() {
       const z = Math.sin(a) * d;
       if (Math.abs(x) < 6 && z > -2) continue;
       if (Math.hypot(x - OBS.x, z - OBS.z) < 11) continue;
+      if (nearGate(x, z)) continue;
       const s = 0.6 + r() * 1.6;
       out.push({ x, z, y: s * 0.35, s: [s * (1 + r() * 0.6), s * (0.7 + r() * 0.5), s * (1 + r() * 0.5)], rot: r() * 6, geo: make(100 + i), collide: true });
     }
@@ -118,6 +126,7 @@ function Terrain() {
       const a = (i / 34) * Math.PI * 2 + r() * 0.1;
       const d = 44 + r() * 14;
       const s = 4 + r() * 8;
+      if (angDist(a, GATE_VIEW) < 0.34) continue;
       out.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: s * 0.4 + 2, s: [s, s * (1.2 + r()), s], rot: r() * 6, geo: make(300 + i), collide: false });
     }
     return out;
@@ -478,12 +487,43 @@ function Console({ force, bearing, r }: { force: Force; bearing: number; r: numb
   const stone = usePBR("ruinwall", { tint: 0xc9c1b4 });
   const aligned = useAetheria((s) => s.world.flags.includes(F.ring(force)));
   const touched = useAetheria((s) => s.world.flags.includes(F.fragment));
+  const learnable = useAetheria((s) => canLearn(s.world));
+  const learned = useAetheria((s) => (s.world.powers ?? []).includes(force));
   const p = around(bearing, r);
   const yaw = Math.atan2(OBS.x - p.x, OBS.z - p.z);
   const glyph = useMemo(() => new THREE.MeshBasicMaterial({ map: forceGlyph(force), transparent: true, toneMapped: false, color: 0x6a6a6a, depthWrite: false }), [force]);
   useEffect(() => {
-    glyph.color.set(aligned ? 0xffe9b0 : touched ? 0x9fd8ff : 0x555555);
-  }, [aligned, touched, glyph]);
+    glyph.color.set(learned ? FORCE_FX[force].color : learnable ? 0xffffff : aligned ? 0xffe9b0 : touched ? 0x9fd8ff : 0x555555);
+  }, [aligned, touched, learnable, learned, force, glyph]);
+  // Phase 3: once the Echo has asked its question, each ring teaches its force
+  useEffect(() => {
+    if (!aligned || !learnable || learned) return;
+    const ip = around(bearing, r - 1.1);
+    const id = `learn-${force}`;
+    interactables.set(id, {
+      id,
+      label: `למדו את כוח ה${FORCE_TITLES[force]}`,
+      x: ip.x,
+      y: FLOOR_Y,
+      z: ip.z,
+      radius: 1.6,
+      onContact: () => {
+        const st = useAetheria.getState();
+        const before = st.world.journal.length;
+        if (!st.dispatch(onLearn(st.world, force))) return;
+        useAetheriaUi.getState().setPower(force);
+        const g = around(bearing, r);
+        casts.emit({ force, ok: true, at: { x: telemetry.x, y: telemetry.y + 1.1, z: telemetry.z }, from: { x: g.x, y: FLOOR_Y + 1.0, z: g.z } });
+        playerReactions.emit("surprise");
+        for (const j of useAetheria.getState().world.journal.slice(before)) {
+          const text = ALL_JOURNAL[j.id];
+          if (text) useAetheriaUi.getState().showCard({ title: text.title, body: text.body, tone: "resonance" });
+        }
+        useAetheriaUi.getState().say(`כוח ה${FORCE_TITLES[force]} נלמד. בחרו אותו בסרגל הכוחות.`);
+      },
+    });
+    return () => void interactables.delete(id);
+  }, [aligned, learnable, learned, force, bearing, r]);
   useEffect(() => {
     if (aligned || !touched) return;
     const ip = around(bearing, r - 1.1);
@@ -788,6 +828,7 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
       const z = Math.sin(a) * d;
       if (Math.abs(x) < 7 && z > -2) continue;
       if (Math.hypot(x - OBS.x, z - OBS.z) < 12) continue;
+      if (nearGate(x, z)) continue;
       out.push({ x, z, s: out.length + 50 });
     }
     return out;
@@ -810,6 +851,8 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
       <SigilWall />
       <MemoryShards />
       <EchoController />
+      <SleepingGate />
+      <ResonanceFx />
       {trees.map((t) => (
         <Tree key={t.s} x={t.x} z={t.z} seed={t.s} height={5.5 + (t.s % 3) * 1.2} shadows={quality !== "low"} />
       ))}

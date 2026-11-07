@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { useAetheria } from "../store";
 import { useAetheriaUi } from "./uiStore";
 import { questStatus } from "../core/quests";
-import { ECHO_TITLES } from "../core/model";
+import { ECHO_TITLES, FORCES, FORCE_TITLES } from "../core/model";
+import { FORCE_FX } from "../fx/casts";
 import { SIGILS, F, memoryShards } from "../content/firstResonance";
 import { JOURNAL, currentQuest } from "../content";
 import { MEM } from "../content/echoAwakening";
@@ -28,6 +29,81 @@ const CSS = `
 .ae-frag{animation:aeFrag 2.3s infinite steps(1)}
 `;
 
+const DONE_TEXT: Record<string, string> = {
+  first_resonance: "הושלם. שש הממלכות נחשפו.",
+  echo_awakening: "הושלם. ההד זוכר אותך.",
+  sleeping_gate: "הושלם. השער ער, וההד הולך איתך.",
+};
+
+/** Resonance powers: pick the force to use (tap, or keys 1/2/3). Only learned forces are usable. */
+function PowerBar() {
+  const powers = useAetheria((s) => s.world.powers);
+  const bond = useAetheria((s) => s.world.memory[MEM.bond]);
+  const power = useAetheriaUi((s) => s.power);
+  const setPower = useAetheriaUi((s) => s.setPower);
+  const learned = powers ?? [];
+  // default to the force the Echo heard (the bond), else the first learned one
+  useEffect(() => {
+    if (power && learned.includes(power)) return;
+    const pick = learned.find((f) => f === bond) ?? learned[0] ?? null;
+    if (pick !== power) setPower(pick);
+  }, [learned, bond, power, setPower]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const i = ["Digit1", "Digit2", "Digit3"].indexOf(e.code);
+      if (i >= 0 && learned.includes(FORCES[i])) setPower(FORCES[i]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [learned, setPower]);
+  if (!learned.length) return null;
+  return (
+    <div data-testid="powers" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", display: "grid", gap: 8, pointerEvents: "auto" }}>
+      {FORCES.map((f, i) => {
+        const has = learned.includes(f);
+        const on = power === f;
+        const fx = FORCE_FX[f];
+        return (
+          <button
+            key={f}
+            data-testid={`power-${f}`}
+            aria-pressed={on}
+            disabled={!has}
+            onClick={() => setPower(f)}
+            className="ae-btn"
+            style={{
+              width: 64,
+              height: 52,
+              padding: 0,
+              borderRadius: 14,
+              fontSize: 13,
+              fontWeight: 700,
+              opacity: has ? 1 : 0.3,
+              color: has ? fx.color : "#888",
+              borderColor: on ? fx.color : "rgba(214,180,110,.35)",
+              boxShadow: on ? `0 0 14px ${fx.glow}, inset 0 0 10px ${fx.glow}` : "none",
+              background: on ? "rgba(30,26,44,.92)" : "rgba(20,18,30,.7)",
+            }}
+          >
+            {FORCE_TITLES[f]}
+            <div style={{ fontSize: 10, opacity: 0.6, fontWeight: 400 }}>{i + 1}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Hint({ touch }: { touch: boolean }) {
+  const hint = useAetheriaUi((s) => s.hint);
+  if (!hint) return null;
+  return (
+    <div key={hint.id} className="ae-p" data-testid="hint" style={{ position: "absolute", left: "50%", bottom: touch ? 232 : 92, transform: "translateX(-50%)", padding: "8px 14px", fontSize: 13, maxWidth: "88vw", textAlign: "center", animation: "aeIn .25s ease-out", borderColor: "rgba(159,216,255,.45)" }}>
+      {hint.text}
+    </div>
+  );
+}
+
 function QuestTracker() {
   const world = useAetheria((s) => s.world);
   const quest = currentQuest(world);
@@ -43,7 +119,7 @@ function QuestTracker() {
           </div>
         </div>
       )}
-      {st.state === "complete" && <div style={{ fontSize: 13, marginTop: 4 }}>{quest.id === "first_resonance" ? "הושלם. שש הממלכות נחשפו." : "הושלם. ההד זוכר אותך."}</div>}
+      {st.state === "complete" && <div style={{ fontSize: 13, marginTop: 4 }}>{DONE_TEXT[quest.id] ?? "הושלם."}</div>}
       {world.echo !== "dormant" && <div style={{ fontSize: 11, marginTop: 6, color: "#9fd8ff" }}>הד העתיד: {ECHO_TITLES[world.echo]}</div>}
     </div>
   );
@@ -246,6 +322,8 @@ export function AetheriaHud({ touch }: { touch: boolean }) {
           ההתקדמות לא נשמרת במכשיר הזה (גלישה פרטית או אחסון מלא). אפשר להמשיך לשחק, אבל ההתקדמות תאבד בסגירה.
         </div>
       )}
+      <PowerBar />
+      <Hint touch={touch} />
       <TitleCard />
       <DialoguePanel touch={touch} />
       <Panels />
