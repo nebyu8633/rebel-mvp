@@ -39,6 +39,7 @@ import {
 } from "../../content/firstResonance";
 import { BOUND_R, CONSOLES, FLOOR_Y, FRAGMENT, GALLERY, OBS, PEDESTAL, SIGIL_WALL, STAIR, WAYSTONE, around, insideObservatory, nearGate, GATE_VIEW, angDist, onGallery, stepAt, stepRun } from "./layout";
 import { SleepingGate } from "./SleepingGate";
+import { GateGuide } from "./GateGuide";
 import { ResonanceFx } from "../../fx/ResonanceFx";
 import { casts, FORCE_FX } from "../../fx/casts";
 import { canLearn, onLearn } from "../../content/sleepingGate";
@@ -852,6 +853,7 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
       <MemoryShards />
       <EchoController />
       <SleepingGate />
+      <GateGuide />
       <ResonanceFx />
       {trees.map((t) => (
         <Tree key={t.s} x={t.x} z={t.z} seed={t.s} height={5.5 + (t.s % 3) * 1.2} shadows={quality !== "low"} />
