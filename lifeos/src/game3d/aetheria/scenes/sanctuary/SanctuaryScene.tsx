@@ -17,8 +17,7 @@ import { Tree } from "../../../world/Trees";
 import { interactables, type Quality } from "../../../store";
 import { telemetry } from "../../../player/Player";
 import { playerReactions } from "../../../engine/events";
-import { useWorlds } from "../../../engine/worldStore";
-import { getWorld } from "../../../worlds/registry";
+import { goToWorld, worldAvailable } from "../../../engine/worldStore";
 import { useAetheria } from "../../store";
 import { useAetheriaUi } from "../../ui/uiStore";
 import { FORCES, FORCE_TITLES, type Force } from "../../core/model";
@@ -574,7 +573,7 @@ function Waystone() {
   const stone = usePBR("rock", { tint: 0xb7b2a8 });
   const rune = useMemo(() => glowMat(0x9fd8ff, 2.5), []);
   useEffect(() => {
-    if (!getWorld("city")) return;
+    if (!worldAvailable("city")) return;
     interactables.set("waystone", {
       id: "waystone",
       label: "אבן הדרך: חזרה לעיר (שכבת המציאות)",
@@ -582,7 +581,7 @@ function Waystone() {
       y: 0,
       z: WAYSTONE.z,
       radius: 1.8,
-      onContact: () => useWorlds.getState().transitionTo("city", { style: "resonance" }),
+      onContact: () => void goToWorld("city", { style: "resonance" }),
     });
     return () => void interactables.delete("waystone");
   }, []);

@@ -58,3 +58,25 @@ export const useWorlds = create<WorldState>((set, get) => ({
     return true;
   },
 }));
+
+/**
+ * Hosts where each world is a separate page (the LifeOS app: /city, /aetheria) plug in a navigator.
+ * Scenes call goToWorld()/worldAvailable() and stay agnostic of how worlds are hosted.
+ */
+export interface WorldNavigator {
+  has(id: WorldId): boolean;
+  go(id: WorldId, opts?: TransitionOpts): void;
+}
+let navigator: WorldNavigator | null = null;
+export function setWorldNavigator(n: WorldNavigator | null) {
+  navigator = n;
+}
+export const worldAvailable = (id: WorldId) => useWorlds.getState().known.has(id) || !!navigator?.has(id);
+export function goToWorld(id: WorldId, opts?: TransitionOpts): boolean {
+  if (useWorlds.getState().known.has(id)) return useWorlds.getState().transitionTo(id, opts);
+  if (navigator?.has(id)) {
+    navigator.go(id, opts);
+    return true;
+  }
+  return false;
+}

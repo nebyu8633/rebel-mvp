@@ -17,8 +17,7 @@ import { interactables, useProto, type Quality } from "../store";
 import { emitMockEvent } from "../progression/useProgression";
 import type { LifeOSSnapshot } from "../data/lifeos";
 import { DEMO_EVENTS } from "../config";
-import { getWorld } from "../worlds/registry";
-import { useWorlds } from "../engine/worldStore";
+import { goToWorld, worldAvailable } from "../engine/worldStore";
 
 /** A shimmering vertical crack of light in the tower lobby (the way into AETHERIA). */
 function ResonanceCrack({ x, z }: { x: number; z: number }) {
@@ -170,7 +169,7 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
     interactables.set("tower-door", { id: "tower-door", label: "כניסה למגדל LifeOS", x: 0, y: 0, z: front + 1.2, radius: 2.4, onContact: () => useProto.getState().set({ towerDoorOpen: !useProto.getState().towerDoorOpen }) });
     interactables.set("tower-terminal", { id: "tower-terminal", label: "מסוף LifeOS: סקירת החיים שלך", x: 0, y: 0, z: front - LOBBY.d + 2.2, radius: 1.8, onContact: () => useProto.getState().set({ panel: "overview" }) });
     // a crack of light in the lobby: the passage from the real-life layer into AETHERIA
-    if (getWorld("sanctuary"))
+    if (worldAvailable("sanctuary"))
       interactables.set("resonance-crack", {
         id: "resonance-crack",
         label: "סדק של אור: מעבר אל AETHERIA",
@@ -178,7 +177,7 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
         y: 0,
         z: front - 5,
         radius: 1.6,
-        onContact: () => useWorlds.getState().transitionTo("sanctuary", { style: "resonance" }),
+        onContact: () => void goToWorld("sanctuary", { style: "resonance" }),
       });
     return () => {
       interactables.delete("tower-door");
@@ -246,7 +245,7 @@ function Tower({ snapshot }: { snapshot: LifeOSSnapshot }) {
           </RigidBody>
         ))}
       </group>
-      {getWorld("sanctuary") && <ResonanceCrack x={4.1} z={front - 5} />}
+      {worldAvailable("sanctuary") && <ResonanceCrack x={4.1} z={front - 5} />}
       <group position={[0, 0, front - LOBBY.d + 1.2]} userData={{ noBatch: true }}>
         <mesh material={granite} position={[0, 0.6, 0]}>
           <boxGeometry args={[1, 1.2, 0.7]} />

@@ -202,3 +202,20 @@ describe("world transitions", () => {
     vi.useRealTimers();
   });
 });
+
+describe("world navigation across hosts", () => {
+  it("uses in-place transitions for registered worlds and the host navigator otherwise", async () => {
+    const { goToWorld, worldAvailable, setWorldNavigator, useWorlds: W } = await import("../engine/worldStore");
+    W.getState().setKnown(["city"]);
+    W.getState().setCurrent("city");
+    const went: string[] = [];
+    setWorldNavigator({ has: (id) => id === "sanctuary", go: (id) => went.push(id) });
+    expect(worldAvailable("sanctuary")).toBe(true);
+    expect(worldAvailable("nowhere")).toBe(false);
+    expect(goToWorld("sanctuary")).toBe(true);
+    expect(went).toEqual(["sanctuary"]);
+    expect(goToWorld("nowhere")).toBe(false);
+    setWorldNavigator(null);
+    expect(worldAvailable("sanctuary")).toBe(false);
+  });
+});

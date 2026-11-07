@@ -17,6 +17,7 @@ import { emitMockCorrection } from "../progression/useProgression";
 import { ActionButtons, Stick } from "./Controls";
 import { DEMO_EVENTS } from "../config";
 import { WorldSwitcher } from "./WorldUi";
+import { goToWorld, worldAvailable } from "../engine/worldStore";
 
 const CSS = `
 .hud{position:absolute;inset:0;pointer-events:none;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#eef3f8;direction:rtl}
@@ -315,7 +316,24 @@ function BottomBar() {
           {l}
         </button>
       ))}
+      <AetheriaButton />
     </div>
+  );
+}
+
+/** Passage to the fantasy layer (shown only where an AETHERIA world is available). */
+function AetheriaButton({ compact }: { compact?: boolean }) {
+  if (!worldAvailable("sanctuary")) return null;
+  const go = () => void goToWorld("sanctuary", { style: "resonance" });
+  return compact ? (
+    <button className="gp" onClick={go} data-testid="to-aetheria" style={{ height: 42, padding: "0 12px", borderRadius: 21, color: "#e9c987", fontSize: 13, fontWeight: 700 }}>
+      ✦ AETHERIA
+    </button>
+  ) : (
+    <button className="btm" onClick={go} data-testid="to-aetheria">
+      <span style={{ color: "#e9c987" }}>✦</span>
+      AETHERIA
+    </button>
   );
 }
 
@@ -533,6 +551,7 @@ export function GameHud({ touch }: { touch: boolean }) {
             <Profile s={s} compact />
             <div style={{ display: "grid", gap: 6, justifyItems: "end" }}>
               <div style={{ display: "flex", gap: 6 }}>
+                <AetheriaButton compact />
                 <button className="gp" style={{ width: 42, height: 42, borderRadius: "50%", color: "#fff", fontSize: 18 }} onClick={() => setDrawer((o) => !o)} data-testid="drawer">
                   ☰
                 </button>
