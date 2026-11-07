@@ -4,7 +4,7 @@
  * Corrupted or unknown-version saves are never silently overwritten: they're kept under a backup key.
  */
 import { z } from "zod";
-import { ECHO_STAGES } from "../aetheria/core/model";
+import { ECHO_STAGES, FORCES } from "../aetheria/core/model";
 import { initialWorldState, type WorldState } from "../aetheria/core/state";
 import { defaultLoadout, SLOTS, type Loadout } from "../avatar/loadout";
 import type { EnrichmentLedger } from "../aetheria/core/enrichment";
@@ -17,6 +17,9 @@ const WorldStateSchema = z.object({
   history: z.array(z.object({ at: z.string(), action: z.string(), detail: z.string().max(200) })).max(500),
   // added in Phase 2; older v1 saves simply have no memory yet
   memory: z.record(z.string().max(64), z.union([z.string().max(64), z.number(), z.boolean()])).default({}),
+  // added in Phase 3 (resonance powers + the state of resonance sites)
+  powers: z.array(z.enum(FORCES)).max(FORCES.length).default([]),
+  sites: z.record(z.string().max(64), z.string().max(32)).default({}),
 });
 const LoadoutSchema = z.object({
   base: z.enum(["auto", "placeholder", "personal"]),

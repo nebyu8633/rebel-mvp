@@ -81,6 +81,7 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
       collider: null as Collider | null,
       faceTarget: null as null | { x: number; z: number },
       nearest: null as null | string,
+      nearestLabel: null as null | string,
       cam: { yaw: spawnYaw + Math.PI, pitch: 0.18, dist: 4.4, idle: 0 },
       camPos: new THREE.Vector3(),
       camInit: false,
@@ -206,9 +207,12 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
         bestD = d;
       }
     }
-    if (best !== sim.nearest) {
+    // the label can change while standing still (e.g. a different power is selected)
+    const label = best ? interactables.get(best)!.label : null;
+    if (best !== sim.nearest || label !== sim.nearestLabel) {
       sim.nearest = best;
-      useProto.getState().set({ prompt: best ? interactables.get(best)!.label : null });
+      sim.nearestLabel = label;
+      useProto.getState().set({ prompt: label });
     }
     const wantInteract = edges.interact && !!best && sim.grounded;
     if (wantInteract) {

@@ -105,19 +105,27 @@ export const FIRST_TOUCH: DialogueDef = {
   },
 };
 
+/** Shared with the gate content (kept here to avoid an import cycle). */
+const GATE_AWAKE = "gate.awake";
+const whole: Condition = { echoAtLeast: "future_companion" };
+const gateAwaits: Condition = { all: [{ flag: GATE_AWAKE }, { echoIs: "fragmented_mind" }] };
+
 const lifeMemory: Condition = { any: KINGDOM_IDS.map((k) => ({ flag: `life:memory.${k}_shard` })) };
 
 /** Repeatable conversation; reads differently depending on what the Echo remembers. */
 export const ECHO_TALK: DialogueDef = {
   id: "echo_talk",
   start: "start",
-  essential: false,
+  // the gate choice is on the main path, so this conversation must stay free of real-life gating
+  essential: true,
   nodes: {
     start: {
       speaker: "echo",
       actions: [{ type: "count", key: MEM.talks }],
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
+        { text: "השער… נפתח. אני מרגיש אותו בכל הרסיסים. ספר לי… מה ראית.", when: gateAwaits },
+        { text: "אני כאן, שלם. כל צעד שתעשה מכאן, נעשה יחד.", when: whole },
         { text: "ראיתי אור… מהעולם השני. משהו שעשית שם… הגיע עד לכאן.", when: lifeMemory },
         { text: "שוב כאן. אני מתחיל… לזכור את הצעדים שלך.", when: { memory: MEM.visits, atLeast: 3 } },
         { text: "האבנים… זוכרות את הידיים שלך. צורה.", when: isBond("form") },
@@ -126,10 +134,27 @@ export const ECHO_TALK: DialogueDef = {
         { text: "אתה חוזר. גם אני… חוזר. ברסיסים." },
       ],
       choices: [
+        { id: "gate", text: "השער התעורר. חיברתי את האור.", when: gateAwaits, next: "gate_told" },
         { id: "kingdoms", text: "ספר לי על הממלכות", next: "kingdoms" },
         { id: "next", text: "מה הלאה?", next: "next" },
         { id: "bye", text: "להיפרד", next: null },
       ],
+    },
+    gate_told: {
+      speaker: "echo",
+      lines: [{ text: "צורה… שינוי… חיבור. השתמשת בשלושתם. אני שומע אותם… מתאחים." }],
+      next: "becoming",
+    },
+    becoming: {
+      speaker: "narrator",
+      actions: [{ type: "advanceEcho", to: "future_companion" }, { type: "journal", id: "j.companion" }],
+      lines: [{ text: "הרסיסים נמשכים זה אל זה. האור מתייצב, חם וזהוב, והקול כבר לא נשבר." }],
+      next: "companion",
+    },
+    companion: {
+      speaker: "echo",
+      lines: [{ text: "עכשיו אני זוכר בבירור. אני מה שתהיה, ואני כבר לא מחכה בצד. נלך יחד אל הממלכות." }],
+      next: "menu",
     },
     menu: {
       speaker: "echo",
@@ -147,7 +172,12 @@ export const ECHO_TALK: DialogueDef = {
     },
     next: {
       speaker: "echo",
-      lines: [{ text: "השער… צריך כוח שעוד לא למדת. צורה, שינוי, חיבור… הם לא רק מילים." }],
+      lines: [
+        { text: "מעבר לשער… גשר. בקצה שלו, הממלכה הראשונה מחכה. כשתהיה מוכן, נלך.", when: whole },
+        { text: "השער ער. לך… אליו, ואז חזור אליי.", when: { flag: GATE_AWAKE } },
+        { text: "הטבעות… לימדו אותך. עכשיו לך אל השער, במערב. צורה, אחר כך שינוי, אחר כך חיבור.", when: { power: "connection" } },
+        { text: "השער… צריך כוח שעוד לא למדת. לך אל טבעות האסטרולב. הן ילמדו אותך." },
+      ],
       next: "menu",
     },
   },

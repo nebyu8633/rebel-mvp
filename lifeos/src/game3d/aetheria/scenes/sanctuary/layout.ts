@@ -40,3 +40,26 @@ export const around = (bearing: number, r: number) => {
 };
 export const insideObservatory = (x: number, z: number) => Math.hypot(x - OBS.x, z - OBS.z) < OBS.floorR - 0.3;
 export const onGallery = (x: number, y: number, z: number) => y > GALLERY.y - 0.5 && Math.hypot(x - OBS.x, z - OBS.z) > GALLERY.rIn - 0.4;
+
+/**
+ * The Sleeping Gate (Phase 3): a dais at the west edge of the plateau, too high to climb (jump apex
+ * ≈ 0.73 m). FORM raises steps on its east side; CHANGE lifts the fallen south pillar; CONNECTION
+ * links the two pillar crystals and wakes the gate (an arch facing west, toward the floating isles).
+ */
+export const GATE = {
+  x: -25,
+  z: -8,
+  half: 3.2,
+  h: 1.5,
+  pillarX: -26.4,
+  pillarZ: 2.3, // ± from the centre
+  pillarH: 4.2,
+  steps: 5,
+  stepRun: 0.55,
+};
+export const gateStep = (i: number) => ({ topY: (GATE.h / GATE.steps) * (i + 1), x: GATE.x + GATE.half + GATE.stepRun * (GATE.steps - i - 0.5) });
+/** Clear ground around the gate (no boulders / trees). */
+export const nearGate = (x: number, z: number) => Math.hypot(x - GATE.x, z - GATE.z) < 10;
+/** Direction (atan2(z, x)) the gate looks out over the rim: the crags part there to show the isles. */
+export const GATE_VIEW = Math.atan2(GATE.z, GATE.x - 30);
+export const angDist = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
