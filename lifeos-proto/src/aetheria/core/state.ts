@@ -23,16 +23,27 @@ export interface WorldState {
   journal: JournalEntry[];
   echo: EchoStage;
   history: HistoryEntry[];
+  /**
+   * Narrative memory (small typed values the world and the Future Echo remember: the bond the
+   * player chose, how often they returned...). Keys are namespaced; `life.` is reserved.
+   */
+  memory: Record<string, MemoryValue>;
 }
+export type MemoryValue = string | number | boolean;
 
-export const initialWorldState = (): WorldState => ({ flags: [], discoveries: [], journal: [], echo: "dormant", history: [] });
+export const initialWorldState = (): WorldState => ({ flags: [], discoveries: [], journal: [], echo: "dormant", history: [], memory: {} });
+
+const MEMORY_KEY = /^(echo|world|player)\.[a-z0-9_.]{1,48}$/;
+const MAX_MEMORY_KEYS = 200;
 
 export type Action =
   | { type: "setFlag"; flag: string; source?: "story" | "life" }
   | { type: "clearFlag"; flag: string; source: "life" }
   | { type: "discover"; id: string }
   | { type: "journal"; id: string }
-  | { type: "advanceEcho"; to: EchoStage };
+  | { type: "advanceEcho"; to: EchoStage }
+  | { type: "remember"; key: string; value: MemoryValue }
+  | { type: "count"; key: string; by?: number };
 
 export type ApplyResult = { ok: true; state: WorldState; changed: boolean } | { ok: false; reason: string; state: WorldState };
 
@@ -79,6 +90,24 @@ export function apply(state: WorldState, action: Action, now = new Date().toISOS
       if (to !== from + 1) return reject("the Echo evolves one stage at a time, forward only");
       return done({ echo: action.to }, `${state.echo}->${action.to}`);
     }
+    case "remember": {
+      if (!MEMORY_KEY.test(action.key)) return reject("invalid memory key");
+      if (typeof action.value === "string" && action.value.length > 64) return reject("memory value too long");
+      if (typeof action.value === "number" && !Number.isFinite(action.value)) return reject("invalid memory number");
+      const mem = state.memory ?? {};
+      if (mem[action.key] === action.value) return same();
+      if (!(action.key in mem) && Object.keys(mem).length >= MAX_MEMORY_KEYS) return reject("memory full");
+      return done({ memory: { ...mem, [action.key]: action.value } }, `${action.key}=${String(action.value)}`);
+    }
+    case "count": {
+      if (!MEMORY_KEY.test(action.key)) return reject("invalid memory key");
+      const by = action.by ?? 1;
+      if (!Number.isInteger(by) || by < 1 || by > 100) return reject("invalid count step");
+      const mem = state.memory ?? {};
+      const cur = mem[action.key];
+      if (cur !== undefined && typeof cur !== "number") return reject("memory key is not a counter");
+      return done({ memory: { ...mem, [action.key]: (cur ?? 0) + by } }, `${action.key}+${by}`);
+    }
   }
 }
 
@@ -96,12 +125,28 @@ export function applyAll(state: WorldState, actions: Action[], now?: string): Ap
 }
 
 // ---------------------------------------------------------------- conditions
-export type Condition = { flag: string } | { discovered: string } | { echoAtLeast: EchoStage } | { all: Condition[] } | { any: Condition[] } | { not: Condition };
+export type Condition =
+  | { flag: string }
+  | { discovered: string }
+  | { echoAtLeast: EchoStage }
+  | { echoIs: EchoStage }
+  | { memory: string; equals?: MemoryValue; atLeast?: number }
+  | { all: Condition[] }
+  | { any: Condition[] }
+  | { not: Condition };
 
 export function check(state: WorldState, c: Condition): boolean {
   if ("flag" in c) return state.flags.includes(c.flag);
   if ("discovered" in c) return state.discoveries.includes(c.discovered);
   if ("echoAtLeast" in c) return ECHO_STAGES.indexOf(state.echo) >= ECHO_STAGES.indexOf(c.echoAtLeast);
+  if ("echoIs" in c) return state.echo === c.echoIs;
+  if ("memory" in c) {
+    const v = (state.memory ?? {})[c.memory];
+    if (v === undefined) return false;
+    if (c.equals !== undefined) return v === c.equals;
+    if (c.atLeast !== undefined) return typeof v === "number" && v >= c.atLeast;
+    return true;
+  }
   if ("all" in c) return c.all.every((x) => check(state, x));
   if ("any" in c) return c.any.some((x) => check(state, x));
   return !check(state, c.not);

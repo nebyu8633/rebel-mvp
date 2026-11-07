@@ -16,7 +16,7 @@ import { Character, type CharacterHandle } from "../character/Character";
 import { consumeEdges, input, readMove } from "./input";
 import { interactables, params, useProto } from "../store";
 import { autopilotStep } from "./autopilot";
-import { playerReactions } from "../engine/events";
+import { gameEvents, playerReactions } from "../engine/events";
 import { suspend } from "suspend-react";
 import { resolveAvatar } from "../avatar/avatarSource";
 import { DEV } from "../config";
@@ -232,6 +232,8 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
     );
     if (frame.events.includes("contact") && sim.nearest) interactables.get(sim.nearest)?.onContact();
     if (frame.events.some((e) => e.startsWith("state:"))) useProto.getState().set({ animState: frame.state });
+    if (frame.events.includes("state:gesture")) gameEvents.emit("wave");
+    if (frame.events.includes("jump")) gameEvents.emit("jump");
     if (frame.state !== "interact") sim.faceTarget = null;
 
     // ---- horizontal motion
