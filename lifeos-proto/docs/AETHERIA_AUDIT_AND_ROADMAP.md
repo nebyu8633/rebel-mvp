@@ -1,7 +1,7 @@
 # AETHERIA: The Fractured Creation
 ## Technical audit, visual assessment, visual bible and development plan
 
-Date: 2026-11-10. Branch: `lifeos-app`. Baseline for rollback: tag `aetheria-baseline-2026-11-10`, which points to `main` after PR #7.
+Date: 2026-11-10. Branch: `lifeos-app`. Baseline for rollback: branch `backup/aetheria-baseline-2026-11-10` (= `main` after PR #7, commit `71071bf`).
 
 ---
 
@@ -193,7 +193,7 @@ Phases 3 (characters and interaction) and 4 (resonance) of the brief have alread
 
 | Phase | Content | Complexity | Main risk |
 |---|---|---|---|
-| **V0: preparation** (half a session) | Split `SanctuaryScene` into modules (env / architecture / story); freeze the coordinates and colliders as a contract; a baseline tag; device measurement with `?stats=1` | S | No visual change. Pure refactor, tests protect it |
+| **V0: preparation** (half a session) | Split `SanctuaryScene` into modules (env / architecture / story); freeze the coordinates and colliders as a contract; device measurement with `?stats=1` | S | No visual change. Pure refactor, tests protect it |
 | **V1: sky, light, atmosphere** | A "fractured cosmic" sky shader (gradient, stars, nebula, fracture lines); twilight lighting per the palette; height fog; post-processing (selective bloom, grading, SMAA, vignette) with quality tiers | M | iPhone performance, so tiers are mandatory |
 | **V2: the Origin Fragment** | A dark-glass shader with 3 internal streams, a ring of 6 symbols, floor ripples; 5 stages tied to the world state (new field `fragment`, an additive save extension) | M | Low |
 | **V3: monumental architecture** | Headless Blender: an observatory kit 2–3× larger (ribbed columns, arches, split dome, trims), cliffs and a floating island, LOD; colliders unchanged (or updated and tested) | L | Breaking colliders, asset size. Done gradually, one structure at a time |
