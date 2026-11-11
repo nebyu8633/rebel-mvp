@@ -49,7 +49,7 @@ export function decide(i: EchoInput): EchoDecision {
   return { mode: "wait", reaction, attention: noticed ? 1 : 0.5 };
 }
 
-/** The Shifting Presence — per-stage appearance parameters (shader + particles). */
+/** The Shifting Presence — per-stage appearance parameters (shader + particles + veils). */
 export interface Appearance {
   color: string;
   accent: string;
@@ -61,9 +61,16 @@ export interface Appearance {
   flicker: number;
   motes: number;
   moteSpeed: number;
+  /** veils / ribbons of light trailing from the body (visual bible: "resonance threads") */
+  veils: { count: number; length: number; width: number; broken: number; colors: [string, string] };
+  /** glass shards orbiting the figure (the Fragmented Mind) */
+  shards: number;
 }
 export const APPEARANCE: Record<Exclude<EchoStage, "dormant">, Appearance> = {
-  silent_observer: { color: "#9fe3ff", accent: "#dff6ff", opacity: 0.6, fresnel: 1.9, glitch: 0, flicker: 0.1, motes: 140, moteSpeed: 0.2 },
-  fragmented_mind: { color: "#c4a7ff", accent: "#ffd27a", opacity: 0.72, fresnel: 2.3, glitch: 0.7, flicker: 0.35, motes: 220, moteSpeed: 0.45 },
-  future_companion: { color: "#ffe2a0", accent: "#fff6dd", opacity: 0.85, fresnel: 1.6, glitch: 0, flicker: 0.05, motes: 180, moteSpeed: 0.25 },
+  // a faint wisp: few thin veils, pale and cool
+  silent_observer: { color: "#9fe3ff", accent: "#dff6ff", opacity: 0.5, fresnel: 2.0, glitch: 0, flicker: 0.1, motes: 120, moteSpeed: 0.2, veils: { count: 4, length: 1.3, width: 0.13, broken: 0, colors: ["#9fe3ff", "#e6f8ff"] }, shards: 0 },
+  // shattered: broken, flickering veils, violet and gold, glass shards circling it
+  fragmented_mind: { color: "#c4a7ff", accent: "#ffd27a", opacity: 0.6, fresnel: 2.3, glitch: 0.7, flicker: 0.35, motes: 200, moteSpeed: 0.45, veils: { count: 6, length: 1.5, width: 0.16, broken: 0.5, colors: ["#b48cff", "#ffd27a"] }, shards: 18 },
+  // whole: long golden veils with teal threads, calm
+  future_companion: { color: "#ffe2a0", accent: "#fff6dd", opacity: 0.7, fresnel: 1.7, glitch: 0, flicker: 0.05, motes: 160, moteSpeed: 0.25, veils: { count: 8, length: 2.2, width: 0.22, broken: 0, colors: ["#ffd98a", "#7ff5e1"] }, shards: 0 },
 };

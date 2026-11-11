@@ -177,3 +177,31 @@ describe("Echo behaviour", () => {
     expect(decide({ ...base, stage: "fragmented_mind", inDialogue: true, event: "wave" })).toEqual({ mode: "converse", reaction: "none", attention: 1 });
   });
 });
+
+import * as THREE from "three";
+import { createVeil, stepVeil, VEIL_POINTS } from "../aetheria/echo/veils";
+import { APPEARANCE } from "../aetheria/echo/behavior";
+describe("Echo veils (the Shifting Presence)", () => {
+  it("stay pinned, keep their length, stream back and up, and stay stable", () => {
+    const root = new THREE.Vector3(0, 1.5, 0);
+    const back = new THREE.Vector3(0, 0, -1);
+    const side = new THREE.Vector3(1, 0, 0);
+    const v = createVeil(root, 1.4, 0.3);
+    for (let i = 0; i < 600; i++) stepVeil(v, root, back, side, i / 60, 1 / 60);
+    expect(v.p[0].distanceTo(root)).toBeLessThan(1e-9);
+    for (let i = 1; i < VEIL_POINTS; i++) expect(v.p[i].distanceTo(v.p[i - 1])).toBeCloseTo(v.seg, 1);
+    const tip = v.p[VEIL_POINTS - 1];
+    expect(tip.z).toBeLessThan(0); // drifts behind the figure
+    expect(tip.y).toBeGreaterThan(root.y + 0.3); // light rises, it doesn't hang like cloth
+    expect(v.p.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z))).toBe(true);
+  });
+  it("each stage manifests differently", () => {
+    const [o, f, c] = [APPEARANCE.silent_observer, APPEARANCE.fragmented_mind, APPEARANCE.future_companion];
+    expect(o.veils.count).toBeLessThan(f.veils.count);
+    expect(f.veils.count).toBeLessThan(c.veils.count);
+    expect(f.veils.broken).toBeGreaterThan(0);
+    expect(o.veils.broken + c.veils.broken).toBe(0);
+    expect(f.shards).toBeGreaterThan(0);
+    expect(c.veils.length).toBeGreaterThan(o.veils.length);
+  });
+});
