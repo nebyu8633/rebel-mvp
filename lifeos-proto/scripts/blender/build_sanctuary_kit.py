@@ -277,6 +277,103 @@ def lintel():
     return join("lintel_block", parts)
 
 
+
+# ---------------------------------------------------------------- the observatory (visual only)
+OBS_R_IN, OBS_R_OUT = 7.25, 8.05  # wallR 7.65 ± wallT/2 (layout contract)
+SEG_DEG = 10.0
+
+
+def curved_block(name, a0, a1, r0, r1, y0, y1, sub=3):
+    """A masonry block on the ring: bearings a0..a1 (rad, 0 = -Z, clockwise), radii r0..r1."""
+    bm = bmesh.new()
+    def P(a, r, y):
+        return bm.verts.new((math.sin(a) * r, y, -math.cos(a) * r))
+    rows = []
+    for i in range(sub + 1):
+        a = a0 + (a1 - a0) * i / sub
+        rows.append((P(a, r0, y0), P(a, r1, y0), P(a, r1, y1), P(a, r0, y1)))
+    for i in range(sub):
+        A, B = rows[i], rows[i + 1]
+        for k in range(4):
+            bm.faces.new((A[k], A[(k + 1) % 4], B[(k + 1) % 4], B[k]))
+    bm.faces.new(rows[0])
+    bm.faces.new(tuple(reversed(rows[-1])))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = new_obj(name, bm)
+    bevel(ob, 0.018, 1)
+    return ob
+
+
+def wall_segment(name, target_h, jag):
+    """One 10-degree segment of the observatory wall in ashlar courses. Bearing 0 at the centre."""
+    parts = []
+    half = math.radians(SEG_DEG / 2 + 0.15)  # tiny overlap: no gaps between neighbours
+    g = 0.006  # mortar joint
+    # plinth course, stepping out
+    parts.append(curved_block(f"{name}_plinth", -half, half, OBS_R_IN, OBS_R_OUT + 0.16, 0, 0.5, sub=4))
+    y = 0.5
+    top = 0.5  # top of the highest block actually placed
+    course = 0
+    while y < target_h + 0.4:
+        h = 0.48 + rnd.random() * 0.14
+        n = 2 if course % 2 == 0 else 3
+        cuts = sorted([-half] + [(-half + 2 * half * (k + rnd.uniform(0.35, 0.65)) / n) for k in range(n - 1)] + [half])
+        for b in range(len(cuts) - 1):
+            mid = (cuts[b] + cuts[b + 1]) / 2
+            # the ruined top: each block survives up to a jagged line
+            limit = target_h + (math.sin(mid * 9 + course) * 0.5 + rnd.uniform(-0.5, 0.5)) * jag
+            if y + h > limit:
+                continue
+            bulge = rnd.uniform(-0.012, 0.03)
+            parts.append(curved_block(f"{name}_c{course}_{b}", cuts[b] + g / OBS_R_OUT, cuts[b + 1] - g / OBS_R_OUT, OBS_R_IN, OBS_R_OUT + bulge, y + g, y + h - g, sub=2))
+            top = max(top, y + h)
+        y += h
+        course += 1
+        # string course on the outside, around the gallery's height
+        if 3.9 <= y <= 4.6 and target_h > 4.5 and not any(p_.name.startswith(f"{name}_string") for p_ in parts):
+            parts.append(curved_block(f"{name}_string", -half, half, OBS_R_OUT - 0.1, OBS_R_OUT + 0.1, y, y + 0.18, sub=4))
+            y += 0.18
+            top = max(top, y)
+    if jag == 0:
+        parts.append(curved_block(f"{name}_cornice", -half, half, OBS_R_IN - 0.05, OBS_R_OUT + 0.18, top, top + 0.26, sub=4))
+    return join(name, parts)
+
+
+def buttress():
+    """Stepped buttress against the outer wall; its outward direction is -Z, wall face at z ~ +0.4."""
+    parts = [
+        box("bt_low", 0.95, 3.2, 1.3, loc=(0, 1.6, 0)),
+        box("bt_high", 0.78, 2.1, 0.8, loc=(0, 3.2 + 1.05, 0.25)),
+    ]
+    # sloped weathering caps (wedges falling outward)
+    for nm, w, d, y, z in (("bt_cap_low", 0.98, 1.3, 3.2, 0.0), ("bt_cap_high", 0.8, 0.8, 5.3, 0.25)):
+        bm = bmesh.new()
+        hw, hd = w / 2, d / 2
+        v = [bm.verts.new(c) for c in (
+            (-hw, y, z - hd), (hw, y, z - hd), (hw, y, z + hd), (-hw, y, z + hd),
+            (-hw, y + 0.05, z - hd), (hw, y + 0.05, z - hd), (hw, y + 0.45, z + hd), (-hw, y + 0.45, z + hd))]
+        for f in ((0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)):
+            bm.faces.new([v[i] for i in f])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        o = new_obj(nm, bm)
+        bevel(o, 0.02, 1)
+        parts.append(o)
+    return join("obs_buttress", parts)
+
+
+def corbel():
+    """Stepped stone bracket under the gallery, growing out of the inner wall face (toward +Z here)."""
+    parts = [
+        box("cb_1", 0.42, 0.28, 0.45, loc=(0, -0.14, 0.22)),
+        box("cb_2", 0.42, 0.28, 0.85, loc=(0, -0.42 + 0.0, 0.42)),
+        box("cb_3", 0.42, 0.3, 1.25, loc=(0, -0.72, 0.62)),
+    ]
+    # flip so the biggest step is on top (closest to the slab)
+    for p_ in parts:
+        p_.location.y = -p_.location.y - 0.86
+    return join("obs_corbel", parts)
+
+
 def main():
     reset()
     objs = [
@@ -286,6 +383,11 @@ def main():
         fallen(),
         arch_gate(),
         lintel(),
+        wall_segment("wall_full", 7.5, 0.0),
+        wall_segment("wall_low", 6.3, 1.4),
+        wall_segment("wall_breach", 2.7, 1.2),
+        buttress(),
+        corbel(),
     ]
     for o in objs:
         o.location = (0, 0, 0)
