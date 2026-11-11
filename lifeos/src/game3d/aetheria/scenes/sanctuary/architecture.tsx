@@ -23,6 +23,8 @@ import { canLearn, onLearn } from "../../content/sleepingGate";
 import { JOURNAL as ALL_JOURNAL } from "../../content";
 import { forceGlyph, kingdomGlyph } from "./glyphs";
 import { glowMat, resonance, smooth } from "./shared";
+import { OriginFragment } from "./OriginFragment";
+import { fragmentStage, type FragmentStage } from "../../content/originFragment";
 
 // ------------------------------------------------------------------ the approach: ruined colonnade + arch
 export function Ruins() {
@@ -253,15 +255,17 @@ export function Dome() {
 }
 
 // ------------------------------------------------------------------ astrolabe: fragment, rings, consoles
+const FRAGMENT_LIGHT: Record<FragmentStage, string> = { dormant: "#7a8ca6", awakening: "#8fe8ff", attunement: "#a9c2ff", convergence: "#ffd28c", transcendence: "#ffe6b8" };
+
 export function Astrolabe() {
   const world = useAetheria((s) => s.world);
   const granite = usePBR("ruinwall", { tint: 0xcfc7ba });
   const touched = world.flags.includes(F.fragment);
   const glowBoost = fragmentGlowBoost(world) ? 1.4 : 1;
-  const fragMat = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xdff6ff, emissive: 0x8fd8ff, emissiveIntensity: 2.2, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.92 }), []);
   const ringMats = useMemo(() => ({ form: glowMat(0xffd27a, 0.35), change: glowMat(0x9fd8ff, 0.35), connection: glowMat(0xc4a7ff, 0.35) }) as Record<Force, THREE.MeshStandardMaterial>, []);
   const metal = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xb08d57, metalness: 1, roughness: 0.3 }), []);
-  const frag = useRef<THREE.Mesh>(null);
+  const stage = fragmentStage(world);
+  const lightColor = useMemo(() => new THREE.Color(), []);
   const ringRefs = useRef<Record<Force, THREE.Group | null>>({ form: null, change: null, connection: null });
   const light = useRef<THREE.PointLight>(null);
   const beam = useRef<THREE.Mesh>(null);
@@ -270,11 +274,6 @@ export function Astrolabe() {
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime;
     const p = resonance.p;
-    if (frag.current) {
-      frag.current.rotation.y += dt * (0.6 + p * 4);
-      frag.current.position.y = FRAGMENT.y + Math.sin(t * 1.3) * 0.08;
-      fragMat.emissiveIntensity = (touched ? 2.6 : 1.6) * glowBoost + Math.sin(t * 2.2) * 0.3 + smooth(0, 0.3, p) * 6 - smooth(0.7, 1, p) * 4;
-    }
     for (const f of FORCES) {
       const g = ringRefs.current[f];
       if (!g) continue;
@@ -285,11 +284,16 @@ export function Astrolabe() {
       g.scale.setScalar(1 + smooth(0.05, 0.4, p) * 0.35 - smooth(0.75, 1, p) * 0.2);
       ringMats[f].emissiveIntensity = aligned ? 2.2 + p * 3 : 0.35;
     }
-    if (light.current) light.current.intensity = 6 + (touched ? 6 : 0) + smooth(0, 0.35, p) * 40 - smooth(0.7, 1, p) * 28;
+    if (light.current) {
+      light.current.intensity = 2.5 + (touched ? 3.5 : 0) + smooth(0, 0.35, p) * 40 - smooth(0.7, 1, p) * 34;
+      // the fragment's light warms from cold teal to temporal gold as it evolves
+      lightColor.set(FRAGMENT_LIGHT[stage]);
+      light.current.color.lerp(lightColor, 1 - Math.exp(-dt / 1.2));
+    }
     if (beam.current) {
       const m = beam.current.material as THREE.MeshBasicMaterial;
       // strong during the event, then a faint lingering glow (it was a near-opaque column on iPhone)
-      m.opacity = smooth(0.08, 0.3, p) * (0.85 - smooth(0.72, 1, p) * 0.75);
+      m.opacity = smooth(0.08, 0.3, p) * (0.85 - smooth(0.72, 1, p) * 0.83);
       beam.current.visible = m.opacity > 0.01;
     }
   });
@@ -297,9 +301,9 @@ export function Astrolabe() {
     <group position={[OBS.x, 0, OBS.z]}>
       <mesh geometry={useMemo(() => worldCylinder(PEDESTAL.r * 0.75, PEDESTAL.r, PEDESTAL.h, 1.5, 24), [])} material={granite} position={[0, FLOOR_Y + PEDESTAL.h / 2, 0]} castShadow receiveShadow />
       <group userData={{ noBatch: true }}>
-        <mesh ref={frag} material={fragMat} position={[0, FRAGMENT.y, 0]} scale={[0.32, 0.6, 0.32]}>
-          <octahedronGeometry args={[1, 0]} />
-        </mesh>
+        <group position={[0, FRAGMENT.y, 0]}>
+          <OriginFragment stage={stage} floorOffset={FLOOR_Y - FRAGMENT.y} glowBoost={glowBoost} />
+        </group>
         <pointLight ref={light} position={[0, FRAGMENT.y, 0]} color={0xa8e2ff} distance={18} decay={1.6} />
         {FORCES.map((f) => (
           <group key={f} ref={(el) => void (ringRefs.current[f] = el)} position={[0, FRAGMENT.y, 0]}>

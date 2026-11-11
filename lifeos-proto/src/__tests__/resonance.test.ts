@@ -121,3 +121,26 @@ describe("The Sleeping Gate — layout", () => {
     expect(nearGate(0, -6)).toBe(false);
   });
 });
+
+import { fragmentStage, FRAGMENT_STAGES } from "../aetheria/content/originFragment";
+describe("The Origin Fragment — stages", () => {
+  it("evolves forward with the story and never depends on real life", () => {
+    let s = initialWorldState();
+    const seen = [fragmentStage(s)];
+    s = run(s, C.onArrive());
+    s = run(s, C.onObservatory());
+    s = run(s, C.onTouchFragment(s));
+    seen.push(fragmentStage(s));
+    for (const f of FORCES) s = run(s, C.onAlign(f));
+    s = run(s, C.onResonanceComplete());
+    seen.push(fragmentStage(s));
+    s = run(s, FORCES.map((f) => ({ type: "learnPower", force: f }) as Action));
+    seen.push(fragmentStage(s));
+    s = run(s, [{ type: "advanceEcho", to: "fragmented_mind" }, { type: "advanceEcho", to: "future_companion" }]);
+    seen.push(fragmentStage(s));
+    expect(seen).toEqual([...FRAGMENT_STAGES]);
+    // a real-life flag changes nothing about the stage
+    const withLife = { ...s, flags: [...s.flags, "life:world_detail.fragment_glow"] };
+    expect(fragmentStage(withLife)).toBe("transcendence");
+  });
+});
