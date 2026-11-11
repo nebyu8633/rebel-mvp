@@ -5,7 +5,9 @@
  */
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
+import { asset, gltfExtensions } from "../../../lib/loaders";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
 import { usePBR } from "../../../world/materials";
 import { rng, worldBox, worldCylinder } from "../../../world/geometry";
@@ -27,38 +29,92 @@ import { OriginFragment } from "./OriginFragment";
 import { fragmentStage, type FragmentStage } from "../../content/originFragment";
 
 // ------------------------------------------------------------------ the approach: ruined colonnade + arch
+/** Pieces of the Blender-built kit (scripts/blender/build_sanctuary_kit.py → scripts/build-kit.mjs). */
+type KitPiece = "col_full" | "col_broken_a" | "col_broken_b" | "col_fallen" | "arch_gate" | "lintel_block";
+const KIT_HEIGHT: Record<"col_full" | "col_broken_a" | "col_broken_b", number> = { col_full: 5.95, col_broken_a: 3.49, col_broken_b: 2.19 };
+/**
+ * Meshopt-compressed GLBs store quantized positions plus a dequantization transform on the node.
+ * The kit is placed by the scene (not by its nodes), so bake that transform into float positions.
+ */
+function bakeNode(mesh: THREE.Mesh) {
+  mesh.updateMatrix();
+  const src = mesh.geometry;
+  const g = new THREE.BufferGeometry();
+  const pos = src.getAttribute("position");
+  const out = new Float32Array(pos.count * 3);
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrix);
+    out.set([v.x, v.y, v.z], i * 3);
+  }
+  g.setAttribute("position", new THREE.BufferAttribute(out, 3));
+  for (const name of ["normal", "uv"]) {
+    const a = src.getAttribute(name);
+    if (a) g.setAttribute(name, a);
+  }
+  g.setIndex(src.getIndex());
+  g.computeBoundingSphere();
+  return g;
+}
+
+export function useSanctuaryKit(): Record<KitPiece, THREE.BufferGeometry> {
+  const gl = useThree((s) => s.gl);
+  const { nodes } = useGLTF(asset("env/sanctuary_kit.glb"), false, true, gltfExtensions(gl));
+  return useMemo(() => {
+    const out = {} as Record<KitPiece, THREE.BufferGeometry>;
+    for (const k of ["col_full", "col_broken_a", "col_broken_b", "col_fallen", "arch_gate", "lintel_block"] as KitPiece[]) out[k] = bakeNode(nodes[k] as THREE.Mesh);
+    return out;
+  }, [nodes]);
+}
+
+// ------------------------------------------------------------------ the approach: a ruined colonnade + the entrance arch
 export function Ruins() {
   const wall = usePBR("ruinwall", { tint: 0xd6cfc2 });
+  const kit = useSanctuaryKit();
+  // same seeded layout as before (positions are part of the approach's feel), now with real pieces
   const cols = useMemo(() => {
     const r = rng(23);
-    const out: { x: number; z: number; h: number; tilt: number }[] = [];
-    for (let z = 28; z >= 6; z -= 5.5) for (const x of [-3.3, 3.3]) out.push({ x, z, h: r() < 0.35 ? 1.2 + r() * 2 : 4.2 + r() * 0.6, tilt: (r() - 0.5) * 0.06 });
+    const out: { x: number; z: number; piece: keyof typeof KIT_HEIGHT; tilt: number; yaw: number }[] = [];
+    for (let z = 28; z >= 6; z -= 5.5)
+      for (const x of [-3.3, 3.3]) {
+        const broken = r() < 0.35;
+        const h = broken ? 1.2 + r() * 2 : 4.2 + r() * 0.6;
+        out.push({ x, z, piece: !broken ? "col_full" : h > 2.2 ? "col_broken_a" : "col_broken_b", tilt: (r() - 0.5) * 0.04, yaw: r() * Math.PI * 2 });
+      }
     return out;
   }, []);
-  const colGeo = useMemo(() => worldCylinder(0.38, 0.45, 1, 1.5, 14), []);
-  const capGeo = useMemo(() => worldBox(1.1, 0.3, 1.1, 1.5), []);
+  // entablature blocks still resting on neighbouring standing columns (same side, 5.5 m apart)
+  const lintels = useMemo(() => {
+    const out: { x: number; z: number }[] = [];
+    for (const a of cols)
+      for (const b of cols)
+        if (a.x === b.x && b.z === a.z - 5.5 && a.piece === "col_full" && b.piece === "col_full") out.push({ x: a.x, z: (a.z + b.z) / 2 });
+    return out;
+  }, [cols]);
   return (
     <group>
       <RigidBody type="fixed" colliders={false}>
         {cols.map((c, i) => (
-          <CylinderCollider key={i} args={[c.h / 2, 0.45]} position={[c.x, c.h / 2, c.z]} />
+          <CylinderCollider key={i} args={[KIT_HEIGHT[c.piece] / 2, 0.45]} position={[c.x, KIT_HEIGHT[c.piece] / 2, c.z]} />
         ))}
-        {/* fallen column */}
-        <CuboidCollider args={[2.4, 0.42, 0.42]} position={[6.2, 0.42, 15]} rotation={[0, 0.5, 0]} />
-        {/* the arch pillars */}
+        {/* fallen column: three loose drums */}
+        <CuboidCollider args={[1.75, 0.45, 0.5]} position={[6.2, 0.45, 15]} rotation={[0, 0.5, 0]} />
+        {/* the arch piers */}
         <CuboidCollider args={[0.55, 2.4, 0.55]} position={[-2.4, 2.4, 19]} />
         <CuboidCollider args={[0.55, 2.4, 0.55]} position={[2.4, 2.4, 19]} />
       </RigidBody>
-      {cols.map((c, i) => (
-        <group key={i} position={[c.x, 0, c.z]} rotation-z={c.tilt}>
-          <mesh geometry={colGeo} material={wall} scale={[1, c.h, 1]} position={[0, c.h / 2, 0]} castShadow receiveShadow />
-          {c.h > 4 && <mesh geometry={capGeo} material={wall} position={[0, c.h + 0.15, 0]} castShadow />}
+      <group userData={{ noBatch: true }}>
+        {cols.map((c, i) => (
+          <mesh key={i} geometry={kit[c.piece]} material={wall} position={[c.x, 0, c.z]} rotation={[0, c.yaw, c.tilt]} castShadow receiveShadow />
+        ))}
+        {lintels.map((l, i) => (
+          <mesh key={i} geometry={kit.lintel_block} material={wall} position={[l.x, KIT_HEIGHT.col_full, l.z]} rotation-y={Math.PI / 2} castShadow receiveShadow />
+        ))}
+        <group position={[6.2, 0, 15]} rotation-y={0.5}>
+          <mesh geometry={kit.col_fallen} material={wall} position={[-1.69, 0, 0]} castShadow receiveShadow />
         </group>
-      ))}
-      <mesh geometry={colGeo} material={wall} scale={[1, 4.8, 1]} position={[6.2, 0.42, 15]} rotation={[0, 0.5, Math.PI / 2]} castShadow receiveShadow />
-      <mesh geometry={useMemo(() => worldBox(1.1, 4.8, 1.1, 2), [])} material={wall} position={[-2.4, 2.4, 19]} castShadow receiveShadow />
-      <mesh geometry={useMemo(() => worldBox(1.1, 4.8, 1.1, 2), [])} material={wall} position={[2.4, 2.4, 19]} castShadow receiveShadow />
-      <mesh geometry={useMemo(() => worldBox(6.2, 0.9, 1.2, 2), [])} material={wall} position={[0, 5.25, 19]} castShadow receiveShadow />
+        <mesh geometry={kit.arch_gate} material={wall} position={[0, 0, 19]} castShadow receiveShadow />
+      </group>
     </group>
   );
 }
