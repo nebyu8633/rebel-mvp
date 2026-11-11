@@ -26,7 +26,7 @@ export default function Aetheria3DApp() {
     <World3DHost
       scene={<SanctuaryScene quality={quality} />}
       hud={(touch) => <AetheriaHud touch={touch} />}
-      light="dawn"
+      light="celestial"
       spawn={SPAWN}
       wearLoadout
       loadingText="AETHERIA · טוען את המקדש הראשון…"

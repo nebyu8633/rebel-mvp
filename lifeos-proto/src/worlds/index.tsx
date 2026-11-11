@@ -43,6 +43,6 @@ export function registerBuiltInWorlds() {
   if (registered) return;
   registered = true;
   registerWorld({ id: "city", title: "העיר (שכבת המציאות)", layer: "reality", light: "dusk", spawn: { x: SPAWN.x, y: 0, z: SPAWN.z, yaw: SPAWN.yaw }, wearsLoadout: false, Scene: CityWorldScene, Hud: GameHud });
-  registerWorld({ id: "sanctuary", title: "AETHERIA · המקדש הראשון", layer: "aetheria", light: "dawn", spawn: SANCTUARY_SPAWN, wearsLoadout: true, Scene: SanctuaryScene, Hud: AetheriaHud });
+  registerWorld({ id: "sanctuary", title: "AETHERIA · המקדש הראשון", layer: "aetheria", light: "celestial", spawn: SANCTUARY_SPAWN, wearsLoadout: true, Scene: SanctuaryScene, Hud: AetheriaHud });
   registerWorld({ id: "test", title: "סצנת בדיקות פיזיקה", layer: "dev", light: "day", spawn: { x: 0, y: 0, z: 12, yaw: Math.PI }, wearsLoadout: false, Scene: World, Hud: TestHud });
 }
