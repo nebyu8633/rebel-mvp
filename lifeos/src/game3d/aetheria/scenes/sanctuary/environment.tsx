@@ -6,6 +6,9 @@ import { CuboidCollider, BallCollider, RigidBody } from "@react-three/rapier";
 import { usePBR } from "../../../world/materials";
 import { rng } from "../../../world/geometry";
 import { BOUND_R, OBS, nearGate, GATE_VIEW, angDist } from "./layout";
+
+/** Where the plateau ends and the cliff falls into the clouds (beyond the 40 m walkable boundary). */
+const ISLAND_EDGE = 46;
 import { smooth } from "./shared";
 
 // ------------------------------------------------------------------ terrain: plateau above a sea of clouds
@@ -28,11 +31,16 @@ export function Terrain() {
       const ang = Math.atan2(z, x);
       let ripple = 0;
       for (const b of bumps) ripple += Math.sin(ang * b.f + b.a) * b.amp;
-      // the rim parts in front of the Sleeping Gate so its bridge and the isles are visible
-      const notch = 1 - 0.85 * (1 - smooth(0.16, 0.36, angDist(ang, GATE_VIEW)));
-      const hills = smooth(38, 52, d) * (3 + ripple * 0.9) * notch;
-      const cliff = -smooth(62, 78, d) * 60;
-      p.setY(i, d < 34 ? Math.sin(x * 0.15) * Math.cos(z * 0.13) * 0.04 : hills + cliff);
+      // a floating island: a gentle lip just past the walkable boundary (40 m), then a sheer cliff
+      // into the sea of clouds. The edge wanders with the ripple; in front of the Sleeping Gate it
+      // stays low so its bridge and the isles are in view.
+      const notch = 1 - 0.7 * (1 - smooth(0.16, 0.36, angDist(ang, GATE_VIEW)));
+      const edge = ISLAND_EDGE + ripple * 1.1;
+      // the ground dips gently toward the edge, so from eye height you see the rim and the void
+      // (only beyond the walkable boundary: the physics floor is flat at y = 0 up to BOUND_R)
+      const lip = -smooth(BOUND_R + 0.5, edge - 1, d) * (1.4 + ripple * 0.25) + smooth(edge - 3, edge - 1.2, d) * 0.35 * notch;
+      const drop = -smooth(edge - 0.5, edge + 5, d) * 34 - smooth(edge + 5, edge + 30, d) * 30;
+      p.setY(i, d < 34 ? Math.sin(x * 0.15) * Math.cos(z * 0.13) * 0.04 : lip + drop);
       uv.setXY(i, x / 4, z / 4);
     }
     g.computeVertexNormals();
@@ -71,13 +79,15 @@ export function Terrain() {
       const s = 0.6 + r() * 1.6;
       out.push({ x, z, y: s * 0.35, s: [s * (1 + r() * 0.6), s * (0.7 + r() * 0.5), s * (1 + r() * 0.5)], rot: r() * 6, geo: make(100 + i), collide: true });
     }
-    // crags on the rim
+    // broken spires along the island's edge, in clusters with open gaps between them (so the
+    // island reads as floating: you see the drop and the sky through the gaps)
     for (let i = 0; i < 34; i++) {
       const a = (i / 34) * Math.PI * 2 + r() * 0.1;
-      const d = 44 + r() * 14;
-      const s = 4 + r() * 8;
-      if (angDist(a, GATE_VIEW) < 0.34) continue;
-      out.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: s * 0.4 + 2, s: [s, s * (1.2 + r()), s], rot: r() * 6, geo: make(300 + i), collide: false });
+      const d = ISLAND_EDGE - 3 + r() * 3;
+      const s = 1.4 + r() * 2.6;
+      const keep = Math.sin(a * 3 + 0.7) > 0.2; // clusters, with wide open view corridors
+      if (angDist(a, GATE_VIEW) < 0.34 || !keep) continue;
+      out.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: s * 0.5 - 1.2, s: [s * 0.55, s * (1.6 + r() * 1.2), s * 0.55], rot: r() * 6, geo: make(300 + i), collide: false });
     }
     return out;
   }, []);
@@ -106,31 +116,76 @@ export function Terrain() {
 }
 
 /** Distant floating isles + a sea of clouds below the cliffs (fantasy silhouette). */
+/**
+ * A floating isle: a carved rock body (lathe profile, noise-displaced) tapering to a point below,
+ * with a meadow cap. Some carry a broken column.
+ */
+function isleGeometry(seed: number) {
+  const r = rng(seed);
+  const prof: THREE.Vector2[] = [];
+  const N = 12;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N; // 0 = bottom tip, 1 = top rim
+    const rad = Math.pow(t, 0.55) * (0.85 + r() * 0.3);
+    prof.push(new THREE.Vector2(Math.max(0.02, rad), -1.8 + t * 1.8));
+  }
+  prof.push(new THREE.Vector2(0.98, 0.08), new THREE.Vector2(0.001, 0.12));
+  const g = new THREE.LatheGeometry(prof, 14);
+  const pos = g.attributes.position as THREE.BufferAttribute;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    if (v.y < 0.05) {
+      const n = Math.sin(v.x * 4.1 + seed) * Math.cos(v.z * 3.7 - seed) * 0.12 + Math.sin(v.y * 6 + v.x * 2) * 0.08;
+      v.x *= 1 + n;
+      v.z *= 1 + n;
+    }
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Floating isles around the plateau + the sea of clouds below the cliffs. */
 export function Sky() {
-  const rock = usePBR("rock", { tint: 0x9d9a94 });
+  const rock = usePBR("rock", { tint: 0x8f8a86 });
+  const meadow = usePBR("meadow", { tint: 0xb9c49a });
+  const ruin = usePBR("ruinwall", { tint: 0xcfc6b8 });
   const isles = useMemo(() => {
     const r = rng(41);
-    return Array.from({ length: 7 }, (_, i) => {
-      const a = (i / 7) * Math.PI * 2 + r();
-      const d = 95 + r() * 70;
-      const g = new THREE.ConeGeometry(1, 1.6, 7, 3);
-      g.rotateX(Math.PI);
-      return { x: Math.cos(a) * d, z: Math.sin(a) * d, y: 18 + r() * 40, s: 5 + r() * 9, phase: r() * 6, g };
-    });
+    const out: { x: number; z: number; y: number; s: number; phase: number; g: THREE.BufferGeometry; column: boolean }[] = [];
+    for (let i = 0; i < 11; i++) {
+      const a = (i / 11) * Math.PI * 2 + r() * 0.4;
+      if (angDist(a, GATE_VIEW) < 0.22) continue; // the gate's own isle sits there
+      const d = 85 + r() * 110;
+      // some float below the plateau's horizon: you see their undersides from the edge
+      out.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: -14 + r() * 46, s: 6 + r() * 12, phase: r() * 6, g: isleGeometry(50 + i), column: r() < 0.45 });
+    }
+    return out;
   }, []);
   const ref = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
     ref.current?.children.forEach((c, i) => (c.position.y = isles[i].y + Math.sin(clock.elapsedTime * 0.3 + isles[i].phase) * 0.8));
   });
+  const capGeo = useMemo(() => {
+    const g = new THREE.CircleGeometry(0.97, 14);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, []);
+  const colGeo = useMemo(() => new THREE.CylinderGeometry(0.05, 0.06, 0.5, 8), []);
   const clouds = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xc9b2c4, roughness: 1, emissive: 0x6a5078, emissiveIntensity: 0.45 }), []);
   return (
     <group userData={{ noBatch: true }}>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -22, 0]} material={clouds}>
+      <mesh rotation-x={-Math.PI / 2} position={[0, -26, 0]} material={clouds}>
         <circleGeometry args={[600, 48]} />
       </mesh>
       <group ref={ref}>
         {isles.map((s, i) => (
-          <mesh key={i} geometry={s.g} material={rock} position={[s.x, s.y, s.z]} scale={[s.s, s.s, s.s]} />
+          <group key={i} position={[s.x, s.y, s.z]} scale={[s.s, s.s * 0.9, s.s]}>
+            <mesh geometry={s.g} material={rock} />
+            <mesh geometry={capGeo} material={meadow} position-y={0.121} />
+            {s.column && <mesh geometry={colGeo} material={ruin} position={[0.3, 0.37, -0.2]} rotation-z={0.15} />}
+          </group>
         ))}
       </group>
     </group>

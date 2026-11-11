@@ -55,6 +55,20 @@ vec3 crack(float az, float el, float a0, float a1, float e0, float e1, float w, 
   return col * (core * 1.3 + glow) * ends * flicker;
 }
 
+// A floating continent far away: a silhouette on the horizon with a tapering underside and a thin
+// rim of light on its top edge. Returns (rgb = colour to mix in, a = coverage).
+vec4 continent(float az, float el, float a0, float a1, float base, float height, float seed) {
+  float u = (az - a0) / (a1 - a0);
+  if (u < 0.0 || u > 1.0) return vec4(0.0);
+  float hump = pow(sin(3.14159 * u), 0.55);
+  float top = base + height * hump * (0.7 + 0.45 * noise(vec3(u * 7.0, seed, 2.0)));
+  float bottom = base - height * 1.6 * pow(sin(3.14159 * u), 1.8) * (0.8 + 0.3 * noise(vec3(u * 11.0, seed, 5.0)));
+  float inside = smoothstep(bottom - 0.002, bottom + 0.002, el) * smoothstep(top + 0.002, top - 0.002, el);
+  float rim = exp(-abs(top - el) * 420.0) * step(el, top + 0.004);
+  vec3 body = vec3(0.13, 0.10, 0.20);
+  return vec4(body + vec3(1.0, 0.72, 0.42) * rim * 1.2, max(inside * 0.9, rim * 0.7));
+}
+
 void main() {
   vec3 d = normalize(vDir);
   float h = d.y;
@@ -90,9 +104,19 @@ void main() {
   star *= 0.6 + 0.4 * sin(uTime * (1.5 + r * 4.0) + r * 40.0);
   col += vec3(1.0, 0.95, 0.88) * star * smoothstep(0.05, 0.3, h) * 1.4;
 
-  // the First Fracture: cracks of light low across the sky (where the player looks)
   float az = atan(d.x, -d.z);
   float el = asin(clamp(h, -1.0, 1.0));
+  // floating continents on the horizon (kept clear of the west, where the Sleeping Gate looks out)
+  vec4 c1 = continent(az, el, 0.45, 1.3, 0.035, 0.085, 1.0);
+  vec4 c2 = continent(az, el, 1.8, 2.6, 0.02, 0.07, 2.0);
+  vec4 c3 = continent(az, el, -2.85, -2.15, 0.06, 0.05, 3.0);
+  vec4 c4 = continent(az, el, -1.05, -0.55, 0.1, 0.045, 4.0);
+  col = mix(col, c1.rgb, c1.a);
+  col = mix(col, c2.rgb, c2.a);
+  col = mix(col, c3.rgb, c3.a);
+  col = mix(col, c4.rgb, c4.a);
+
+  // the First Fracture: cracks of light low across the sky (where the player looks)
   vec3 gold = vec3(1.0, 0.68, 0.30);
   vec3 teal = vec3(0.25, 0.95, 0.85);
   col += crack(az, el, -0.75, 0.55, 0.30, 0.12, 0.0035, gold, 1.0);   // north, behind the observatory
