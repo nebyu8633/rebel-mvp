@@ -30,8 +30,8 @@ import { fragmentStage, type FragmentStage } from "../../content/originFragment"
 
 // ------------------------------------------------------------------ the approach: ruined colonnade + arch
 /** Pieces of the Blender-built kit (scripts/blender/build_sanctuary_kit.py → scripts/build-kit.mjs). */
-type KitPiece = "col_full" | "col_broken_a" | "col_broken_b" | "col_fallen" | "arch_gate" | "lintel_block" | "wall_full" | "wall_low" | "wall_breach" | "obs_buttress" | "obs_corbel";
-const KIT_PIECES: KitPiece[] = ["col_full", "col_broken_a", "col_broken_b", "col_fallen", "arch_gate", "lintel_block", "wall_full", "wall_low", "wall_breach", "obs_buttress", "obs_corbel"];
+type KitPiece = "col_full" | "col_broken_a" | "col_broken_b" | "col_fallen" | "arch_gate" | "lintel_block" | "wall_full" | "wall_low" | "wall_breach" | "obs_buttress" | "obs_corbel" | "dome_petal";
+const KIT_PIECES: KitPiece[] = ["col_full", "col_broken_a", "col_broken_b", "col_fallen", "arch_gate", "lintel_block", "wall_full", "wall_low", "wall_breach", "obs_buttress", "obs_corbel", "dome_petal"];
 const KIT_HEIGHT: Record<"col_full" | "col_broken_a" | "col_broken_b", number> = { col_full: 5.95, col_broken_a: 3.49, col_broken_b: 2.19 };
 /**
  * Meshopt-compressed GLBs store quantized positions plus a dequantization transform on the node.
@@ -147,6 +147,71 @@ export function Ruins() {
 }
 
 // ------------------------------------------------------------------ the observatory
+/**
+ * The observatory floor's brass inlay: a star chart drawn once on a canvas (rings, meridians, a
+ * tilted ecliptic, star points and the six kingdom symbols). Metallic, so it catches the light.
+ */
+function useFloorInlay() {
+  return useMemo(() => {
+    const S = 1024;
+    const c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d")!;
+    const C = S / 2;
+    g.strokeStyle = g.fillStyle = "#fff";
+    g.lineCap = "round";
+    const ring = (r: number, w: number) => {
+      g.lineWidth = w;
+      g.beginPath();
+      g.arc(C, C, r * C, 0, Math.PI * 2);
+      g.stroke();
+    };
+    ring(0.97, 6);
+    ring(0.93, 2.5);
+    ring(0.72, 3);
+    ring(0.4, 2.5);
+    ring(0.36, 1.5);
+    // meridians + degree ticks between the outer rings
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2;
+      const r0 = i % 6 === 0 ? 0.4 : 0.9;
+      g.lineWidth = i % 6 === 0 ? 2.5 : 1.5;
+      g.beginPath();
+      g.moveTo(C + Math.cos(a) * r0 * C, C + Math.sin(a) * r0 * C);
+      g.lineTo(C + Math.cos(a) * 0.93 * C, C + Math.sin(a) * 0.93 * C);
+      g.stroke();
+    }
+    // the ecliptic: a tilted ellipse
+    g.lineWidth = 3;
+    g.beginPath();
+    g.ellipse(C, C, 0.66 * C, 0.42 * C, 0.42, 0, Math.PI * 2);
+    g.stroke();
+    // stars
+    const r = rng(5);
+    for (let i = 0; i < 90; i++) {
+      const a = r() * Math.PI * 2;
+      const d = 0.42 + r() * 0.48;
+      const s = 2 + r() * 4;
+      g.beginPath();
+      g.arc(C + Math.cos(a) * d * C, C + Math.sin(a) * d * C, s, 0, Math.PI * 2);
+      g.fill();
+    }
+    // the six kingdoms, between the middle rings
+    SIGILS.forEach((s, i) => {
+      const a = (i / SIGILS.length) * Math.PI * 2 - Math.PI / 2;
+      const img = kingdomGlyph(s.kingdom).image as CanvasImageSource;
+      const w = 0.17 * C;
+      g.drawImage(img, C + Math.cos(a) * 0.56 * C - w / 2, C + Math.sin(a) * 0.56 * C - w / 2, w, w);
+    });
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+    const mat = new THREE.MeshStandardMaterial({ color: 0xb48a4a, map: tex, metalness: 0.95, roughness: 0.32, alphaTest: 0.35, polygonOffset: true, polygonOffsetFactor: -2 });
+    const geo = new THREE.CircleGeometry(OBS.floorR - 0.15, 96);
+    geo.rotateX(-Math.PI / 2);
+    return { mat, geo };
+  }, []);
+}
+
 export function Observatory({ done }: { done: boolean }) {
   const wall = usePBR("ruinwall", { tint: 0xe2dbcf });
   const floor = usePBR("ruinfloor", { tint: 0xcfc9bf });
@@ -169,6 +234,7 @@ export function Observatory({ done }: { done: boolean }) {
   const galleryW = 2 * GALLERY.rOut * Math.sin(((5 / 2) * Math.PI) / 180) + 0.05;
   const galleryD = GALLERY.rOut - GALLERY.rIn;
   const kit = useSanctuaryKit();
+  const inlay = useFloorInlay();
   // pick a masonry variant per wall segment from its collider height (full / damaged / breach)
   const wallTransforms = useMemo(() => {
     const out = { wall_full: [] as KitTransform[], wall_low: [] as KitTransform[], wall_breach: [] as KitTransform[] };
@@ -232,6 +298,7 @@ export function Observatory({ done }: { done: boolean }) {
       </RigidBody>
       <mesh geometry={floorGeo} material={floor} position={[OBS.x, FLOOR_Y / 2, OBS.z]} receiveShadow />
       <mesh geometry={floorTop} material={floor} position={[OBS.x, FLOOR_Y + 0.002, OBS.z]} receiveShadow />
+      <mesh geometry={inlay.geo} material={inlay.mat} position={[OBS.x, FLOOR_Y + 0.006, OBS.z]} receiveShadow userData={{ noBatch: true }} />
       {/* masonry wall (visual): one instanced draw per variant; the colliders above stay boxes */}
       {(["wall_full", "wall_low", "wall_breach"] as const).map((v) => (
         <KitInstances key={v} geometry={kit[v]} material={wall} transforms={wallTransforms[v]} />
@@ -306,28 +373,26 @@ export function BrokenStair() {
   );
 }
 
-/** Ruined dome: petals that open to the sky during the Resonance. */
+/**
+ * Ruined dome: ten masonry petals (Blender kit: courses of stone on the sphere, ribbed edges, a
+ * broken crown) that open to the sky during the Resonance. Each petal is hinged at its rim point.
+ */
 export function Dome() {
-  const base = usePBR("ruinwall", { tint: 0xd8d0c4 });
-  const wall = useMemo(() => {
-    const m = base.clone();
-    m.side = THREE.DoubleSide;
-    return m;
-  }, [base]);
+  const wall = usePBR("ruinwall", { tint: 0xd8d0c4 });
+  const kit = useSanctuaryKit();
   const N = 10;
   const R = OBS.wallR + 0.05;
   const petals = useMemo(() => {
     const r = rng(73);
     return Array.from({ length: N }, (_, i) => {
       const phiLen = ((Math.PI * 2) / N) * 0.94;
-      const phi = (i / N) * Math.PI * 2;
-      const g = new THREE.SphereGeometry(R, 10, 8, phi, phiLen, 0, Math.PI / 2);
-      const mid = phi + phiLen / 2;
-      // three.js sphere: x = -cos(phi)·sinθ, z = sin(phi)·sinθ
+      const mid = (i / N) * Math.PI * 2 + phiLen / 2;
+      // same placement convention as before (three.js sphere: x = -cos(phi)·sinθ, z = sin(phi)·sinθ)
       const rim = new THREE.Vector3(-Math.cos(mid) * R, 0, Math.sin(mid) * R);
-      g.translate(-rim.x, 0, -rim.z);
       const axis = new THREE.Vector3(0, 1, 0).cross(rim.clone().normalize()).normalize();
-      return { g, rim, axis, missing: i === 3 || i === 7, crack: (r() - 0.5) * 0.12, open: 0.55 + r() * 0.2 };
+      // the kit petal faces -Z; turn it to face outward along `rim`
+      const yaw = Math.atan2(Math.cos(mid), -Math.sin(mid));
+      return { rim, axis, yaw, missing: i === 3 || i === 7, crack: (r() - 0.5) * 0.12, open: 0.55 + r() * 0.2 };
     });
   }, [R]);
   const refs = useRef<(THREE.Group | null)[]>([]);
@@ -344,7 +409,7 @@ export function Dome() {
       {petals.map((p, i) =>
         p.missing ? null : (
           <group key={i} position={p.rim} ref={(el) => void (refs.current[i] = el)}>
-            <mesh geometry={p.g} material={wall} castShadow />
+            <mesh geometry={kit.dome_petal} material={wall} rotation-y={p.yaw} castShadow receiveShadow />
           </group>
         ),
       )}

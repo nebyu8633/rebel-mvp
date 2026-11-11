@@ -374,6 +374,62 @@ def corbel():
     return join("obs_corbel", parts)
 
 
+
+def dome_petal():
+    """
+    One of the 10 dome petals as a masonry shell: courses of curved blocks on a sphere (radius
+    7.7 = wallR + 0.05, 0.28 thick) with raised ribs on both edges. Centred on bearing 0 (-Z), and
+    translated so its rim point (0, 0, -R) is the origin: the game hinges it there to open it.
+    """
+    R, T = 7.7, 0.28
+    half = math.radians(36 * 0.94 / 2)
+    parts = []
+    g = 0.008
+
+    def shell_block(name, a0, a1, t0, t1, r0, r1, sub=3):
+        bm = bmesh.new()
+        def P(a, th, r):
+            return bm.verts.new((math.sin(a) * math.sin(th) * r, math.cos(th) * r, -math.cos(a) * math.sin(th) * r))
+        grid = []
+        for i in range(sub + 1):
+            a = a0 + (a1 - a0) * i / sub
+            grid.append([(P(a, t0, r0), P(a, t0, r1), P(a, t1, r1), P(a, t1, r0))])
+        for i in range(sub):
+            A, B = grid[i][0], grid[i + 1][0]
+            for k in range(4):
+                bm.faces.new((A[k], A[(k + 1) % 4], B[(k + 1) % 4], B[k]))
+        bm.faces.new(grid[0][0])
+        bm.faces.new(tuple(reversed(grid[-1][0])))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        o = new_obj(name, bm)
+        bevel(o, 0.015, 1)
+        return o
+
+    courses = 10
+    for c in range(courses):
+        t1 = math.pi / 2 * (1 - c / courses)          # lower edge (toward the rim)
+        t0 = math.pi / 2 * (1 - (c + 1) / courses)    # upper edge (toward the crown)
+        width = 2 * half * R * math.sin((t0 + t1) / 2)
+        n = max(1, round(width / 1.3))
+        off = rnd.uniform(0.3, 0.7) if c % 2 else 0.5
+        cuts = [-half] + [(-half + 2 * half * (k + off) / n) for k in range(n - 1)] + [half] if n > 1 else [-half, half]
+        cuts = sorted(cuts)
+        for b in range(len(cuts) - 1):
+            # the crown is broken: upper courses lose stones
+            if c >= courses - 3 and rnd.random() < 0.35 + 0.15 * (c - (courses - 3)):
+                continue
+            parts.append(shell_block(f"pt_c{c}_{b}", cuts[b] + g / R, cuts[b + 1] - g / R, t0 + g / R, t1 - g / R, R - T, R + rnd.uniform(-0.01, 0.02), sub=2))
+    # ribs along both edges, from the rim up to just below the crown
+    for side in (-1, 1):
+        a = side * half
+        parts.append(shell_block(f"rib{side}", a - 0.012, a + 0.012, math.pi / 2 * 0.12, math.pi / 2, R - T - 0.05, R + 0.14, sub=1))
+    ob = join("dome_petal", parts)
+    # hinge: rim point (0, 0, -R) -> origin
+    for v in ob.data.vertices:
+        v.co.z += R
+    return ob
+
+
 def main():
     reset()
     objs = [
@@ -388,6 +444,7 @@ def main():
         wall_segment("wall_breach", 2.7, 1.2),
         buttress(),
         corbel(),
+        dome_petal(),
     ]
     for o in objs:
         o.location = (0, 0, 0)
