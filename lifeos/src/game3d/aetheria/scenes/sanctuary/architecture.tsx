@@ -30,7 +30,8 @@ import { fragmentStage, type FragmentStage } from "../../content/originFragment"
 
 // ------------------------------------------------------------------ the approach: ruined colonnade + arch
 /** Pieces of the Blender-built kit (scripts/blender/build_sanctuary_kit.py → scripts/build-kit.mjs). */
-type KitPiece = "col_full" | "col_broken_a" | "col_broken_b" | "col_fallen" | "arch_gate" | "lintel_block";
+type KitPiece = "col_full" | "col_broken_a" | "col_broken_b" | "col_fallen" | "arch_gate" | "lintel_block" | "wall_full" | "wall_low" | "wall_breach" | "obs_buttress" | "obs_corbel";
+const KIT_PIECES: KitPiece[] = ["col_full", "col_broken_a", "col_broken_b", "col_fallen", "arch_gate", "lintel_block", "wall_full", "wall_low", "wall_breach", "obs_buttress", "obs_corbel"];
 const KIT_HEIGHT: Record<"col_full" | "col_broken_a" | "col_broken_b", number> = { col_full: 5.95, col_broken_a: 3.49, col_broken_b: 2.19 };
 /**
  * Meshopt-compressed GLBs store quantized positions plus a dequantization transform on the node.
@@ -57,12 +58,38 @@ function bakeNode(mesh: THREE.Mesh) {
   return g;
 }
 
+interface KitTransform {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+}
+/** Static instances of one kit piece (one draw call). Matrices are set once. */
+function KitInstances({ geometry, material, transforms }: { geometry: THREE.BufferGeometry; material: THREE.Material; transforms: KitTransform[] }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    const o = new THREE.Object3D();
+    transforms.forEach((t, i) => {
+      o.position.set(t.x, t.y, t.z);
+      o.rotation.set(0, t.yaw, 0);
+      o.updateMatrix();
+      m.setMatrixAt(i, o.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+    m.computeBoundingSphere();
+  }, [transforms]);
+  if (!transforms.length) return null;
+  return <instancedMesh ref={ref} args={[geometry, material, transforms.length]} castShadow receiveShadow userData={{ noBatch: true }} />;
+}
+
 export function useSanctuaryKit(): Record<KitPiece, THREE.BufferGeometry> {
   const gl = useThree((s) => s.gl);
   const { nodes } = useGLTF(asset("env/sanctuary_kit.glb"), false, true, gltfExtensions(gl));
   return useMemo(() => {
     const out = {} as Record<KitPiece, THREE.BufferGeometry>;
-    for (const k of ["col_full", "col_broken_a", "col_broken_b", "col_fallen", "arch_gate", "lintel_block"] as KitPiece[]) out[k] = bakeNode(nodes[k] as THREE.Mesh);
+    for (const k of KIT_PIECES) out[k] = bakeNode(nodes[k] as THREE.Mesh);
     return out;
   }, [nodes]);
 }
@@ -141,12 +168,32 @@ export function Observatory({ done }: { done: boolean }) {
   }, []);
   const galleryW = 2 * GALLERY.rOut * Math.sin(((5 / 2) * Math.PI) / 180) + 0.05;
   const galleryD = GALLERY.rOut - GALLERY.rIn;
-  const segGeo = useMemo(() => new Map<number, THREE.BufferGeometry>(), []);
-  const geoFor = (w: number, h: number) => {
-    const k = Math.round(h * 100);
-    if (!segGeo.has(k)) segGeo.set(k, worldBox(w, h, OBS.wallT, 3));
-    return segGeo.get(k)!;
-  };
+  const kit = useSanctuaryKit();
+  // pick a masonry variant per wall segment from its collider height (full / damaged / breach)
+  const wallTransforms = useMemo(() => {
+    const out = { wall_full: [] as KitTransform[], wall_low: [] as KitTransform[], wall_breach: [] as KitTransform[] };
+    for (const s of segs) {
+      const v = s.h >= OBS.wallH - 0.01 ? "wall_full" : s.h > 4 ? "wall_low" : "wall_breach";
+      out[v].push({ x: OBS.x, y: 0, z: OBS.z, yaw: (-s.b * Math.PI) / 180 });
+    }
+    return out;
+  }, [segs]);
+  const buttresses = useMemo(
+    () =>
+      [-150, -110, -60, -20, 25, 100, 140].map((b) => {
+        const p = around(b, OBS.wallR + 0.9);
+        return { x: p.x, y: 0, z: p.z, yaw: (-b * Math.PI) / 180 };
+      }),
+    [],
+  );
+  const corbels = useMemo(() => {
+    const out: KitTransform[] = [];
+    for (let b = GALLERY.from + 5; b < GALLERY.to; b += 10) {
+      const p = around(b, OBS.wallR - OBS.wallT / 2);
+      out.push({ x: p.x, y: GALLERY.y - GALLERY.thick, z: p.z, yaw: (-b * Math.PI) / 180 });
+    }
+    return out;
+  }, []);
   const gGeo = useMemo(() => worldBox(galleryW, GALLERY.thick, galleryD, 2), [galleryW, galleryD]);
   const floorGeo = useMemo(() => worldCylinder(OBS.floorR + 0.4, OBS.floorR + 0.6, FLOOR_Y, 2.5, 48), []);
   const floorTop = useMemo(() => {
@@ -185,10 +232,12 @@ export function Observatory({ done }: { done: boolean }) {
       </RigidBody>
       <mesh geometry={floorGeo} material={floor} position={[OBS.x, FLOOR_Y / 2, OBS.z]} receiveShadow />
       <mesh geometry={floorTop} material={floor} position={[OBS.x, FLOOR_Y + 0.002, OBS.z]} receiveShadow />
-      {segs.map((s) => {
-        const p = around(s.b, OBS.wallR);
-        return <mesh key={s.b} geometry={geoFor(s.w, s.h)} material={wall} position={[p.x, s.h / 2, p.z]} rotation-y={(-s.b * Math.PI) / 180} castShadow receiveShadow />;
-      })}
+      {/* masonry wall (visual): one instanced draw per variant; the colliders above stay boxes */}
+      {(["wall_full", "wall_low", "wall_breach"] as const).map((v) => (
+        <KitInstances key={v} geometry={kit[v]} material={wall} transforms={wallTransforms[v]} />
+      ))}
+      {/* corbels carrying the gallery */}
+      <KitInstances geometry={kit.obs_corbel} material={wall} transforms={corbels} />
       {gallery.map((b) => {
         const p = around(b, (GALLERY.rIn + GALLERY.rOut) / 2);
         return <mesh key={b} geometry={gGeo} material={wall} position={[p.x, GALLERY.y - GALLERY.thick / 2, p.z]} rotation-y={(-b * Math.PI) / 180} castShadow receiveShadow />;
@@ -200,15 +249,8 @@ export function Observatory({ done }: { done: boolean }) {
           const s = stepAt(i);
           return <mesh key={i} geometry={stepGeo} material={wall} scale={[1, s.topY, 1]} position={[OBS.x + STAIR.x, s.topY / 2, OBS.z + s.z]} castShadow receiveShadow />;
         })}
-      {/* buttresses */}
-      {[-150, -110, -60, -20, 25, 100, 140].map((b) => {
-        const p = around(b, OBS.wallR + 0.9);
-        return (
-          <mesh key={b} material={wall} position={[p.x, 2.6, p.z]} rotation-y={(-b * Math.PI) / 180} castShadow receiveShadow>
-            <boxGeometry args={[0.9, 5.2, 1.2]} />
-          </mesh>
-        );
-      })}
+      {/* stepped buttresses */}
+      <KitInstances geometry={kit.obs_buttress} material={wall} transforms={buttresses} />
     </group>
   );
 }
