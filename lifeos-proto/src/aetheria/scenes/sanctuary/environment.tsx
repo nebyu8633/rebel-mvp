@@ -122,7 +122,7 @@ export function Sky() {
   useFrame(({ clock }) => {
     ref.current?.children.forEach((c, i) => (c.position.y = isles[i].y + Math.sin(clock.elapsedTime * 0.3 + isles[i].phase) * 0.8));
   });
-  const clouds = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xe9e6f2, roughness: 1, emissive: 0x6c6f88, emissiveIntensity: 0.25 }), []);
+  const clouds = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xc9b2c4, roughness: 1, emissive: 0x6a5078, emissiveIntensity: 0.45 }), []);
   return (
     <group userData={{ noBatch: true }}>
       <mesh rotation-x={-Math.PI / 2} position={[0, -22, 0]} material={clouds}>
