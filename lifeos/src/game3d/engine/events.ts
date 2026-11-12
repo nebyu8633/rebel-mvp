@@ -30,3 +30,19 @@ export const gameEvents = {
     return () => void gameHandlers.delete(h);
   },
 };
+
+/** Commands the world can give the player body (e.g. recover after a fall). Applied in the physics step. */
+type TeleportHandler = (x: number, y: number, z: number, yaw?: number) => void;
+let teleportHandler: TeleportHandler | null = null;
+export const playerCommands = {
+  teleport(x: number, y: number, z: number, yaw?: number) {
+    teleportHandler?.(x, y, z, yaw);
+  },
+  /** registered by the Player component */
+  bindTeleport(h: TeleportHandler): () => void {
+    teleportHandler = h;
+    return () => {
+      if (teleportHandler === h) teleportHandler = null;
+    };
+  },
+};

@@ -125,6 +125,7 @@ export const ECHO_TALK: DialogueDef = {
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
         { text: "השער… נפתח. אני מרגיש אותו בכל הרסיסים. ספר לי… מה ראית.", when: gateAwaits },
+        { text: "שלושת הזיכרונות… החזרת לי אותם. עכשיו אני זוכר איך הכול נשבר. ואולי גם איך מאחים.", when: { all: [{ discovered: "memory_colonnade" }, { discovered: "memory_south_rim" }, { discovered: "memory_star_chart" }] } },
         { text: "אני כאן, שלם. כל צעד שתעשה מכאן, נעשה יחד.", when: whole },
         { text: "ראיתי אור… מהעולם השני. משהו שעשית שם… הגיע עד לכאן.", when: lifeMemory },
         { text: "שוב כאן. אני מתחיל… לזכור את הצעדים שלך.", when: { memory: MEM.visits, atLeast: 3 } },

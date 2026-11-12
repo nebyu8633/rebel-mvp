@@ -144,3 +144,52 @@ describe("The Origin Fragment — stages", () => {
     expect(fragmentStage(withLife)).toBe("transcendence");
   });
 });
+
+import { BRIDGE_QUEST, MEMORY_QUEST, D, LENS_SITE, MEMORIES, memoriesFound, memoryVisible, onIsle, onMemory, onThreshold } from "../aetheria/content/worldDepth";
+import { ISLE, BRIDGE_PATH, MEMORY_SPOTS, STAR_LENS, BOUND_R as BR, OBS as O } from "../aetheria/scenes/sanctuary/layout";
+describe("World Depth", () => {
+  const awakeWorld = () => {
+    let s = afterBond();
+    s = run(s, FORCES.map((f) => ({ type: "learnPower", force: f }) as Action));
+    return run(s, [{ type: "resonate", site: SITE.steps, force: "form" }, { type: "resonate", site: SITE.pillar, force: "change" }, { type: "resonate", site: SITE.link, force: "connection" }]);
+  };
+  it("content is valid; the bridge quest is essential and free of real life", () => {
+    expect(validateQuest(BRIDGE_QUEST)).toEqual([]);
+    expect(validateQuest(MEMORY_QUEST)).toEqual([]);
+    expect(BRIDGE_QUEST.essential).toBe(true);
+    expect(validateDialogue(ECHO_TALK)).toEqual([]);
+    for (const j of ["j.memory_colonnade", "j.memory_south_rim", "j.memory_star_chart", "j.lens", "j.isle", "j.threshold"]) expect(JOURNAL[j]?.body.length).toBeGreaterThan(20);
+  });
+  it("the bridge quest completes after the gate wakes", () => {
+    let s = awakeWorld();
+    expect(questStatus(BRIDGE_QUEST, s).state).toBe("active");
+    s = run(s, [...onIsle(), ...onThreshold()]);
+    expect(questStatus(BRIDGE_QUEST, s).state).toBe("complete");
+    expect(s.discoveries).toEqual(expect.arrayContaining(["floating_isle", "first_threshold"]));
+  });
+  it("the third memory only exists once CHANGE makes the star lens whole", () => {
+    let s = run(awakeWorld(), [...onMemory(awakeWorld(), "memory_colonnade"), ...onMemory(awakeWorld(), "memory_south_rim")]);
+    expect(memoriesFound(s)).toBe(2);
+    expect(memoryVisible(s, "memory_star_chart")).toBe(false);
+    expect(onMemory(s, "memory_star_chart")).toEqual([]); // nothing to pick up yet
+    expect(res(s, LENS_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    s = run(s, [{ type: "resonate", site: LENS_SITE, force: "change" }]);
+    expect(s.flags).toContain(D.lens);
+    s = run(s, onMemory(s, "memory_star_chart"));
+    expect(memoriesFound(s)).toBe(MEMORIES.length);
+    expect(questStatus(MEMORY_QUEST, s).state).toBe("complete");
+    expect(viewNode(ECHO_TALK, "start", { ...s, echo: "future_companion" })!.text).toContain("שלושת הזיכרונות");
+  });
+  it("layout: the bridge reaches the isle top, spots are inside the island, the lens is on the gallery", () => {
+    expect(BRIDGE_PATH[BRIDGE_PATH.length - 1][1]).toBeCloseTo(ISLE.top);
+    const end = BRIDGE_PATH[BRIDGE_PATH.length - 1];
+    expect(Math.hypot(end[0] - ISLE.x, end[2] - ISLE.z)).toBeLessThan(ISLE.r);
+    // no climb steeper than the controller can walk (46°)
+    for (let i = 1; i < BRIDGE_PATH.length; i++) {
+      const [a, b] = [BRIDGE_PATH[i - 1], BRIDGE_PATH[i]];
+      expect(Math.atan2(b[1] - a[1], Math.hypot(b[0] - a[0], b[2] - a[2])) * 180 / Math.PI).toBeLessThan(35);
+    }
+    for (const p of Object.values(MEMORY_SPOTS)) expect(Math.hypot(p.x, p.z)).toBeLessThan(BR - 1);
+    expect(Math.hypot(STAR_LENS.x - O.x, STAR_LENS.z - O.z)).toBeGreaterThan(5.6);
+  });
+});

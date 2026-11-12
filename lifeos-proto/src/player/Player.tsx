@@ -16,7 +16,7 @@ import { Character, type CharacterHandle } from "../character/Character";
 import { consumeEdges, input, readMove } from "./input";
 import { interactables, params, useProto } from "../store";
 import { autopilotStep } from "./autopilot";
-import { gameEvents, playerReactions } from "../engine/events";
+import { playerCommands, gameEvents, playerReactions } from "../engine/events";
 import { suspend } from "suspend-react";
 import { resolveAvatar } from "../avatar/avatarSource";
 import { DEV } from "../config";
@@ -121,6 +121,21 @@ export function Player({ spawn = [0, 1, 12] as [number, number, number], spawnYa
       }
     });
   }, []);
+
+  // the world may move the player (fall recovery); applied inside the next physics step
+  useEffect(
+    () =>
+      playerCommands.bindTeleport((x, y, z, yaw) => {
+        sim.pendingTeleport = { x, y: y + FOOT, z };
+        if (yaw !== undefined) {
+          sim.yaw = yaw;
+          sim.cam.yaw = yaw + Math.PI;
+        }
+        sim.vx = sim.vz = sim.vy = 0;
+        sim.camInit = false;
+      }),
+    [sim],
+  );
 
   // dev-only hooks for automated tests (teleport + telemetry); stripped from production builds
   useEffect(() => {
