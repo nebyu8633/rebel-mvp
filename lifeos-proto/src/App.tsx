@@ -18,6 +18,7 @@ import { bindSaveOnHide, flushSave, useAetheria } from "./aetheria/store";
 import { ContextLossOverlay, ContextLossProbe } from "./ui/ContextGuard";
 import { useDialogue } from "./aetheria/ui/dialogueRunner";
 import { useAetheriaUi } from "./aetheria/ui/uiStore";
+import { sfx, soundDebug, unlock } from "./aetheria/audio/soundscape";
 
 const isTouch = typeof window !== "undefined" && (matchMedia("(pointer: coarse)").matches || (navigator.maxTouchPoints > 0 && !matchMedia("(hover: hover)").matches));
 const pinned = params.get("q") as Quality | null;
@@ -60,7 +61,7 @@ function RendererSetup({ quality }: { quality: Quality }) {
   const scene = useThree((s) => s.scene);
   const setDpr = useThree((s) => s.setDpr);
   useEffect(() => {
-    if (DEV) Object.assign(window, { __proto3d: { gl, scene }, __aetheria: useAetheria, __worlds: useWorlds, __proto: useProto, __dlg: useDialogue, __ui: useAetheriaUi });
+    if (DEV) Object.assign(window, { __proto3d: { gl, scene }, __aetheria: useAetheria, __worlds: useWorlds, __proto: useProto, __dlg: useDialogue, __ui: useAetheriaUi, __sound: { sfx, unlock, debug: soundDebug } });
   }, [gl, scene]);
   useEffect(() => {
     gl.toneMapping = THREE.AgXToneMapping;
