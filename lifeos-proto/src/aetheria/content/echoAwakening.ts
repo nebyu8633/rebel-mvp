@@ -124,6 +124,9 @@ export const ECHO_TALK: DialogueDef = {
       actions: [{ type: "count", key: MEM.talks }],
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
+        // the Living Grove
+        { text: "תקשיב… הם נושמים. כל עלה כאן זוכר שהיית פה.", when: { flag: "health.bloomed" } },
+        { text: "המים זוכרים את הדרך אל השורשים. הם רק צריכים שמישהו יזכיר להם.", when: { flag: "health.entered" } },
         // the Kingdom of Knowledge: it does not solve the puzzle for you; it only says where to look
         { text: "הקודקס פתוח. חסרים בו חמישה חלקים, וכל אחד מהם הוא ממלכה. אני רוצה לראות את כולן. ואתה?", when: { flag: "knowledge.codex" } },
         { text: "אני לא אגיד לך את הדפוס. אבל כשתעמוד ליד כל חוגה, תסתכל אל העדשה. היא מסתכלת בחזרה.", when: { flag: "knowledge.entered" } },

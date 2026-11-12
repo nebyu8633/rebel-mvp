@@ -248,3 +248,39 @@ describe("The Kingdom of Knowledge", () => {
     expect(Math.hypot(first[2][0] - HALL.x, first[2][2] - HALL.z)).toBeLessThan(HALL.r);
   });
 });
+
+import { HEALTH_QUEST, H, HEART_SITE, SPRINGS, springSite, onEnterGrove } from "../aetheria/content/healthKingdom";
+import { SPRING_SPOTS, GIANTS, HEART, BOUND_R as HBR, SPAWN as HSPAWN } from "../aetheria/scenes/health/layout";
+import { LIVING_PATH } from "../aetheria/scenes/knowledge/layout";
+describe("The Kingdom of Health", () => {
+  it("the Heart Tree blooms only when all three springs are channelled", () => {
+    let s = run(initialWorldState(), [{ type: "setFlag", flag: K.codex }, ...FORCES.map((f) => ({ type: "learnPower", force: f }) as Action)]);
+    expect(validateQuest(HEALTH_QUEST)).toEqual([]);
+    expect(HEALTH_QUEST.essential).toBe(true);
+    expect(questStatus(HEALTH_QUEST, s).state).toBe("active");
+    s = run(s, onEnterGrove());
+    expect(res(s, springSite("west"), "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect }); // dry: nothing to channel
+    expect(res(s, HEART_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (const sp of SPRINGS) s = run(s, [{ type: "resonate", site: springSite(sp), force: "change" }]);
+    expect((questStatus(HEALTH_QUEST, s) as { step?: { id: string } }).step?.id).toBe("channel");
+    for (const sp of SPRINGS.slice(0, 2)) s = run(s, [{ type: "resonate", site: springSite(sp), force: "connection" }]);
+    expect(res(s, HEART_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    s = run(s, [{ type: "resonate", site: springSite("east"), force: "connection" }]);
+    s = run(s, [{ type: "resonate", site: HEART_SITE, force: "form" }]);
+    expect(s.flags).toContain(H.bloomed);
+    expect(questStatus(HEALTH_QUEST, s).state).toBe("complete");
+    expect(s.memory["world.springs_revived"]).toBe(3);
+  });
+  it("layout: springs, giants and the path keep clear of each other; the gate path is walkable", () => {
+    for (const sp of Object.values(SPRING_SPOTS)) {
+      expect(Math.hypot(sp.x, sp.z)).toBeLessThan(HBR - 3);
+      for (const g of GIANTS) expect(Math.hypot(sp.x - g.x, sp.z - g.z)).toBeGreaterThan(g.r * 2.5 + sp.r + 1);
+    }
+    for (const g of GIANTS) expect(Math.abs(g.x) > 3 || g.z < HEART.z).toBe(true); // not on the arrival path
+    expect(HSPAWN.z).toBeLessThan(HBR);
+    for (let i = 1; i < LIVING_PATH.length; i++) {
+      const [a, b] = [LIVING_PATH[i - 1], LIVING_PATH[i]];
+      expect((Math.atan2(Math.abs(b[1] - a[1]), Math.hypot(b[0] - a[0], b[2] - a[2])) * 180) / Math.PI).toBeLessThan(35);
+    }
+  });
+});

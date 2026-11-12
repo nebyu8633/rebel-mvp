@@ -30,7 +30,8 @@ import { PostFx } from "../../../world/PostFx";
 import { Arrival } from "../../../world/Arrival";
 import { SoundController, DustMotes } from "../sanctuary/Life";
 import { HallOfPatterns } from "./HallOfPatterns";
-import { FALL_Y, HALL, LANDING, PATHS, SATELLITES, SPAWN, WAYSTONE } from "./layout";
+import { FALL_Y, HALL, LANDING, LIVING_GATE, LIVING_PATH, PATHS, SATELLITES, SPAWN, WAYSTONE } from "./layout";
+import { useSanctuaryKit } from "../sanctuary/architecture";
 
 const BLUE = "#3f8cff";
 
@@ -307,6 +308,63 @@ function Story() {
   return null;
 }
 
+/** The Gate of the Living: once the codex is open, a path leads to it — and through it, the Grove. */
+function LivingGate() {
+  const open = useAetheria((s) => s.world.flags.includes(K.codex));
+  const stone = usePBR("ruinwall", { tint: 0x9aa89a });
+  const kit = useSanctuaryKit();
+  const seal = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uOn: { value: 0 } },
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: `uniform float uTime; uniform float uOn; varying vec2 vUv;
+          void main(){ vec2 p = vUv - 0.5; float r = length(p * vec2(1.0, 0.7));
+            float leaves = 0.5 + 0.5 * sin(atan(p.y, p.x) * 6.0 + uTime * 0.6 + r * 18.0);
+            float a = smoothstep(0.6, 0.15, r) * (0.3 + 0.5 * leaves) * uOn;
+            gl_FragColor = vec4(mix(vec3(0.35, 0.95, 0.6), vec3(1.0, 0.85, 0.95), leaves * 0.4) * a * 1.5, 1.0); }`,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
+    [],
+  );
+  useFrame(({ clock }) => {
+    seal.uniforms.uTime.value = clock.elapsedTime;
+    seal.uniforms.uOn.value += ((open ? 1 : 0.12) - seal.uniforms.uOn.value) * 0.03;
+  });
+  const yaw = Math.atan2(-LIVING_GATE.x, -LIVING_GATE.z); // facing the hall
+  useEffect(() => {
+    if (!open || !worldAvailable("health")) return;
+    const front = { x: LIVING_GATE.x * 0.9, y: LIVING_GATE.y, z: LIVING_GATE.z * 0.9 };
+    interactables.set("living-gate", {
+      id: "living-gate",
+      label: "היכנסו לחורשת החיים",
+      ...front,
+      radius: 2.4,
+      onContact: () => void goToWorld("health", { style: "resonance" }),
+    });
+    return () => void interactables.delete("living-gate");
+  }, [open]);
+  return (
+    <group>
+      <Platform x={LIVING_GATE.x} y={LIVING_GATE.y} z={LIVING_GATE.z} r={LIVING_GATE.r} seed={110} />
+      {open && <LightPath points={LIVING_PATH} color="#9ff2b8" />}
+      <group position={[LIVING_GATE.x, LIVING_GATE.y, LIVING_GATE.z]} rotation-y={yaw + Math.PI} scale={0.62}>
+        <RigidBody type="fixed" colliders={false}>
+          <CuboidCollider args={[3.2, 2.2, 0.65]} position={[0, 2.2, 0]} />
+        </RigidBody>
+        <mesh geometry={kit.arch_gate} material={stone} castShadow receiveShadow />
+        <mesh material={seal} position={[0, 2.4, 0]}>
+          <planeGeometry args={[3.6, 5.2]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export function KnowledgeScene({ quality }: { quality: Quality }) {
   return (
     <group>
@@ -323,6 +381,7 @@ export function KnowledgeScene({ quality }: { quality: Quality }) {
       <Frames />
       <Waystone />
       <HallOfPatterns />
+      <LivingGate />
       <Story />
       <Arrival world="knowledge" />
       <ResonanceFx />
