@@ -34,6 +34,8 @@ const DONE_TEXT: Record<string, string> = {
   first_resonance: "הושלם. שש הממלכות נחשפו.",
   echo_awakening: "הושלם. ההד זוכר אותך.",
   sleeping_gate: "הושלם. השער ער, וההד הולך איתך.",
+  bridge_to_kingdom: "הושלם. ממלכת הידע מחכה מעבר לסף.",
+  memory_shards: "הושלם. ההד זוכר עכשיו את השבר.",
 };
 
 /** Resonance powers: pick the force to use (tap, or keys 1/2/3). Only learned forces are usable. */

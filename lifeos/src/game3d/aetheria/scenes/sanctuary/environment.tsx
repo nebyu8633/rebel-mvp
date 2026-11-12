@@ -2,10 +2,14 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { CuboidCollider, BallCollider, RigidBody } from "@react-three/rapier";
+import { CuboidCollider, CylinderCollider, BallCollider, RigidBody } from "@react-three/rapier";
+import { useAetheria } from "../../store";
 import { usePBR } from "../../../world/materials";
 import { rng } from "../../../world/geometry";
-import { BOUND_R, OBS, nearGate, GATE_VIEW, angDist } from "./layout";
+import { BOUND_R, GATE, OBS, nearGate, GATE_VIEW, angDist } from "./layout";
+
+/** Where the light bridge crosses the island boundary (atan2(z, x)). */
+const BRIDGE_EXIT = Math.atan2(GATE.z, -BOUND_R);
 
 /** Where the plateau ends and the cliff falls into the clouds (beyond the 40 m walkable boundary). */
 const ISLAND_EDGE = 46;
@@ -14,6 +18,7 @@ import { CloudSea } from "./Life";
 
 // ------------------------------------------------------------------ terrain: plateau above a sea of clouds
 export function Terrain() {
+  const bridgeOpen = useAetheria((s) => s.world.flags.includes("gate.awake"));
   const meadow = usePBR("meadow", { tint: 0xc9d3b2 });
   const rock = usePBR("rock", { tint: 0xb9b4aa });
   const path = usePBR("mosspath");
@@ -95,10 +100,14 @@ export function Terrain() {
   return (
     <group>
       <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[60, 0.5, 60]} position={[0, -0.5, 0]} />
+        {/* the island's walkable ground ends just past the boundary: beyond it you fall (and the
+            fall recovery brings you back) */}
+        <CylinderCollider args={[0.5, BOUND_R + 1.5]} position={[0, -0.5, 0]} />
         {/* edge of the walkable plateau */}
         {Array.from({ length: 28 }, (_, i) => {
           const a = (i / 28) * Math.PI * 2;
+          // the awakened gate's bridge leaves the island here: no wall in its way
+          if (bridgeOpen && angDist(a, BRIDGE_EXIT) < 0.12) return null;
           return <CuboidCollider key={i} args={[4.6, 4, 0.5]} position={[Math.cos(a) * BOUND_R, 4, Math.sin(a) * BOUND_R]} rotation={[0, -a + Math.PI / 2, 0]} />;
         })}
         {rocks
@@ -121,7 +130,7 @@ export function Terrain() {
  * A floating isle: a carved rock body (lathe profile, noise-displaced) tapering to a point below,
  * with a meadow cap. Some carry a broken column.
  */
-function isleGeometry(seed: number) {
+export function isleGeometry(seed: number) {
   const r = rng(seed);
   const prof: THREE.Vector2[] = [];
   const N = 12;

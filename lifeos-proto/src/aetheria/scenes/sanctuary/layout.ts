@@ -63,3 +63,25 @@ export const nearGate = (x: number, z: number) => Math.hypot(x - GATE.x, z - GAT
 /** Direction (atan2(z, x)) the gate looks out over the rim: the crags part there to show the isles. */
 export const GATE_VIEW = Math.atan2(GATE.z, GATE.x - 30);
 export const angDist = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+/** The floating isle at the end of the Sleeping Gate's light bridge (its walkable top is at `top`). */
+export const ISLE = { x: -88, z: -8, top: 25.2, r: 7.5 };
+/** The light bridge's path (from the dais's west edge up to the isle). */
+export const BRIDGE_PATH: [number, number, number][] = [
+  // straight in plan (on a phone you walk it by holding forward), climbing ~28°, then levelling out
+  // so it meets the isle's top at its edge with no step, and runs on a little over the isle
+  [GATE.x - GATE.half, GATE.h + 0.05, GATE.z],
+  [-44, 6, GATE.z],
+  [-62, 15.5, GATE.z],
+  [-77, 23.6, GATE.z],
+  [ISLE.x + ISLE.r - 0.4, ISLE.top, ISLE.z],
+  [ISLE.x + ISLE.r - 3, ISLE.top, ISLE.z],
+];
+/** Hidden memory shards (World Depth). The third appears only when the star lens is whole. */
+export const MEMORY_SPOTS = {
+  memory_colonnade: { x: 4.6, y: 0, z: 14.2 },
+  memory_south_rim: { x: 0, y: 0, z: 37.5 },
+  memory_star_chart: { ...around(160, 5.2), y: FLOOR_Y },
+};
+/** The cracked star lens on the gallery (east), focusing starlight onto the floor's star chart. */
+export const STAR_LENS = { ...around(60, 6.45), y: GALLERY.y };

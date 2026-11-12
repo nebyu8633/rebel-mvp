@@ -25,13 +25,12 @@ import { E } from "../../content/echoAwakening";
 import { G, GATE_SITES, REJECT_TEXT, SITE, onGateFound } from "../../content/sleepingGate";
 import { JOURNAL } from "../../content";
 import { casts } from "../../fx/casts";
-import { GATE, gateStep } from "./layout";
+import { BRIDGE_PATH, GATE, gateStep } from "./layout";
 
 const P = { x: GATE.pillarX, north: GATE.z - GATE.pillarZ, south: GATE.z + GATE.pillarZ };
 const CRYSTAL_Y = GATE.h + GATE.pillarH + 0.45;
 const STEP_W = 2.4;
 const RAMP = { x0: GATE.x + GATE.half + GATE.steps * GATE.stepRun, x1: GATE.x + GATE.half };
-const ISLE = { x: -88, y: 24, z: -8 };
 
 const ease = (x: number) => {
   const t = Math.min(1, Math.max(0, x));
@@ -81,7 +80,6 @@ function useGradient(stops: [number, string][]) {
 
 export function SleepingGate() {
   const stone = usePBR("ruinwall", { tint: 0xd8d0c2 });
-  const rock = usePBR("rock", { tint: 0x9d9a94 });
   const world = useAetheria((s) => s.world);
   const hydrated = useAetheria((s) => s.hydrated);
   const power = useAetheriaUi((s) => s.power);
@@ -113,12 +111,7 @@ export function SleepingGate() {
   const portalMat = useMemo(() => new THREE.MeshBasicMaterial({ map: portalTex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), [portalTex]);
   const bridgeMat = useMemo(() => new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), []);
   const bridgeGeo = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(GATE.x - GATE.half, GATE.h + 0.05, GATE.z),
-      new THREE.Vector3(-44, 6, GATE.z),
-      new THREE.Vector3(-66, 17, GATE.z + 2),
-      new THREE.Vector3(ISLE.x + 5, ISLE.y + 1.2, ISLE.z),
-    ]);
+    const curve = new THREE.CatmullRomCurve3(BRIDGE_PATH.map((p) => new THREE.Vector3(...p)));
     // a flat ribbon of light (1.4 m wide) following the curve, widening slightly as it rises
     const N = 140;
     const pos: number[] = [];
@@ -134,11 +127,6 @@ export function SleepingGate() {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx);
-    return g;
-  }, []);
-  const isleGeo = useMemo(() => {
-    const g = new THREE.ConeGeometry(1, 1.6, 8, 3);
-    g.rotateX(Math.PI);
     return g;
   }, []);
 
@@ -314,12 +302,6 @@ export function SleepingGate() {
       </mesh>
       <mesh geometry={bridgeGeo} material={bridgeMat} frustumCulled={false} />
 
-      {/* the destination: a floating isle beyond the edge (Phase 4 and beyond) */}
-      <mesh geometry={isleGeo} material={rock} position={[ISLE.x, ISLE.y, ISLE.z]} scale={[7, 6, 7]} />
-      <mesh position={[ISLE.x, ISLE.y + 1.6, ISLE.z]} scale={[0.6, 1.2, 0.6]}>
-        <octahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={linked ? 0xffe2a0 : 0x6e7f8f} toneMapped={false} />
-      </mesh>
     </group>
   );
 }
