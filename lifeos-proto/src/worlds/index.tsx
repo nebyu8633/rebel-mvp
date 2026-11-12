@@ -14,6 +14,8 @@ import { LIVE_DATA } from "../config";
 import { SanctuaryScene } from "../aetheria/scenes/sanctuary/SanctuaryScene";
 import { SPAWN as SANCTUARY_SPAWN } from "../aetheria/scenes/sanctuary/layout";
 import { AetheriaHud } from "../aetheria/ui/AetheriaHud";
+import { KnowledgeScene } from "../aetheria/scenes/knowledge/KnowledgeScene";
+import { SPAWN as KNOWLEDGE_SPAWN } from "../aetheria/scenes/knowledge/layout";
 
 const provider = selectProvider({ liveEnabled: LIVE_DATA });
 
@@ -44,5 +46,6 @@ export function registerBuiltInWorlds() {
   registered = true;
   registerWorld({ id: "city", title: "העיר (שכבת המציאות)", layer: "reality", light: "dusk", spawn: { x: SPAWN.x, y: 0, z: SPAWN.z, yaw: SPAWN.yaw }, wearsLoadout: false, Scene: CityWorldScene, Hud: GameHud });
   registerWorld({ id: "sanctuary", title: "AETHERIA · המקדש הראשון", layer: "aetheria", light: "celestial", spawn: SANCTUARY_SPAWN, wearsLoadout: true, Scene: SanctuaryScene, Hud: AetheriaHud });
+  registerWorld({ id: "knowledge", title: "AETHERIA · ממלכת הידע", layer: "aetheria", light: "astral", spawn: KNOWLEDGE_SPAWN, wearsLoadout: true, Scene: KnowledgeScene, Hud: AetheriaHud });
   registerWorld({ id: "test", title: "סצנת בדיקות פיזיקה", layer: "dev", light: "day", spawn: { x: 0, y: 0, z: 12, yaw: Math.PI }, wearsLoadout: false, Scene: World, Hud: TestHud });
 }

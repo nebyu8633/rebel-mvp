@@ -23,6 +23,9 @@ import { siteState } from "../../core/state";
 import { JOURNAL } from "../../content";
 import { F as F1 } from "../../content/firstResonance";
 import { G } from "../../content/sleepingGate";
+import { KNOWLEDGE_SITES, SEAL_SITE, SEAL_STAGES, type SealStage } from "../../content/knowledgeKingdom";
+import { setArrival } from "../../../engine/arrival";
+import { goToWorld } from "../../../engine/worldStore";
 import { D, DEPTH_SITES, LENS_SITE, MEMORIES, memoryVisible, onIsle, onMemory, onThreshold, type MemoryId } from "../../content/worldDepth";
 import { sfx } from "../../audio/soundscape";
 import { BRIDGE_PATH, GATE, ISLE, MEMORY_SPOTS, SPAWN, STAR_LENS } from "./layout";
@@ -75,17 +78,26 @@ function BridgeAndIsle() {
     g.rotateX(-Math.PI / 2);
     return g;
   }, []);
+  // the seal answers the forces: 0 sealed (faint blue), 1 traced (FORM: gold outline),
+  // 2 turning (CHANGE: rings spin), 3 open (CONNECTION: a bright passage)
+  const sealStage = useAetheria((s) => SEAL_STAGES.indexOf(siteState(s.world, KNOWLEDGE_SITES[SEAL_SITE]) as SealStage));
+  const power = useAetheriaUi((s) => s.power);
   const sealMat = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        uniforms: { uTime: { value: 0 } },
+        uniforms: { uTime: { value: 0 }, uStage: { value: 0 } },
         vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-        fragmentShader: `uniform float uTime; varying vec2 vUv;
+        fragmentShader: `uniform float uTime; uniform float uStage; varying vec2 vUv;
           void main(){
-            vec2 p = vUv - 0.5; float r = length(p * vec2(1.0, 0.7));
-            float rings = 0.5 + 0.5 * sin(r * 40.0 - uTime * 1.5);
-            float a = smoothstep(0.62, 0.2, r) * (0.35 + 0.4 * rings);
-            gl_FragColor = vec4(vec3(0.25, 0.55, 1.0) * a * 1.4, 1.0);
+            vec2 p = vUv - 0.5; float r = length(p * vec2(1.0, 0.7)); float a = atan(p.y, p.x);
+            float spin = uTime * (0.3 + step(1.5, uStage) * 1.6);
+            float rings = 0.5 + 0.5 * sin(r * 40.0 - uTime * 1.5 + sin(a * 3.0 + spin) * step(1.5, uStage) * 2.0);
+            float body = smoothstep(0.62, 0.2, r) * (0.35 + 0.4 * rings);
+            float outline = smoothstep(0.012, 0.0, abs(r - 0.44)) + smoothstep(0.01, 0.0, abs(r - 0.3)) * 0.7;
+            vec3 col = vec3(0.25, 0.55, 1.0) * body * (1.0 + uStage * 0.35);
+            col += vec3(1.0, 0.8, 0.45) * outline * step(0.5, uStage) * 1.5;
+            col = mix(col, vec3(0.75, 0.9, 1.0) * (0.9 + 0.3 * rings), smoothstep(2.5, 3.0, uStage) * smoothstep(0.62, 0.15, r));
+            gl_FragColor = vec4(col * 1.4, 1.0);
           }`,
         transparent: true,
         depthWrite: false,
@@ -99,32 +111,44 @@ function BridgeAndIsle() {
   const glyphRef = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     sealMat.uniforms.uTime.value = clock.elapsedTime;
+    sealMat.uniforms.uStage.value += (Math.max(0, sealStage) - sealMat.uniforms.uStage.value) * 0.05;
     if (glyphRef.current) glyphRef.current.position.y = ISLE.top + 3.2 + Math.sin(clock.elapsedTime * 1.2) * 0.12;
   });
   // the threshold of the first kingdom (front faces the bridge, +X)
   const threshold = { x: ISLE.x - 2.6, z: ISLE.z };
+  const thresholdFound = useAetheria((s) => s.world.flags.includes(D.threshold));
   useEffect(() => {
     if (!awake) return;
+    const at = { x: threshold.x + 2.4, y: ISLE.top, z: threshold.z };
+    const open = sealStage >= SEAL_STAGES.indexOf("open");
     interactables.set("threshold", {
       id: "threshold",
-      label: "סף הממלכה הראשונה",
-      x: threshold.x + 2.4,
-      y: ISLE.top,
-      z: threshold.z,
+      label: !thresholdFound ? "סף הממלכה הראשונה" : open ? "היכנסו לממלכת הידע" : power ? `הפעילו ${FORCE_TITLES[power]}: ${KNOWLEDGE_SITES[SEAL_SITE].title}` : `${KNOWLEDGE_SITES[SEAL_SITE].title}: בחרו כוח`,
+      ...at,
       radius: 2.8,
       onContact: () => {
         const st = useAetheria.getState();
-        const before = st.world.journal.length;
-        if (st.dispatch(onThreshold())) {
-          playerReactions.emit("surprise");
-          sfx.echo();
-          showJournal(newJournal(before), "resonance");
+        if (!st.world.flags.includes(D.threshold)) {
+          const before = st.world.journal.length;
+          if (st.dispatch(onThreshold())) {
+            playerReactions.emit("surprise");
+            sfx.echo();
+            showJournal(newJournal(before), "resonance");
+          }
+          useAetheriaUi.getState().say("החותם מגיב לשלושת הכוחות. צורה, שינוי, חיבור.");
+          return;
         }
-        useAetheriaUi.getState().say("ממלכת הידע עוד חתומה. הדרך אליה היא הפרק הבא.");
+        if (open) {
+          // through the passage: come back to this very spot later
+          setArrival("sanctuary", { x: threshold.x + 3.2, y: ISLE.top + 0.2, z: threshold.z, yaw: Math.PI / 2 });
+          void goToWorld("knowledge", { style: "resonance" });
+          return;
+        }
+        resonateSite(SEAL_SITE, { x: threshold.x + 0.4, y: ISLE.top + 2.4, z: threshold.z });
       },
     });
     return () => void interactables.delete("threshold");
-  }, [awake, threshold.x, threshold.z]);
+  }, [awake, thresholdFound, sealStage, power, threshold.x, threshold.z]);
   // reaching the isle
   const acc = useRef(0);
   useFrame((_, dt) => {

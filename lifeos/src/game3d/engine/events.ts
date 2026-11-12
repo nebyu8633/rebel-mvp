@@ -38,6 +38,7 @@ export const playerCommands = {
   teleport(x: number, y: number, z: number, yaw?: number) {
     teleportHandler?.(x, y, z, yaw);
   },
+  isBound: () => !!teleportHandler,
   /** registered by the Player component */
   bindTeleport(h: TeleportHandler): () => void {
     teleportHandler = h;

@@ -12,7 +12,7 @@ import { HDRI } from "../config";
 import { telemetry } from "../player/Player";
 import type { Quality } from "../store";
 
-export type LightPreset = "day" | "dusk" | "dawn" | "celestial";
+export type LightPreset = "day" | "dusk" | "dawn" | "celestial" | "astral";
 const PRESETS = {
   day: { sun: new THREE.Vector3(0.7, 0.6, 0.38).normalize(), color: 0xfff0d8, intensity: 3.8, env: HDRI.day, envI: 0.1, hemi: [0xcfe3ff, 0x5a5040, 0.12] as const, fog: [0xc9d6e2, 45, 140] as const, sky: { turbidity: 6, rayleigh: 1.2 } },
   // late golden hour from the west, cool sky fill — the look of the reference image
@@ -21,7 +21,9 @@ const PRESETS = {
   dawn: { sun: new THREE.Vector3(0.55, 0.42, -0.72).normalize(), color: 0xffd2a0, intensity: 3.6, env: HDRI.dawn, envI: 0.42, hemi: [0xbcc8ff, 0x3b4230, 0.4] as const, fog: [0xc4c7d8, 35, 190] as const, sky: { turbidity: 4, rayleigh: 2.8 } },
   // AETHERIA visual bible: a low gold sun in the west (behind the Sleeping Gate), violet sky fill,
   // lilac haze, and the fractured celestial sky instead of a daylight sky
-  celestial: { sun: new THREE.Vector3(-0.84, 0.26, -0.2).normalize(), color: 0xffa868, intensity: 2.7, env: HDRI.dusk, envI: 0.26, hemi: [0x8a7fc8, 0x3a2c28, 0.5] as const, fog: [0x7e6a8c, 38, 240] as const, sky: { turbidity: 7, rayleigh: 2.2 }, celestial: true },
+  celestial: { sun: new THREE.Vector3(-0.84, 0.26, -0.2).normalize(), color: 0xffa868, intensity: 2.7, env: HDRI.dusk, envI: 0.26, hemi: [0x8a7fc8, 0x3a2c28, 0.5] as const, fog: [0x7e6a8c, 38, 240] as const, sky: { turbidity: 7, rayleigh: 2.2 }, celestial: "dusk" as const },
+  // the Kingdom of Knowledge: high pale moonlight, deep blue fill and haze, the astral sky
+  astral: { sun: new THREE.Vector3(0.35, 0.62, -0.55).normalize(), color: 0xbfd0ff, intensity: 1.9, env: HDRI.dusk, envI: 0.22, hemi: [0x5a6cc8, 0x14122a, 0.6] as const, fog: [0x0c1434, 34, 240] as const, sky: { turbidity: 2, rayleigh: 1 }, celestial: "astral" as const },
 };
 
 export function Lighting({ quality, preset = "day" }: { quality: Quality; preset?: LightPreset }) {
@@ -63,7 +65,7 @@ export function Lighting({ quality, preset = "day" }: { quality: Quality; preset
   return (
     <>
       {"celestial" in P ? (
-        <CelestialSky sunDir={SUN_DIR} detail={quality === "low" ? 3 : quality === "medium" ? 4 : 5} />
+        <CelestialSky sunDir={SUN_DIR} detail={quality === "low" ? 3 : quality === "medium" ? 4 : 5} palette={P.celestial} />
       ) : (
         <Sky distance={4500} sunPosition={[SUN_DIR.x, SUN_DIR.y, SUN_DIR.z]} turbidity={P.sky.turbidity} rayleigh={P.sky.rayleigh} mieCoefficient={0.006} mieDirectionalG={0.85} />
       )}

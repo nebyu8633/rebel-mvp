@@ -193,3 +193,43 @@ describe("World Depth", () => {
     expect(Math.hypot(STAR_LENS.x - O.x, STAR_LENS.z - O.z)).toBeGreaterThan(5.6);
   });
 });
+
+import { KNOWLEDGE_QUEST, K, SEAL_SITE, onEnterKingdom } from "../aetheria/content/knowledgeKingdom";
+import { PATHS, SATELLITES, HALL, LANDING } from "../aetheria/scenes/knowledge/layout";
+describe("The Kingdom of Knowledge", () => {
+  const atThreshold = () => {
+    let s = afterBond();
+    s = run(s, FORCES.map((f) => ({ type: "learnPower", force: f }) as Action));
+    s = run(s, [{ type: "resonate", site: SITE.steps, force: "form" }, { type: "resonate", site: SITE.pillar, force: "change" }, { type: "resonate", site: SITE.link, force: "connection" }]);
+    return run(s, [...onIsle(), ...onThreshold()]);
+  };
+  it("the seal answers the three forces only in order", () => {
+    let s = atThreshold();
+    expect(validateQuest(KNOWLEDGE_QUEST)).toEqual([]);
+    expect(KNOWLEDGE_QUEST.essential).toBe(true);
+    expect(questStatus(KNOWLEDGE_QUEST, s).state).toBe("active");
+    expect(res(s, SEAL_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    expect(res(s, SEAL_SITE, "change")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    s = run(s, [{ type: "resonate", site: SEAL_SITE, force: "form" }]);
+    expect(res(s, SEAL_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.done });
+    s = run(s, [{ type: "resonate", site: SEAL_SITE, force: "change" }]);
+    expect(s.flags).not.toContain(K.open);
+    s = run(s, [{ type: "resonate", site: SEAL_SITE, force: "connection" }]);
+    expect(s.flags).toContain(K.open);
+    s = run(s, onEnterKingdom());
+    expect(questStatus(KNOWLEDGE_QUEST, s).state).toBe("complete");
+    expect(s.flags.some((f) => f.startsWith("life:"))).toBe(false);
+  });
+  it("layout: every path is walkable and joins two platforms", () => {
+    expect(PATHS).toHaveLength(1 + SATELLITES.length);
+    for (const p of PATHS) {
+      for (let i = 1; i < p.length; i++) {
+        const [a, b] = [p[i - 1], p[i]];
+        expect((Math.atan2(Math.abs(b[1] - a[1]), Math.hypot(b[0] - a[0], b[2] - a[2])) * 180) / Math.PI).toBeLessThan(35);
+      }
+    }
+    const first = PATHS[0];
+    expect(Math.hypot(first[0][0] - LANDING.x, first[0][2] - LANDING.z)).toBeLessThan(LANDING.r);
+    expect(Math.hypot(first[2][0] - HALL.x, first[2][2] - HALL.z)).toBeLessThan(HALL.r);
+  });
+});
