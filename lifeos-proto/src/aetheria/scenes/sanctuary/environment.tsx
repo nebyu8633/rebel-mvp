@@ -10,6 +10,7 @@ import { BOUND_R, OBS, nearGate, GATE_VIEW, angDist } from "./layout";
 /** Where the plateau ends and the cliff falls into the clouds (beyond the 40 m walkable boundary). */
 const ISLAND_EDGE = 46;
 import { smooth } from "./shared";
+import { CloudSea } from "./Life";
 
 // ------------------------------------------------------------------ terrain: plateau above a sea of clouds
 export function Terrain() {
@@ -173,12 +174,9 @@ export function Sky() {
     return g;
   }, []);
   const colGeo = useMemo(() => new THREE.CylinderGeometry(0.05, 0.06, 0.5, 8), []);
-  const clouds = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xc9b2c4, roughness: 1, emissive: 0x6a5078, emissiveIntensity: 0.45 }), []);
   return (
     <group userData={{ noBatch: true }}>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -26, 0]} material={clouds}>
-        <circleGeometry args={[600, 48]} />
-      </mesh>
+      <CloudSea />
       <group ref={ref}>
         {isles.map((s, i) => (
           <group key={i} position={[s.x, s.y, s.z]} scale={[s.s, s.s * 0.9, s.s]}>

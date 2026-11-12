@@ -12,6 +12,7 @@ import { SIGILS, F, memoryShards } from "../content/firstResonance";
 import { JOURNAL, currentQuest } from "../content";
 import { MEM } from "../content/echoAwakening";
 import { useDialogue } from "./dialogueRunner";
+import { sound, unlock } from "../audio/soundscape";
 import { useProto } from "../../store";
 import { ActionButtons, Stick } from "../../ui/Controls";
 import { WorldSwitcher } from "../../ui/WorldUi";
@@ -207,6 +208,16 @@ function Panels() {
   );
 }
 
+function SoundToggle() {
+  const [muted, setMuted] = useState(sound.muted);
+  useEffect(() => sound.onChange(setMuted), []);
+  return (
+    <button className="ae-btn" data-testid="sound" onClick={() => (unlock(), sound.setMuted(!muted))}>
+      {muted ? "🔇 צליל: כבוי" : "🔊 צליל: פועל"}
+    </button>
+  );
+}
+
 function Settings() {
   const [open, setOpen] = useState(false);
   const quality = useProto((s) => s.quality);
@@ -227,6 +238,7 @@ function Settings() {
               <option value="low">נמוכה</option>
             </select>
           </label>
+          <SoundToggle />
           <button
             className="ae-btn"
             onClick={() => {

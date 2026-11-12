@@ -18,6 +18,7 @@ import { SleepingGate } from "./SleepingGate";
 import { GateGuide } from "./GateGuide";
 import { ResonanceFx } from "../../fx/ResonanceFx";
 import { PostFx } from "../../../world/PostFx";
+import { SoundController, DustMotes } from "./Life";
 import { Terrain, Sky } from "./environment";
 import { Ruins, Observatory, BrokenStair, Dome, Astrolabe, Console, SigilWall, MemoryShards, Waystone } from "./architecture";
 import { Story, EchoController } from "./story";
@@ -63,6 +64,8 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
       <GateGuide />
       <ResonanceFx />
       <PostFx quality={quality} />
+      <SoundController />
+      <DustMotes count={quality === "low" ? 120 : 260} />
       {trees.map((t) => (
         <Tree key={t.s} x={t.x} z={t.z} seed={t.s} height={5.5 + (t.s % 3) * 1.2} shadows={quality !== "low"} />
       ))}
