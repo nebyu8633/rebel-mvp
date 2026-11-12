@@ -17,6 +17,7 @@ import { CONSOLES, OBS, nearGate } from "./layout";
 import { SleepingGate } from "./SleepingGate";
 import { GateGuide } from "./GateGuide";
 import { WorldDepth } from "./WorldDepth";
+import { Arrival } from "../../../world/Arrival";
 import { ResonanceFx } from "../../fx/ResonanceFx";
 import { PostFx } from "../../../world/PostFx";
 import { SoundController, DustMotes } from "./Life";
@@ -64,6 +65,7 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
       <SleepingGate />
       <GateGuide />
       <WorldDepth />
+      <Arrival world="sanctuary" />
       <ResonanceFx />
       <PostFx quality={quality} />
       <SoundController />

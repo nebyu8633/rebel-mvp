@@ -27,6 +27,8 @@ varying vec3 vDir;
 uniform vec3 uSun;
 uniform float uTime;
 uniform int uOctaves;
+uniform vec3 uHorizon; uniform vec3 uRose; uniform vec3 uViolet; uniform vec3 uZenith; uniform vec3 uBelow;
+uniform vec3 uSunCol; uniform vec3 uNebA; uniform vec3 uNebB; uniform float uStarCut; uniform vec3 uCrackA; uniform vec3 uCrackB; uniform float uContinents;
 
 float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float noise(vec3 x) {
@@ -73,34 +75,34 @@ void main() {
   vec3 d = normalize(vDir);
   float h = d.y;
   // dusk gradient
-  vec3 horizon = vec3(0.92, 0.58, 0.34);
-  vec3 rose = vec3(0.50, 0.30, 0.42);
-  vec3 violet = vec3(0.16, 0.11, 0.30);
-  vec3 zenith = vec3(0.02, 0.018, 0.05);
+  vec3 horizon = uHorizon;
+  vec3 rose = uRose;
+  vec3 violet = uViolet;
+  vec3 zenith = uZenith;
   // the warm horizon glow is strongest toward the sun
   float toSun = max(dot(normalize(vec3(d.x, 0.0, d.z)), normalize(vec3(uSun.x, 0.0, uSun.z))), 0.0);
   vec3 col = mix(mix(rose, horizon, 0.35 + 0.65 * toSun), rose, smoothstep(-0.02, 0.07 + 0.08 * toSun, h));
   col = mix(col, violet, smoothstep(0.04, 0.2, h));
   col = mix(col, zenith, smoothstep(0.2, 0.7, h));
-  col = mix(col, vec3(0.42, 0.33, 0.45), smoothstep(0.0, -0.25, h)); // below the horizon: dusky cloud sea
+  col = mix(col, uBelow, smoothstep(0.0, -0.25, h)); // below the horizon: dusky cloud sea
 
   // sun + halo
   float s = max(dot(d, normalize(uSun)), 0.0);
-  col += vec3(1.0, 0.62, 0.32) * (pow(s, 6.0) * 0.35 + pow(s, 64.0) * 0.6) + vec3(1.0, 0.9, 0.75) * smoothstep(0.9993, 0.9998, s) * 4.0;
+  col += uSunCol * (pow(s, 6.0) * 0.35 + pow(s, 64.0) * 0.6) + mix(uSunCol, vec3(1.0), 0.6) * smoothstep(0.9993, 0.9998, s) * 4.0;
 
   // nebula band (tilted), drifting slowly
   vec3 axis = normalize(vec3(0.25, 0.92, 0.30));
   float band = exp(-pow(dot(d, axis) / 0.32, 2.0));
   float neb = fbm(d * 3.2 + vec3(uTime * 0.004, 0.0, 0.0));
   float neb2 = fbm(d * 6.5 - 3.1);
-  vec3 nebCol = mix(vec3(0.42, 0.25, 0.70), vec3(0.20, 0.62, 0.66), smoothstep(0.35, 0.75, neb2));
+  vec3 nebCol = mix(uNebA, uNebB, smoothstep(0.35, 0.75, neb2));
   col += nebCol * band * smoothstep(0.38, 0.85, neb) * 0.6 * smoothstep(0.03, 0.22, h);
 
   // stars
   vec3 sp = d * 260.0;
   vec3 ip = floor(sp);
   float r = hash(ip);
-  float star = step(0.993, r) * smoothstep(0.42, 0.0, length(fract(sp) - 0.5));
+  float star = step(uStarCut, r) * smoothstep(0.42, 0.0, length(fract(sp) - 0.5));
   star *= 0.6 + 0.4 * sin(uTime * (1.5 + r * 4.0) + r * 40.0);
   col += vec3(1.0, 0.95, 0.88) * star * smoothstep(0.05, 0.3, h) * 1.4;
 
@@ -111,14 +113,14 @@ void main() {
   vec4 c2 = continent(az, el, 1.8, 2.6, 0.02, 0.07, 2.0);
   vec4 c3 = continent(az, el, -2.85, -2.15, 0.06, 0.05, 3.0);
   vec4 c4 = continent(az, el, -1.05, -0.55, 0.1, 0.045, 4.0);
-  col = mix(col, c1.rgb, c1.a);
-  col = mix(col, c2.rgb, c2.a);
-  col = mix(col, c3.rgb, c3.a);
-  col = mix(col, c4.rgb, c4.a);
+  col = mix(col, c1.rgb, c1.a * uContinents);
+  col = mix(col, c2.rgb, c2.a * uContinents);
+  col = mix(col, c3.rgb, c3.a * uContinents);
+  col = mix(col, c4.rgb, c4.a * uContinents);
 
   // the First Fracture: cracks of light low across the sky (where the player looks)
-  vec3 gold = vec3(1.0, 0.68, 0.30);
-  vec3 teal = vec3(0.25, 0.95, 0.85);
+  vec3 gold = uCrackA;
+  vec3 teal = uCrackB;
   col += crack(az, el, -0.75, 0.55, 0.30, 0.12, 0.0035, gold, 1.0);   // north, behind the observatory
   col += crack(az, el, -0.25, 0.30, 0.20, 0.36, 0.0022, teal, 2.0);   // north, crossing it
   col += crack(az, el, -1.95, -1.15, 0.10, 0.26, 0.0026, gold, 3.0);  // west, above the Sleeping Gate
@@ -130,19 +132,27 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
-export function CelestialSky({ sunDir, detail = 5 }: { sunDir: THREE.Vector3; detail?: number }) {
+export type SkyPalette = "dusk" | "astral";
+const V = (r: number, g: number, b: number) => new THREE.Vector3(r, g, b);
+/** dusk = the First Sanctuary; astral = the Kingdom of Knowledge (deep night blue, a pale moon, dense stars) */
+const PALETTES: Record<SkyPalette, Record<string, THREE.Vector3 | number>> = {
+  dusk: { uHorizon: V(0.92, 0.58, 0.34), uRose: V(0.5, 0.3, 0.42), uViolet: V(0.16, 0.11, 0.3), uZenith: V(0.02, 0.018, 0.05), uBelow: V(0.42, 0.33, 0.45), uSunCol: V(1, 0.62, 0.32), uNebA: V(0.42, 0.25, 0.7), uNebB: V(0.2, 0.62, 0.66), uStarCut: 0.993, uCrackA: V(1, 0.68, 0.3), uCrackB: V(0.25, 0.95, 0.85), uContinents: 1 },
+  astral: { uHorizon: V(0.07, 0.11, 0.34), uRose: V(0.035, 0.055, 0.2), uViolet: V(0.012, 0.022, 0.085), uZenith: V(0.003, 0.005, 0.018), uBelow: V(0.02, 0.03, 0.09), uSunCol: V(0.62, 0.74, 1.0), uNebA: V(0.25, 0.35, 0.85), uNebB: V(0.4, 0.8, 1.0), uStarCut: 0.985, uCrackA: V(0.45, 0.7, 1.0), uCrackB: V(0.75, 0.9, 1.0), uContinents: 0.6 },
+};
+
+export function CelestialSky({ sunDir, detail = 5, palette = "dusk" }: { sunDir: THREE.Vector3; detail?: number; palette?: SkyPalette }) {
   const mesh = useRef<THREE.Mesh>(null);
   const mat = useMemo(
     () =>
       new THREE.ShaderMaterial({
         vertexShader: vert,
         fragmentShader: frag,
-        uniforms: { uSun: { value: sunDir.clone() }, uTime: { value: 0 }, uOctaves: { value: detail } },
+        uniforms: { uSun: { value: sunDir.clone() }, uTime: { value: 0 }, uOctaves: { value: detail }, ...Object.fromEntries(Object.entries(PALETTES[palette]).map(([k, v]) => [k, { value: v }])) },
         side: THREE.BackSide,
         depthWrite: false,
         fog: false,
       }),
-    [sunDir, detail],
+    [sunDir, detail, palette],
   );
   useFrame(({ camera, clock }) => {
     mat.uniforms.uTime.value = clock.elapsedTime;

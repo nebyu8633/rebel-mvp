@@ -4,13 +4,14 @@ import { FIRST_RESONANCE, JOURNAL as J1, type JournalText } from "./firstResonan
 import { ECHO_AWAKENING, ECHO_JOURNAL } from "./echoAwakening";
 import { GATE_JOURNAL, GATE_SITES, SLEEPING_GATE } from "./sleepingGate";
 import { BRIDGE_QUEST, DEPTH_JOURNAL, DEPTH_SITES, MEMORY_QUEST } from "./worldDepth";
+import { KNOWLEDGE_JOURNAL, KNOWLEDGE_QUEST, KNOWLEDGE_SITES } from "./knowledgeKingdom";
 import { questStatus } from "../core/quests";
 import type { Rules, WorldState } from "../core/state";
 
-export const QUESTS: QuestDef[] = [FIRST_RESONANCE, ECHO_AWAKENING, SLEEPING_GATE, BRIDGE_QUEST, MEMORY_QUEST];
-export const JOURNAL: Record<string, JournalText> = { ...J1, ...ECHO_JOURNAL, ...GATE_JOURNAL, ...DEPTH_JOURNAL };
+export const QUESTS: QuestDef[] = [FIRST_RESONANCE, ECHO_AWAKENING, SLEEPING_GATE, BRIDGE_QUEST, KNOWLEDGE_QUEST, MEMORY_QUEST];
+export const JOURNAL: Record<string, JournalText> = { ...J1, ...ECHO_JOURNAL, ...GATE_JOURNAL, ...DEPTH_JOURNAL, ...KNOWLEDGE_JOURNAL };
 /** World rules the engine validates against (resonance sites). */
-export const RULES: Rules = { sites: { ...GATE_SITES, ...DEPTH_SITES } };
+export const RULES: Rules = { sites: { ...GATE_SITES, ...DEPTH_SITES, ...KNOWLEDGE_SITES } };
 
 /** The quest to show in the tracker: the first visible, unfinished one (or the last completed). */
 export function currentQuest(s: WorldState): QuestDef {
