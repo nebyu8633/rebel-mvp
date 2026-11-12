@@ -86,9 +86,11 @@ export interface FutureEchoProps {
   waitAnchor: Anchor;
   waiting: boolean;
   inDialogue: boolean;
+  /** the Shifting Presence takes the colours of the kingdom it stands in */
+  tint?: { color: string; accent: string; veils: [string, string] };
 }
 
-export function FutureEcho({ stage, anchors, waitAnchor, waiting, inDialogue }: FutureEchoProps) {
+export function FutureEcho({ stage, anchors, waitAnchor, waiting, inDialogue, tint }: FutureEchoProps) {
   const gl = useThree((s) => s.gl);
   const avatar = suspend(() => resolveAvatar(), ["avatar"]);
   const gltf = useGLTF(avatar.url, false, true, gltfExtensions(gl));
@@ -271,7 +273,8 @@ export function FutureEcho({ stage, anchors, waitAnchor, waiting, inDialogue }: 
     }
 
     // ---- the Shifting Presence: appearance per stage
-    const look = stage === "dormant" ? APPEARANCE.silent_observer : APPEARANCE[stage];
+    const baseLook = stage === "dormant" ? APPEARANCE.silent_observer : APPEARANCE[stage];
+    const look = tint ? { ...baseLook, color: tint.color, accent: tint.accent, veils: { ...baseLook.veils, colors: tint.veils } } : baseLook;
     material.emissive.lerp(tmp.c.set(look.color), 1 - Math.exp(-2 * dt));
     (uniforms.uAccent.value as THREE.Color).set(look.accent);
     // a burst of shards right when it becomes the Fragmented Mind, then its normal flicker

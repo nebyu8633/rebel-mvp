@@ -29,6 +29,7 @@ import { ResonanceFx } from "../../fx/ResonanceFx";
 import { PostFx } from "../../../world/PostFx";
 import { Arrival } from "../../../world/Arrival";
 import { SoundController, DustMotes } from "../sanctuary/Life";
+import { HallOfPatterns } from "./HallOfPatterns";
 import { FALL_Y, HALL, LANDING, PATHS, SATELLITES, SPAWN, WAYSTONE } from "./layout";
 
 const BLUE = "#3f8cff";
@@ -321,6 +322,7 @@ export function KnowledgeScene({ quality }: { quality: Quality }) {
       <Orrery />
       <Frames />
       <Waystone />
+      <HallOfPatterns />
       <Story />
       <Arrival world="knowledge" />
       <ResonanceFx />

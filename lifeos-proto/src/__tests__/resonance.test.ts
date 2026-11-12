@@ -194,7 +194,7 @@ describe("World Depth", () => {
   });
 });
 
-import { KNOWLEDGE_QUEST, K, SEAL_SITE, onEnterKingdom } from "../aetheria/content/knowledgeKingdom";
+import { KNOWLEDGE_QUEST, K, SEAL_SITE, onEnterKingdom, CODEX_SITE, DIALS, DIAL_SYMBOLS, DIAL_TARGET, dialSite } from "../aetheria/content/knowledgeKingdom";
 import { PATHS, SATELLITES, HALL, LANDING } from "../aetheria/scenes/knowledge/layout";
 describe("The Kingdom of Knowledge", () => {
   const atThreshold = () => {
@@ -217,7 +217,22 @@ describe("The Kingdom of Knowledge", () => {
     s = run(s, [{ type: "resonate", site: SEAL_SITE, force: "connection" }]);
     expect(s.flags).toContain(K.open);
     s = run(s, onEnterKingdom());
+    expect((questStatus(KNOWLEDGE_QUEST, s) as { step?: { id: string } }).step?.id).toBe("dials");
+
+    // the Hall of Patterns: the codex won't open before every dial points at its symbol
+    expect(res(s, CODEX_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    expect(res(s, dialSite("west"), "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    for (const d of DIALS) for (let k = 0; k < DIAL_TARGET[d]; k++) s = run(s, [{ type: "resonate", site: dialSite(d), force: "change" }]);
+    expect(DIALS.every((d) => s.sites[dialSite(d)] === `p${DIAL_TARGET[d]}`)).toBe(true);
+    // one turn too many breaks the pattern again; a full turn brings it back
+    let over = run(s, [{ type: "resonate", site: dialSite("north"), force: "change" }]);
+    expect(res(over, CODEX_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (let k = 1; k < DIAL_SYMBOLS; k++) over = run(over, [{ type: "resonate", site: dialSite("north"), force: "change" }]);
+    expect(over.sites[dialSite("north")]).toBe(`p${DIAL_TARGET.north}`);
+    s = run(s, [{ type: "resonate", site: CODEX_SITE, force: "connection" }]);
+    expect(s.flags).toContain(K.codex);
     expect(questStatus(KNOWLEDGE_QUEST, s).state).toBe("complete");
+    expect(viewNode(ECHO_TALK, "start", s)!.text).toContain("הקודקס פתוח");
     expect(s.flags.some((f) => f.startsWith("life:"))).toBe(false);
   });
   it("layout: every path is walkable and joins two platforms", () => {
