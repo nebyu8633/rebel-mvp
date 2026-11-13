@@ -27,13 +27,14 @@ import { ECHO_HELPS, HAMLETS, HEARTH_SITE, S, SOCIAL_SITES, bellFlag, bridgeSite
 import { resonateSite } from "../sanctuary/SleepingGate";
 import { FutureEcho } from "../sanctuary/FutureEcho";
 import { isleGeometry } from "../sanctuary/environment";
+import { useSanctuaryKit } from "../sanctuary/architecture";
 import { LightPath } from "../shared/LightPath";
 import { ResonanceFx } from "../../fx/ResonanceFx";
 import { PostFx } from "../../../world/PostFx";
 import { Arrival } from "../../../world/Arrival";
 import { SoundController, DustMotes } from "../sanctuary/Life";
 import { HEARTH_GATE_ARRIVAL } from "../career/layout";
-import { FALL_Y, GATHER, HAMLET_SPOTS, HEARTH, KEEPER_STONES, PLAZA, SPAWN, VILLAGE_BRIDGES, WAYSTONE } from "./layout";
+import { FALL_Y, GATHER, GOLD_GATE, HAMLET_SPOTS, HEARTH, KEEPER_STONES, PLAZA, SPAWN, VILLAGE_BRIDGES, WAYSTONE } from "./layout";
 
 const showJournal = (before: number, tone: "discovery" | "resonance" | "echo" = "discovery") => {
   for (const j of useAetheria.getState().world.journal.slice(before)) {
@@ -391,6 +392,65 @@ function Waystone() {
   );
 }
 
+/** the Gate of Gold: appears on the plaza rim once the Common Flame burns, toward the Vault of Value */
+function GoldGate() {
+  const open = useAetheria((s) => s.world.flags.includes(S.flame));
+  const stone = usePBR("ruinwall", { tint: 0xc8b898 });
+  const kit = useSanctuaryKit();
+  const seal = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uOn: { value: 0 } },
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: `uniform float uTime; uniform float uOn; varying vec2 vUv;
+          void main(){ vec2 p = vUv - 0.5; float r = length(p * vec2(1.0, 0.7));
+            float shimmer = 0.6 + 0.4 * sin(uTime * 2.0 - r * 18.0);
+            float a = smoothstep(0.6, 0.1, r) * (0.3 + 0.55 * shimmer) * uOn;
+            gl_FragColor = vec4(vec3(1.0, 0.82, 0.42) * a * 1.5, 1.0); }`,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
+    [],
+  );
+  useFrame(({ clock }) => {
+    seal.uniforms.uTime.value = clock.elapsedTime;
+    seal.uniforms.uOn.value += ((open ? 1 : 0) - seal.uniforms.uOn.value) * 0.03;
+  });
+  useEffect(() => {
+    if (!open || !worldAvailable("wealth")) return;
+    const fx = Math.sin(GOLD_GATE.yaw) * 1.4;
+    const fz = Math.cos(GOLD_GATE.yaw) * 1.4;
+    interactables.set("gold-gate", {
+      id: "gold-gate",
+      label: "היכנסו אל כספת הערך",
+      x: GOLD_GATE.x + fx,
+      y: 0,
+      z: GOLD_GATE.z + fz,
+      radius: 2,
+      onContact: () => void goToWorld("wealth", { style: "resonance" }),
+    });
+    return () => void interactables.delete("gold-gate");
+  }, [open]);
+  return (
+    <group position={[GOLD_GATE.x, 0, GOLD_GATE.z]} rotation-y={GOLD_GATE.yaw} userData={{ noBatch: true }}>
+      {open && (
+        <RigidBody type="fixed" colliders={false}>
+          <CuboidCollider args={[1.8, 1.6, 0.4]} position={[0, 1.6, 0]} />
+        </RigidBody>
+      )}
+      <group visible={open} scale={0.45}>
+        <mesh geometry={kit.arch_gate} material={stone} castShadow receiveShadow />
+        <mesh material={seal} position={[0, 2.4, 0]}>
+          <planeGeometry args={[3.6, 5.2]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 function Story() {
   const hydrated = useAetheria((s) => s.hydrated);
   useEffect(() => {
@@ -422,6 +482,7 @@ export function SocialScene({ quality }: { quality: Quality }) {
         <Hamlet key={h} id={h} />
       ))}
       <Villagers />
+      <GoldGate />
       <EchoInVillage />
       <Waystone />
       <Story />

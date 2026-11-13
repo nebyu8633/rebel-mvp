@@ -38,3 +38,7 @@ export const GATHER = Array.from({ length: 12 }, (_, i) => {
   const a = (i / 12) * Math.PI * 2;
   return { x: HEARTH.x + Math.cos(a) * 5.6, z: HEARTH.z + Math.sin(a) * 5.6, face: Math.atan2(-Math.cos(a), -Math.sin(a)) };
 });
+/** the Gate of Gold (to the Vault of Value): on the plaza's south-west rim, open once the flame burns */
+export const GOLD_GATE = { ...at(-135, 9.6), yaw: (3 * Math.PI) / 4 };
+/** where a traveller back from the Vault appears: just inside the gate, facing the hearth */
+export const GOLD_GATE_ARRIVAL = { ...at(-135, 7.4), y: 0.2, yaw: Math.PI - Math.PI / 4 };

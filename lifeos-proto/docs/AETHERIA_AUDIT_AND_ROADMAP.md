@@ -231,3 +231,19 @@ Quality gate for every stage:
 2. A measurement from your iPhone: open `/aetheria?stats=1`, walk around for a minute, and send a screenshot of the counter. This is the performance baseline.
 3. A decision on Higgsfield: concept art only within the 70 existing credits, or nothing for now.
 4. (Later) a decision on server-side saving.
+
+---
+
+## 9. Status: chapter one complete (all six kingdoms and the finale)
+
+Sanctuary → Knowledge → Health → Mind → Career → Social → **Wealth (the Vault of Value)** → the finale, back at the Origin Fragment.
+
+- **Wealth:** a gilded marble terrace with a balance, three plinths and a round vault door.
+  - CHANGE refines each plinth's ore into gold.
+  - CONNECTION carries the ingot onto the empty pan. Order matters, and the engine refuses carrying before refining.
+  - FORM opens the door, but only once the scale balances.
+  - The sixth shard waits inside, beside the way back to the Origin.
+- **Finale:** in the observatory with the sixth shard, CONNECTION at the fragment joins `origin_convergence`.
+  - The engine requires all six kingdom flags (`allKingdoms`). There is no partial join.
+  - Six beams in the kingdoms' colours rise into a crown, and the journal entry `j.restored` closes the chapter.
+- Everything is engine-validated and works with no real-life activity. No `life:` flags gate any of it.

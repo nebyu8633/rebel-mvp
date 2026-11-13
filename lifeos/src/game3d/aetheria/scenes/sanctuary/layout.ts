@@ -85,3 +85,5 @@ export const MEMORY_SPOTS = {
 };
 /** The cracked star lens on the gallery (east), focusing starlight onto the floor's star chart. */
 export const STAR_LENS = { ...around(60, 6.45), y: GALLERY.y };
+/** where a traveller back from the Vault of Value appears: inside the observatory, facing the fragment */
+export const ORIGIN_ARRIVAL = { x: OBS.x, y: FLOOR_Y + 0.1, z: OBS.z + 3.2, yaw: Math.PI };

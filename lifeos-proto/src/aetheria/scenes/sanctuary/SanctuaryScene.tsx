@@ -18,6 +18,7 @@ import { SleepingGate } from "./SleepingGate";
 import { GateGuide } from "./GateGuide";
 import { WorldDepth } from "./WorldDepth";
 import { Arrival } from "../../../world/Arrival";
+import { Finale } from "./Finale";
 import { ResonanceFx } from "../../fx/ResonanceFx";
 import { PostFx } from "../../../world/PostFx";
 import { SoundController, DustMotes } from "./Life";
@@ -74,6 +75,7 @@ export function SanctuaryScene({ quality }: { quality: Quality }) {
         <Tree key={t.s} x={t.x} z={t.z} seed={t.s} height={5.5 + (t.s % 3) * 1.2} shadows={quality !== "low"} />
       ))}
       <Story />
+      <Finale />
     </group>
   );
 }

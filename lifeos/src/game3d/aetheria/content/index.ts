@@ -9,13 +9,14 @@ import { HEALTH_JOURNAL, HEALTH_QUEST, HEALTH_SITES } from "./healthKingdom";
 import { MIND_JOURNAL, MIND_QUEST, MIND_SITES } from "./mindKingdom";
 import { CAREER_JOURNAL, CAREER_QUEST, CAREER_SITES } from "./careerKingdom";
 import { SOCIAL_JOURNAL, SOCIAL_QUEST, SOCIAL_SITES } from "./socialKingdom";
+import { FINALE_QUEST, WEALTH_JOURNAL, WEALTH_QUEST, WEALTH_SITES } from "./wealthKingdom";
 import { questStatus } from "../core/quests";
 import type { Rules, WorldState } from "../core/state";
 
-export const QUESTS: QuestDef[] = [FIRST_RESONANCE, ECHO_AWAKENING, SLEEPING_GATE, BRIDGE_QUEST, KNOWLEDGE_QUEST, HEALTH_QUEST, MIND_QUEST, CAREER_QUEST, SOCIAL_QUEST, MEMORY_QUEST];
-export const JOURNAL: Record<string, JournalText> = { ...J1, ...ECHO_JOURNAL, ...GATE_JOURNAL, ...DEPTH_JOURNAL, ...KNOWLEDGE_JOURNAL, ...HEALTH_JOURNAL, ...MIND_JOURNAL, ...CAREER_JOURNAL, ...SOCIAL_JOURNAL };
+export const QUESTS: QuestDef[] = [FIRST_RESONANCE, ECHO_AWAKENING, SLEEPING_GATE, BRIDGE_QUEST, KNOWLEDGE_QUEST, HEALTH_QUEST, MIND_QUEST, CAREER_QUEST, SOCIAL_QUEST, WEALTH_QUEST, FINALE_QUEST, MEMORY_QUEST];
+export const JOURNAL: Record<string, JournalText> = { ...J1, ...ECHO_JOURNAL, ...GATE_JOURNAL, ...DEPTH_JOURNAL, ...KNOWLEDGE_JOURNAL, ...HEALTH_JOURNAL, ...MIND_JOURNAL, ...CAREER_JOURNAL, ...SOCIAL_JOURNAL, ...WEALTH_JOURNAL };
 /** World rules the engine validates against (resonance sites). */
-export const RULES: Rules = { sites: { ...GATE_SITES, ...DEPTH_SITES, ...KNOWLEDGE_SITES, ...HEALTH_SITES, ...MIND_SITES, ...CAREER_SITES, ...SOCIAL_SITES } };
+export const RULES: Rules = { sites: { ...GATE_SITES, ...DEPTH_SITES, ...KNOWLEDGE_SITES, ...HEALTH_SITES, ...MIND_SITES, ...CAREER_SITES, ...SOCIAL_SITES, ...WEALTH_SITES } };
 
 /** The quest to show in the tracker: the first visible, unfinished one (or the last completed). */
 export function currentQuest(s: WorldState): QuestDef {
