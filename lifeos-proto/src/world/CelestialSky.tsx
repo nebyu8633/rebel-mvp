@@ -132,11 +132,13 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
-export type SkyPalette = "dusk" | "astral" | "verdant" | "dream";
+export type SkyPalette = "dusk" | "astral" | "verdant" | "dream" | "ember";
 const V = (r: number, g: number, b: number) => new THREE.Vector3(r, g, b);
 /** dusk = the First Sanctuary; astral = the Kingdom of Knowledge (deep night blue, a pale moon, dense stars) */
 const PALETTES: Record<SkyPalette, Record<string, THREE.Vector3 | number>> = {
   dusk: { uHorizon: V(0.92, 0.58, 0.34), uRose: V(0.5, 0.3, 0.42), uViolet: V(0.16, 0.11, 0.3), uZenith: V(0.02, 0.018, 0.05), uBelow: V(0.42, 0.33, 0.45), uSunCol: V(1, 0.62, 0.32), uNebA: V(0.42, 0.25, 0.7), uNebB: V(0.2, 0.62, 0.66), uStarCut: 0.993, uCrackA: V(1, 0.68, 0.3), uCrackB: V(0.25, 0.95, 0.85), uContinents: 1 },
+  // the Great Works: a sooty orange dusk over the forges, the fracture molten
+  ember: { uHorizon: V(0.95, 0.42, 0.16), uRose: V(0.45, 0.17, 0.1), uViolet: V(0.12, 0.05, 0.06), uZenith: V(0.02, 0.012, 0.016), uBelow: V(0.35, 0.12, 0.05), uSunCol: V(1, 0.5, 0.2), uNebA: V(0.5, 0.2, 0.1), uNebB: V(0.7, 0.45, 0.2), uStarCut: 0.996, uCrackA: V(1, 0.55, 0.15), uCrackB: V(1, 0.85, 0.5), uContinents: 0.5 },
   // the Hall of Reflections: a pink-lavender horizon under a deep teal sky, the fracture rose and pale cyan
   dream: { uHorizon: V(0.62, 0.36, 0.55), uRose: V(0.36, 0.22, 0.48), uViolet: V(0.1, 0.1, 0.28), uZenith: V(0.012, 0.03, 0.06), uBelow: V(0.3, 0.2, 0.36), uSunCol: V(1, 0.7, 0.85), uNebA: V(0.6, 0.3, 0.75), uNebB: V(0.3, 0.75, 0.85), uStarCut: 0.991, uCrackA: V(1, 0.6, 0.85), uCrackB: V(0.55, 0.95, 1.0), uContinents: 0 },
   // the Living Grove: a green-gold morning, few stars, the fracture faint and warm

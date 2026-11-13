@@ -37,3 +37,8 @@ export const LANTERN_SPOTS = BRIDGES.map((b, i) => {
   // beside the bridge head, not on it
   return { x: isl.x + (dx / d) * (isl.r - 2.2) + (dz / d) * 2.2, y: isl.y, z: isl.z + (dz / d) * (isl.r - 2.2) - (dx / d) * 2.2 };
 });
+
+/** The Door of Works (to the Kingdom of Career): stands on the core island once the Mind is awake. */
+export const WORKS_DOOR = { x: ISLANDS.core.x + 3.2, y: ISLANDS.core.y, z: ISLANDS.core.z + 3.6 };
+/** coming back from the Works: in front of the door, facing the eye */
+export const WORKS_DOOR_ARRIVAL = { x: WORKS_DOOR.x - 1.4, y: WORKS_DOOR.y + 0.2, z: WORKS_DOOR.z - 1.4, yaw: Math.atan2(ISLANDS.core.x - WORKS_DOOR.x, ISLANDS.core.z - WORKS_DOOR.z) };

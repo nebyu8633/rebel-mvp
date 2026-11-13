@@ -35,7 +35,7 @@ import { PostFx } from "../../../world/PostFx";
 import { Arrival } from "../../../world/Arrival";
 import { SoundController, DustMotes } from "../sanctuary/Life";
 import { DREAMS_GATE_ARRIVAL } from "../health/layout";
-import { BRIDGES, FALL_Y, ISLANDS, LANTERN_SPOTS, MIRROR_Y, SPAWN, WAYSTONE } from "./layout";
+import { BRIDGES, FALL_Y, ISLANDS, LANTERN_SPOTS, MIRROR_Y, SPAWN, WAYSTONE, WORKS_DOOR } from "./layout";
 
 const ease = (x: number) => {
   const t = Math.min(1, Math.max(0, x));
@@ -439,6 +439,44 @@ function Story() {
   return null;
 }
 
+/** The Door of Works: a lone door that, once the Mind is awake, opens onto the Kingdom of Career. */
+function WorksDoor() {
+  const awake = useAetheria((s) => s.world.flags.includes(M.awake));
+  const gold = useMemo(() => new THREE.MeshStandardMaterial({ color: 0xd9b46a, metalness: 1, roughness: 0.25 }), []);
+  const glow = useMemo(() => new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffb060").multiplyScalar(1.6), transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false }), []);
+  useFrame(({ clock }) => void (glow.opacity = awake ? 0.55 + Math.sin(clock.elapsedTime * 2) * 0.15 : 0.08));
+  const yaw = Math.atan2(ISLANDS.core.x - WORKS_DOOR.x, ISLANDS.core.z - WORKS_DOOR.z);
+  useEffect(() => {
+    if (!awake || !worldAvailable("career")) return;
+    interactables.set("works-door", {
+      id: "works-door",
+      label: "פתחו את דלת המלאכה",
+      x: WORKS_DOOR.x - Math.sin(yaw) * -1.2,
+      y: WORKS_DOOR.y,
+      z: WORKS_DOOR.z - Math.cos(yaw) * -1.2,
+      radius: 2,
+      onContact: () => void goToWorld("career", { style: "resonance" }),
+    });
+    return () => void interactables.delete("works-door");
+  }, [awake, yaw]);
+  return (
+    <group position={[WORKS_DOOR.x, WORKS_DOOR.y, WORKS_DOOR.z]} rotation-y={yaw} userData={{ noBatch: true }}>
+      <mesh material={gold} position={[-1.1, 2, 0]}>
+        <boxGeometry args={[0.2, 4.2, 0.2]} />
+      </mesh>
+      <mesh material={gold} position={[1.1, 2, 0]}>
+        <boxGeometry args={[0.2, 4.2, 0.2]} />
+      </mesh>
+      <mesh material={gold} position={[0, 4.1, 0]}>
+        <boxGeometry args={[2.4, 0.2, 0.2]} />
+      </mesh>
+      <mesh material={glow} position={[0, 2, 0]}>
+        <planeGeometry args={[2, 4]} />
+      </mesh>
+    </group>
+  );
+}
+
 export function MindScene({ quality }: { quality: Quality }) {
   // a string, not an array: a zustand selector returning a new array re-renders forever
   const key = useAetheria((s) => LANTERNS.map((l) => siteState(s.world, MIND_SITES[lanternSite(l)]) === "real").join(","));
@@ -456,6 +494,7 @@ export function MindScene({ quality }: { quality: Quality }) {
         <Lantern key={l} id={l} index={i} />
       ))}
       <SleepingMind />
+      <WorksDoor />
       <Dreamscape />
       <EchoInMind />
       <Waystone />
