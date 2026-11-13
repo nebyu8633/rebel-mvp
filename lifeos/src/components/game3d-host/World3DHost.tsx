@@ -23,7 +23,7 @@ import { params, useProto, type Quality } from "@/game3d/store";
 const DPR: Record<Quality, number> = { high: 2, medium: 1.5, low: 1 };
 
 /** World id (engine) -> app route. */
-export const WORLD_ROUTES: Record<string, string> = { city: "/city", sanctuary: "/aetheria", knowledge: "/aetheria/knowledge", health: "/aetheria/health", mind: "/aetheria/mind" };
+export const WORLD_ROUTES: Record<string, string> = { city: "/city", sanctuary: "/aetheria", knowledge: "/aetheria/knowledge", health: "/aetheria/health", mind: "/aetheria/mind", career: "/aetheria/career" };
 
 function RendererSetup({ quality }: { quality: Quality }) {
   const gl = useThree((s) => s.gl);

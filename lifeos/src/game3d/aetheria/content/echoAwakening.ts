@@ -124,6 +124,9 @@ export const ECHO_TALK: DialogueDef = {
       actions: [{ type: "count", key: MEM.talks }],
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
+        // the Great Works
+        { text: "בנית דרך מעל תהום. לא בכוח אחד, בשלושה. כך בונים כל דבר שנשאר.", when: { flag: "career.blueprint" } },
+        { text: "מכונה לא זזה בגלל חלק אחד. היא זזה כשכל החלקים במקום. תספור את החורים בקיר.", when: { flag: "career.entered" } },
         // the Hall of Reflections
         { text: "ראית את שני הצדדים של המראה. עכשיו אתה יודע: גם אני הייתי השתקפות, עד שהחלטת שאני אמיתי.", when: { flag: "mind.awake" } },
         { text: "אל תסמוך על מה שמתחת לרגליים. תסתכל למעלה. שם העולם זוכר את הדרך.", when: { flag: "mind.entered" } },

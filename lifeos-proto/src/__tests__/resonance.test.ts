@@ -317,3 +317,36 @@ describe("The Kingdom of the Mind", () => {
     for (const sp of Object.values(SP2)) expect(Math.hypot(sp.x - DREAMS_GATE.x, sp.z - DREAMS_GATE.z)).toBeGreaterThan(6);
   });
 });
+
+import { CAREER_QUEST, C as CK, GEARS, gearSite, LEVER_SITE, CRANE_SITE, onEnterWorks, onBlueprint } from "../aetheria/content/careerKingdom";
+import { SPAN, TOWER, WORKS, GEAR_WALL, LEVER as LV, CRANE as CR } from "../aetheria/scenes/career/layout";
+import { WORKS_DOOR, ISLANDS as MI } from "../aetheria/scenes/mind/layout";
+describe("The Kingdom of Career", () => {
+  it("gears (any order) -> lever -> girder -> blueprint", () => {
+    let s = run(initialWorldState(), [{ type: "setFlag", flag: M.awake }, ...FORCES.map((f) => ({ type: "learnPower", force: f }) as Action)]);
+    expect(validateQuest(CAREER_QUEST)).toEqual([]);
+    expect(CAREER_QUEST.essential).toBe(true);
+    s = run(s, onEnterWorks());
+    expect(res(s, LEVER_SITE, "change")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    expect(res(s, CRANE_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    expect(res(s, gearSite("left"), "change")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    for (const g of [...GEARS].reverse()) s = run(s, [{ type: "resonate", site: gearSite(g), force: "form" }]);
+    s = run(s, [{ type: "resonate", site: LEVER_SITE, force: "change" }, { type: "resonate", site: CRANE_SITE, force: "connection" }]);
+    s = run(s, onBlueprint());
+    expect(s.flags).toContain(CK.blueprint);
+    expect(questStatus(CAREER_QUEST, s).state).toBe("complete");
+    expect(s.memory["world.gears_forged"]).toBe(3);
+  });
+  it("layout: the span is level, starts on the platform and lands on the tower; the door stands on the core island", () => {
+    expect(SPAN.from[1]).toBe(SPAN.to[1]);
+    expect(Math.hypot(SPAN.from[0] - WORKS.x, SPAN.from[2] - WORKS.z)).toBeLessThan(WORKS.r - 0.5);
+    expect(Math.hypot(SPAN.to[0] - TOWER.x, SPAN.to[2] - TOWER.z)).toBeLessThan(TOWER.r - 0.5);
+    for (const p of [LV, CR, ...GEAR_WALL.sockets.map((x) => ({ x, z: GEAR_WALL.z + 1.6 }))]) expect(Math.hypot(p.x - WORKS.x, p.z - WORKS.z)).toBeLessThan(WORKS.r - 1);
+    // the machine's face leaves a way (>= 3 m) round its west end to the girder
+    const westEnd = GEAR_WALL.x - GEAR_WALL.width / 2;
+    const halfWidthAtWall = Math.sqrt(WORKS.r ** 2 - (GEAR_WALL.z - 1 - WORKS.z) ** 2);
+    expect(westEnd - (WORKS.x - halfWidthAtWall)).toBeGreaterThan(3);
+    expect(CR.x).toBeLessThan(westEnd);
+    expect(Math.hypot(WORKS_DOOR.x - MI.core.x, WORKS_DOOR.z - MI.core.z)).toBeLessThan(MI.core.r - 1);
+  });
+});
