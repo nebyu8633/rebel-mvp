@@ -284,3 +284,36 @@ describe("The Kingdom of Health", () => {
     }
   });
 });
+
+import { MIND_QUEST, M, CORE_SITE, LANTERNS, lanternSite, onEnterMind } from "../aetheria/content/mindKingdom";
+import { BRIDGES, ISLANDS, LANTERN_SPOTS } from "../aetheria/scenes/mind/layout";
+import { DREAMS_GATE, SPRING_SPOTS as SP2 } from "../aetheria/scenes/health/layout";
+describe("The Kingdom of the Mind", () => {
+  it("bridges become real one after another; the Mind wakes only when all are real", () => {
+    let s = run(initialWorldState(), [{ type: "setFlag", flag: H.bloomed }, ...FORCES.map((f) => ({ type: "learnPower", force: f }) as Action)]);
+    expect(validateQuest(MIND_QUEST)).toEqual([]);
+    expect(MIND_QUEST.essential).toBe(true);
+    s = run(s, onEnterMind());
+    expect(res(s, lanternSite("second"), "change")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    expect(res(s, lanternSite("first"), "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    expect(res(s, CORE_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (const l of LANTERNS) s = run(s, [{ type: "resonate", site: lanternSite(l), force: "change" }]);
+    expect(s.memory["world.bridges_realised"]).toBe(3);
+    s = run(s, [{ type: "resonate", site: CORE_SITE, force: "connection" }]);
+    expect(s.flags).toContain(M.awake);
+    expect(questStatus(MIND_QUEST, s).state).toBe("complete");
+    expect(viewNode(ECHO_TALK, "start", s)!.text).toContain("שני הצדדים של המראה");
+  });
+  it("layout: bridges walkable, lanterns on their islands and off the bridges, the dreams gate clear", () => {
+    for (const b of BRIDGES) {
+      const [a, c] = [b[0], b[b.length - 1]];
+      expect((Math.atan2(Math.abs(c[1] - a[1]), Math.hypot(c[0] - a[0], c[2] - a[2])) * 180) / Math.PI).toBeLessThan(25);
+    }
+    const isl = [ISLANDS.first, ISLANDS.second, ISLANDS.third];
+    LANTERN_SPOTS.forEach((p, i) => {
+      expect(Math.hypot(p.x - isl[i].x, p.z - isl[i].z)).toBeLessThan(isl[i].r - 0.5);
+      expect(Math.hypot(p.x - BRIDGES[i][0][0], p.z - BRIDGES[i][0][2])).toBeGreaterThan(1.8);
+    });
+    for (const sp of Object.values(SP2)) expect(Math.hypot(sp.x - DREAMS_GATE.x, sp.z - DREAMS_GATE.z)).toBeGreaterThan(6);
+  });
+});

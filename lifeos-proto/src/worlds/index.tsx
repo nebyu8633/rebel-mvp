@@ -18,6 +18,8 @@ import { KnowledgeScene } from "../aetheria/scenes/knowledge/KnowledgeScene";
 import { SPAWN as KNOWLEDGE_SPAWN } from "../aetheria/scenes/knowledge/layout";
 import { HealthScene } from "../aetheria/scenes/health/HealthScene";
 import { SPAWN as HEALTH_SPAWN } from "../aetheria/scenes/health/layout";
+import { MindScene } from "../aetheria/scenes/mind/MindScene";
+import { SPAWN as MIND_SPAWN } from "../aetheria/scenes/mind/layout";
 
 const provider = selectProvider({ liveEnabled: LIVE_DATA });
 
@@ -50,5 +52,6 @@ export function registerBuiltInWorlds() {
   registerWorld({ id: "sanctuary", title: "AETHERIA · המקדש הראשון", layer: "aetheria", light: "celestial", spawn: SANCTUARY_SPAWN, wearsLoadout: true, Scene: SanctuaryScene, Hud: AetheriaHud });
   registerWorld({ id: "knowledge", title: "AETHERIA · ממלכת הידע", layer: "aetheria", light: "astral", spawn: KNOWLEDGE_SPAWN, wearsLoadout: true, Scene: KnowledgeScene, Hud: AetheriaHud });
   registerWorld({ id: "health", title: "AETHERIA · חורשת החיים", layer: "aetheria", light: "verdant", spawn: HEALTH_SPAWN, wearsLoadout: true, Scene: HealthScene, Hud: AetheriaHud });
+  registerWorld({ id: "mind", title: "AETHERIA · היכל ההשתקפויות", layer: "aetheria", light: "dream", spawn: MIND_SPAWN, wearsLoadout: true, Scene: MindScene, Hud: AetheriaHud });
   registerWorld({ id: "test", title: "סצנת בדיקות פיזיקה", layer: "dev", light: "day", spawn: { x: 0, y: 0, z: 12, yaw: Math.PI }, wearsLoadout: false, Scene: World, Hud: TestHud });
 }

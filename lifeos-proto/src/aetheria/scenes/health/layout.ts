@@ -25,3 +25,8 @@ export const GIANTS = [
   { b: 160, d: 23, h: 27, r: 1.6 },
   { b: -20, d: 29, h: 30, r: 1.9 },
 ].map((g) => ({ ...g, ...at(g.b, g.d) }));
+
+/** The Gate of Dreams (to the Kingdom of the Mind): appears beside the path once the Heart Tree blooms. */
+export const DREAMS_GATE = { x: -6.5, z: 17 };
+/** coming back from the Mind: in front of the gate, facing the Heart Tree */
+export const DREAMS_GATE_ARRIVAL = { x: -4.2, y: 0.2, z: 16.2, yaw: Math.atan2(HEART.x + 4.2, HEART.z - 16.2) };
