@@ -16,3 +16,8 @@ export const WAYSTONE = { x: 3, z: 25 };
 export const FALL_Y = -12;
 /** the crane's arm, swung across the chasm: a straight, level span from the platform to the tower */
 export const SPAN = { from: [CRANE.x, 0, CRANE.z] as [number, number, number], to: [TOWER.x - 1.5, 0, TOWER.z + TOWER.r - 1] as [number, number, number] };
+
+/** The Gate of the Hearth (to the Kingdom of Social): on the tower's platform once the blueprint is read. */
+export const HEARTH_GATE = { x: TOWER.x + 3.6, z: TOWER.z + 2.6 };
+/** coming back from the Village: in front of the gate, facing the girder home */
+export const HEARTH_GATE_ARRIVAL = { x: TOWER.x + 1.6, y: 0.2, z: TOWER.z + 4.2, yaw: 0 };

@@ -12,7 +12,7 @@ import { HDRI } from "../config";
 import { telemetry } from "../player/Player";
 import type { Quality } from "../store";
 
-export type LightPreset = "day" | "dusk" | "dawn" | "celestial" | "astral" | "verdant" | "dream" | "ember";
+export type LightPreset = "day" | "dusk" | "dawn" | "celestial" | "astral" | "verdant" | "dream" | "ember" | "hearth";
 const PRESETS = {
   day: { sun: new THREE.Vector3(0.7, 0.6, 0.38).normalize(), color: 0xfff0d8, intensity: 3.8, env: HDRI.day, envI: 0.1, hemi: [0xcfe3ff, 0x5a5040, 0.12] as const, fog: [0xc9d6e2, 45, 140] as const, sky: { turbidity: 6, rayleigh: 1.2 } },
   // late golden hour from the west, cool sky fill — the look of the reference image
@@ -22,6 +22,8 @@ const PRESETS = {
   // AETHERIA visual bible: a low gold sun in the west (behind the Sleeping Gate), violet sky fill,
   // lilac haze, and the fractured celestial sky instead of a daylight sky
   celestial: { sun: new THREE.Vector3(-0.84, 0.26, -0.2).normalize(), color: 0xffa868, intensity: 2.7, env: HDRI.dusk, envI: 0.26, hemi: [0x8a7fc8, 0x3a2c28, 0.5] as const, fog: [0x7e6a8c, 38, 240] as const, sky: { turbidity: 7, rayleigh: 2.2 }, celestial: "dusk" as const },
+  // the Village of the Hearth: last warm light from the west, a cool blue evening fill
+  hearth: { sun: new THREE.Vector3(-0.8, 0.2, 0.3).normalize(), color: 0xffb27a, intensity: 2.3, env: HDRI.dusk, envI: 0.3, hemi: [0x7f8fd0, 0x2a2420, 0.6] as const, fog: [0x3a3a5c, 34, 230] as const, sky: { turbidity: 5, rayleigh: 2 }, celestial: "hearth" as const },
   // the Great Works: a low furnace-orange sun, warm smoky fill
   ember: { sun: new THREE.Vector3(0.7, 0.22, 0.4).normalize(), color: 0xffa060, intensity: 2.8, env: HDRI.dusk, envI: 0.3, hemi: [0x8a6a5a, 0x2a1810, 0.55] as const, fog: [0x3a2218, 30, 220] as const, sky: { turbidity: 8, rayleigh: 1.5 }, celestial: "ember" as const },
   // the Hall of Reflections: a soft pink sidelight, lavender fill, violet haze

@@ -350,3 +350,41 @@ describe("The Kingdom of Career", () => {
     expect(Math.hypot(WORKS_DOOR.x - MI.core.x, WORKS_DOOR.z - MI.core.z)).toBeLessThan(MI.core.r - 1);
   });
 });
+
+import { SOCIAL_QUEST, S as SK, HAMLETS, bridgeSite, bellFlag, HEARTH_SITE, ECHO_HELPS, onEnterVillage, onBell, onKeepers } from "../aetheria/content/socialKingdom";
+import { VILLAGE_BRIDGES, KEEPER_STONES, HEARTH as HH, PLAZA, HAMLET_SPOTS, GATHER } from "../aetheria/scenes/social/layout";
+import { HEARTH_GATE, TOWER as TW } from "../aetheria/scenes/career/layout";
+describe("The Kingdom of Social", () => {
+  it("bridges, bells, two keepers (you and the Echo, when asked), then the flame", () => {
+    let s = run(initialWorldState(), [{ type: "setFlag", flag: CK.blueprint }, { type: "advanceEcho", to: "silent_observer" }, { type: "advanceEcho", to: "fragmented_mind" }, { type: "advanceEcho", to: "future_companion" }, ...FORCES.map((f) => ({ type: "learnPower", force: f }) as Action)]);
+    expect(validateQuest(SOCIAL_QUEST)).toEqual([]);
+    expect(SOCIAL_QUEST.essential).toBe(true);
+    s = run(s, onEnterVillage());
+    expect(res(s, HEARTH_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (const h of HAMLETS) s = run(s, [{ type: "resonate", site: bridgeSite(h), force: "connection" }, ...onBell(h)]);
+    // the Echo offers to help only once the people are back, and only when asked
+    expect(viewNode(ECHO_TALK, "start", s)!.choices.map((c) => c.id)).toContain("keep");
+    expect(res(s, HEARTH_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    const r = choose(ECHO_TALK, "start", "keep", s);
+    expect(r.ok).toBe(true);
+    if (r.ok) s = run(s, r.actions);
+    expect(s.memory[ECHO_HELPS]).toBe(true);
+    expect(viewNode(ECHO_TALK, "start", s)!.choices.map((c) => c.id)).not.toContain("keep");
+    s = run(s, onKeepers());
+    s = run(s, [{ type: "resonate", site: HEARTH_SITE, force: "form" }]);
+    expect(s.flags).toContain(SK.flame);
+    expect(questStatus(SOCIAL_QUEST, s).state).toBe("complete");
+    expect(s.memory["world.bells_rung"]).toBe(3);
+  });
+  it("layout: bridges walkable, keepers' stones either side of the hearth, the gate on the tower platform", () => {
+    for (const b of Object.values(VILLAGE_BRIDGES)) {
+      const [a, c] = [b[0], b[b.length - 1]];
+      expect((Math.atan2(Math.abs(c[1] - a[1]), Math.hypot(c[0] - a[0], c[2] - a[2])) * 180) / Math.PI).toBeLessThan(20);
+    }
+    for (const k of Object.values(KEEPER_STONES)) expect(Math.hypot(k.x - HH.x, k.z - HH.z)).toBeGreaterThan(HH.r + 1.5);
+    expect(Math.hypot(KEEPER_STONES.player.x - KEEPER_STONES.echo.x, KEEPER_STONES.player.z - KEEPER_STONES.echo.z)).toBeGreaterThan(6);
+    for (const g of GATHER) expect(Math.hypot(g.x, g.z)).toBeLessThan(PLAZA.r - 1);
+    for (const h of Object.values(HAMLET_SPOTS)) expect(Math.hypot(h.x, h.z) - h.r - PLAZA.r).toBeGreaterThan(4);
+    expect(Math.hypot(HEARTH_GATE.x - TW.x, HEARTH_GATE.z - TW.z)).toBeLessThan(TW.r - 1);
+  });
+});

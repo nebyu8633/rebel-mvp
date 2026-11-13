@@ -33,7 +33,8 @@ import { PostFx } from "../../../world/PostFx";
 import { Arrival } from "../../../world/Arrival";
 import { SoundController, DustMotes } from "../sanctuary/Life";
 import { WORKS_DOOR_ARRIVAL } from "../mind/layout";
-import { BLUEPRINT, CHASM, CRANE, FALL_Y, GEAR_WALL, LEVER, SPAN, SPAWN, TOWER, WAYSTONE, WORKS } from "./layout";
+import { BLUEPRINT, CHASM, CRANE, FALL_Y, GEAR_WALL, HEARTH_GATE, LEVER, SPAN, SPAWN, TOWER, WAYSTONE, WORKS } from "./layout";
+import { useSanctuaryKit } from "../sanctuary/architecture";
 
 const ease = (x: number) => {
   const t = Math.min(1, Math.max(0, x));
@@ -490,6 +491,63 @@ function Story() {
 }
 
 
+/** The Gate of the Hearth: once the blueprint is read, a warm passage opens on the tower's platform. */
+function HearthGate() {
+  const open = useAetheria((s) => s.world.flags.includes(C.blueprint));
+  const stone = usePBR("ruinwall", { tint: 0xb8a898 });
+  const kit = useSanctuaryKit();
+  const seal = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uOn: { value: 0 } },
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: `uniform float uTime; uniform float uOn; varying vec2 vUv;
+          void main(){ vec2 p = vUv - 0.5; float r = length(p * vec2(1.0, 0.7));
+            float flick = 0.6 + 0.4 * sin(uTime * 3.0 + r * 14.0) * sin(uTime * 1.7 + p.x * 9.0);
+            float a = smoothstep(0.6, 0.15, r) * (0.35 + 0.5 * flick) * uOn;
+            gl_FragColor = vec4(vec3(1.0, 0.7, 0.4) * a * 1.5, 1.0); }`,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
+    [],
+  );
+  useFrame(({ clock }) => {
+    seal.uniforms.uTime.value = clock.elapsedTime;
+    seal.uniforms.uOn.value += ((open ? 1 : 0) - seal.uniforms.uOn.value) * 0.03;
+  });
+  useEffect(() => {
+    if (!open || !worldAvailable("social")) return;
+    interactables.set("hearth-gate", {
+      id: "hearth-gate",
+      label: "היכנסו לכפר האח",
+      x: HEARTH_GATE.x - 1.6,
+      y: 0,
+      z: HEARTH_GATE.z + 1.2,
+      radius: 2,
+      onContact: () => void goToWorld("social", { style: "resonance" }),
+    });
+    return () => void interactables.delete("hearth-gate");
+  }, [open]);
+  return (
+    <group position={[HEARTH_GATE.x, 0, HEARTH_GATE.z]} rotation-y={-Math.PI / 4} userData={{ noBatch: true }}>
+      {open && (
+        <RigidBody type="fixed" colliders={false}>
+          <CuboidCollider args={[1.8, 1.6, 0.4]} position={[0, 1.6, 0]} />
+        </RigidBody>
+      )}
+      <group visible={open} scale={0.45}>
+        <mesh geometry={kit.arch_gate} material={stone} castShadow receiveShadow />
+        <mesh material={seal} position={[0, 2.4, 0]}>
+          <planeGeometry args={[3.6, 5.2]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export function CareerScene({ quality }: { quality: Quality }) {
   return (
     <group>
@@ -501,6 +559,7 @@ export function CareerScene({ quality }: { quality: Quality }) {
       <Lever />
       <Girder />
       <Blueprint />
+      <HearthGate />
       <Smoke />
       <EchoInWorks />
       <Waystone />
