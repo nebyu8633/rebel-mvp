@@ -22,6 +22,8 @@ import { MindScene } from "../aetheria/scenes/mind/MindScene";
 import { SPAWN as MIND_SPAWN } from "../aetheria/scenes/mind/layout";
 import { CareerScene } from "../aetheria/scenes/career/CareerScene";
 import { SPAWN as CAREER_SPAWN } from "../aetheria/scenes/career/layout";
+import { SocialScene } from "../aetheria/scenes/social/SocialScene";
+import { SPAWN as SOCIAL_SPAWN } from "../aetheria/scenes/social/layout";
 
 const provider = selectProvider({ liveEnabled: LIVE_DATA });
 
@@ -56,5 +58,6 @@ export function registerBuiltInWorlds() {
   registerWorld({ id: "health", title: "AETHERIA · חורשת החיים", layer: "aetheria", light: "verdant", spawn: HEALTH_SPAWN, wearsLoadout: true, Scene: HealthScene, Hud: AetheriaHud });
   registerWorld({ id: "mind", title: "AETHERIA · היכל ההשתקפויות", layer: "aetheria", light: "dream", spawn: MIND_SPAWN, wearsLoadout: true, Scene: MindScene, Hud: AetheriaHud });
   registerWorld({ id: "career", title: "AETHERIA · בית המלאכה הגדול", layer: "aetheria", light: "ember", spawn: CAREER_SPAWN, wearsLoadout: true, Scene: CareerScene, Hud: AetheriaHud });
+  registerWorld({ id: "social", title: "AETHERIA · כפר האח", layer: "aetheria", light: "hearth", spawn: SOCIAL_SPAWN, wearsLoadout: true, Scene: SocialScene, Hud: AetheriaHud });
   registerWorld({ id: "test", title: "סצנת בדיקות פיזיקה", layer: "dev", light: "day", spawn: { x: 0, y: 0, z: 12, yaw: Math.PI }, wearsLoadout: false, Scene: World, Hud: TestHud });
 }

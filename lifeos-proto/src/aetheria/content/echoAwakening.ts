@@ -124,6 +124,11 @@ export const ECHO_TALK: DialogueDef = {
       actions: [{ type: "count", key: MEM.talks }],
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
+        // the Village of the Hearth
+        { text: "תראה אותם. הם זכרו אחד את השני כשהאש נדלקה. גם אני זוכר אותך.", when: { flag: "social.flame" } },
+        { text: "אני עומד ליד האש. אני לא הולך לשום מקום.", when: { memory: "echo.helping", equals: true } },
+        { text: "האנשים חזרו. אבל האש… אש כזאת לא מדליקים לבד.", when: { all: [{ flag: "social.bell_west" }, { flag: "social.bell_north" }, { flag: "social.bell_east" }] } },
+        { text: "כפר בלי אנשים הוא רק בתים. תזמין אותם חזרה.", when: { flag: "social.entered" } },
         // the Great Works
         { text: "בנית דרך מעל תהום. לא בכוח אחד, בשלושה. כך בונים כל דבר שנשאר.", when: { flag: "career.blueprint" } },
         { text: "מכונה לא זזה בגלל חלק אחד. היא זזה כשכל החלקים במקום. תספור את החורים בקיר.", when: { flag: "career.entered" } },
@@ -148,10 +153,17 @@ export const ECHO_TALK: DialogueDef = {
       ],
       choices: [
         { id: "gate", text: "השער התעורר. חיברתי את האור.", when: gateAwaits, next: "gate_told" },
+        // cooperation: the Echo answers a request, it does not act on its own
+        { id: "keep", text: "תעמוד איתי ליד האש?", when: { all: [{ flag: "social.bell_west" }, { flag: "social.bell_north" }, { flag: "social.bell_east" }, { not: { flag: "social.keepers" } }, { not: { memory: "echo.helping", equals: true } }] }, actions: [{ type: "remember", key: "echo.helping", value: true }], next: "keep_yes" },
         { id: "kingdoms", text: "ספר לי על הממלכות", next: "kingdoms" },
         { id: "next", text: "מה הלאה?", next: "next" },
         { id: "bye", text: "להיפרד", next: null },
       ],
+    },
+    keep_yes: {
+      speaker: "echo",
+      lines: [{ text: "כן. אני אעמוד בצד השני. עמוד אתה על האבן שמולי, ונחזיק אותה יחד." }],
+      next: "menu",
     },
     gate_told: {
       speaker: "echo",
