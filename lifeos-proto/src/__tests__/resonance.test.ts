@@ -194,7 +194,7 @@ describe("World Depth", () => {
   });
 });
 
-import { KNOWLEDGE_QUEST, K, SEAL_SITE, onEnterKingdom } from "../aetheria/content/knowledgeKingdom";
+import { KNOWLEDGE_QUEST, K, SEAL_SITE, onEnterKingdom, CODEX_SITE, DIALS, DIAL_SYMBOLS, DIAL_TARGET, dialSite } from "../aetheria/content/knowledgeKingdom";
 import { PATHS, SATELLITES, HALL, LANDING } from "../aetheria/scenes/knowledge/layout";
 describe("The Kingdom of Knowledge", () => {
   const atThreshold = () => {
@@ -217,7 +217,22 @@ describe("The Kingdom of Knowledge", () => {
     s = run(s, [{ type: "resonate", site: SEAL_SITE, force: "connection" }]);
     expect(s.flags).toContain(K.open);
     s = run(s, onEnterKingdom());
+    expect((questStatus(KNOWLEDGE_QUEST, s) as { step?: { id: string } }).step?.id).toBe("dials");
+
+    // the Hall of Patterns: the codex won't open before every dial points at its symbol
+    expect(res(s, CODEX_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    expect(res(s, dialSite("west"), "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect });
+    for (const d of DIALS) for (let k = 0; k < DIAL_TARGET[d]; k++) s = run(s, [{ type: "resonate", site: dialSite(d), force: "change" }]);
+    expect(DIALS.every((d) => s.sites[dialSite(d)] === `p${DIAL_TARGET[d]}`)).toBe(true);
+    // one turn too many breaks the pattern again; a full turn brings it back
+    let over = run(s, [{ type: "resonate", site: dialSite("north"), force: "change" }]);
+    expect(res(over, CODEX_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (let k = 1; k < DIAL_SYMBOLS; k++) over = run(over, [{ type: "resonate", site: dialSite("north"), force: "change" }]);
+    expect(over.sites[dialSite("north")]).toBe(`p${DIAL_TARGET.north}`);
+    s = run(s, [{ type: "resonate", site: CODEX_SITE, force: "connection" }]);
+    expect(s.flags).toContain(K.codex);
     expect(questStatus(KNOWLEDGE_QUEST, s).state).toBe("complete");
+    expect(viewNode(ECHO_TALK, "start", s)!.text).toContain("הקודקס פתוח");
     expect(s.flags.some((f) => f.startsWith("life:"))).toBe(false);
   });
   it("layout: every path is walkable and joins two platforms", () => {
@@ -231,5 +246,41 @@ describe("The Kingdom of Knowledge", () => {
     const first = PATHS[0];
     expect(Math.hypot(first[0][0] - LANDING.x, first[0][2] - LANDING.z)).toBeLessThan(LANDING.r);
     expect(Math.hypot(first[2][0] - HALL.x, first[2][2] - HALL.z)).toBeLessThan(HALL.r);
+  });
+});
+
+import { HEALTH_QUEST, H, HEART_SITE, SPRINGS, springSite, onEnterGrove } from "../aetheria/content/healthKingdom";
+import { SPRING_SPOTS, GIANTS, HEART, BOUND_R as HBR, SPAWN as HSPAWN } from "../aetheria/scenes/health/layout";
+import { LIVING_PATH } from "../aetheria/scenes/knowledge/layout";
+describe("The Kingdom of Health", () => {
+  it("the Heart Tree blooms only when all three springs are channelled", () => {
+    let s = run(initialWorldState(), [{ type: "setFlag", flag: K.codex }, ...FORCES.map((f) => ({ type: "learnPower", force: f }) as Action)]);
+    expect(validateQuest(HEALTH_QUEST)).toEqual([]);
+    expect(HEALTH_QUEST.essential).toBe(true);
+    expect(questStatus(HEALTH_QUEST, s).state).toBe("active");
+    s = run(s, onEnterGrove());
+    expect(res(s, springSite("west"), "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.noEffect }); // dry: nothing to channel
+    expect(res(s, HEART_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (const sp of SPRINGS) s = run(s, [{ type: "resonate", site: springSite(sp), force: "change" }]);
+    expect((questStatus(HEALTH_QUEST, s) as { step?: { id: string } }).step?.id).toBe("channel");
+    for (const sp of SPRINGS.slice(0, 2)) s = run(s, [{ type: "resonate", site: springSite(sp), force: "connection" }]);
+    expect(res(s, HEART_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    s = run(s, [{ type: "resonate", site: springSite("east"), force: "connection" }]);
+    s = run(s, [{ type: "resonate", site: HEART_SITE, force: "form" }]);
+    expect(s.flags).toContain(H.bloomed);
+    expect(questStatus(HEALTH_QUEST, s).state).toBe("complete");
+    expect(s.memory["world.springs_revived"]).toBe(3);
+  });
+  it("layout: springs, giants and the path keep clear of each other; the gate path is walkable", () => {
+    for (const sp of Object.values(SPRING_SPOTS)) {
+      expect(Math.hypot(sp.x, sp.z)).toBeLessThan(HBR - 3);
+      for (const g of GIANTS) expect(Math.hypot(sp.x - g.x, sp.z - g.z)).toBeGreaterThan(g.r * 2.5 + sp.r + 1);
+    }
+    for (const g of GIANTS) expect(Math.abs(g.x) > 3 || g.z < HEART.z).toBe(true); // not on the arrival path
+    expect(HSPAWN.z).toBeLessThan(HBR);
+    for (let i = 1; i < LIVING_PATH.length; i++) {
+      const [a, b] = [LIVING_PATH[i - 1], LIVING_PATH[i]];
+      expect((Math.atan2(Math.abs(b[1] - a[1]), Math.hypot(b[0] - a[0], b[2] - a[2])) * 180) / Math.PI).toBeLessThan(35);
+    }
   });
 });

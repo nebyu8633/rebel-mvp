@@ -12,7 +12,7 @@ import { HDRI } from "../config";
 import { telemetry } from "../player/Player";
 import type { Quality } from "../store";
 
-export type LightPreset = "day" | "dusk" | "dawn" | "celestial" | "astral";
+export type LightPreset = "day" | "dusk" | "dawn" | "celestial" | "astral" | "verdant";
 const PRESETS = {
   day: { sun: new THREE.Vector3(0.7, 0.6, 0.38).normalize(), color: 0xfff0d8, intensity: 3.8, env: HDRI.day, envI: 0.1, hemi: [0xcfe3ff, 0x5a5040, 0.12] as const, fog: [0xc9d6e2, 45, 140] as const, sky: { turbidity: 6, rayleigh: 1.2 } },
   // late golden hour from the west, cool sky fill — the look of the reference image
@@ -22,6 +22,8 @@ const PRESETS = {
   // AETHERIA visual bible: a low gold sun in the west (behind the Sleeping Gate), violet sky fill,
   // lilac haze, and the fractured celestial sky instead of a daylight sky
   celestial: { sun: new THREE.Vector3(-0.84, 0.26, -0.2).normalize(), color: 0xffa868, intensity: 2.7, env: HDRI.dusk, envI: 0.26, hemi: [0x8a7fc8, 0x3a2c28, 0.5] as const, fog: [0x7e6a8c, 38, 240] as const, sky: { turbidity: 7, rayleigh: 2.2 }, celestial: "dusk" as const },
+  // the Living Grove: a high morning sun through the canopy, green fill, forest haze
+  verdant: { sun: new THREE.Vector3(0.45, 0.62, 0.35).normalize(), color: 0xffdcaa, intensity: 2.1, env: HDRI.dawn, envI: 0.32, hemi: [0x86c49a, 0x1f2a18, 0.62] as const, fog: [0x47604a, 22, 150] as const, sky: { turbidity: 3, rayleigh: 1.5 }, celestial: "verdant" as const },
   // the Kingdom of Knowledge: high pale moonlight, deep blue fill and haze, the astral sky
   astral: { sun: new THREE.Vector3(0.35, 0.62, -0.55).normalize(), color: 0xbfd0ff, intensity: 1.9, env: HDRI.dusk, envI: 0.22, hemi: [0x5a6cc8, 0x14122a, 0.6] as const, fog: [0x0c1434, 34, 240] as const, sky: { turbidity: 2, rayleigh: 1 }, celestial: "astral" as const },
 };
