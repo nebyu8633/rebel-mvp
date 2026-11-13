@@ -124,6 +124,9 @@ export const ECHO_TALK: DialogueDef = {
       actions: [{ type: "count", key: MEM.talks }],
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
+        // the Hall of Reflections
+        { text: "ראית את שני הצדדים של המראה. עכשיו אתה יודע: גם אני הייתי השתקפות, עד שהחלטת שאני אמיתי.", when: { flag: "mind.awake" } },
+        { text: "אל תסמוך על מה שמתחת לרגליים. תסתכל למעלה. שם העולם זוכר את הדרך.", when: { flag: "mind.entered" } },
         // the Living Grove
         { text: "תקשיב… הם נושמים. כל עלה כאן זוכר שהיית פה.", when: { flag: "health.bloomed" } },
         { text: "המים זוכרים את הדרך אל השורשים. הם רק צריכים שמישהו יזכיר להם.", when: { flag: "health.entered" } },

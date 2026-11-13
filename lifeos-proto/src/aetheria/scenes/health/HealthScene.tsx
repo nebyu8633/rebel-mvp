@@ -33,7 +33,8 @@ import { PostFx } from "../../../world/PostFx";
 import { Arrival } from "../../../world/Arrival";
 import { SoundController, DustMotes } from "../sanctuary/Life";
 import { LIVING_GATE_ARRIVAL } from "../knowledge/layout";
-import { BOUND_R, GIANTS, HEART, SPAWN, SPRING_SPOTS, WAYSTONE } from "./layout";
+import { BOUND_R, DREAMS_GATE, GIANTS, HEART, SPAWN, SPRING_SPOTS, WAYSTONE } from "./layout";
+import { useSanctuaryKit } from "../sanctuary/architecture";
 
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -600,6 +601,71 @@ function Understory({ quality }: { quality: Quality }) {
   );
 }
 
+/** The Gate of Dreams: rises beside the path when the Heart Tree blooms — into the Kingdom of the Mind. */
+function DreamsGate() {
+  const bloomed = useAetheria((s) => s.world.flags.includes(H.bloomed));
+  const stone = usePBR("ruinwall", { tint: 0xb8b0c8 });
+  const kit = useSanctuaryKit();
+  const seal = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uOn: { value: 0 } },
+        vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+        fragmentShader: `uniform float uTime; uniform float uOn; varying vec2 vUv;
+          void main(){ vec2 p = vUv - 0.5; float r = length(p * vec2(1.0, 0.7));
+            float ripple = 0.5 + 0.5 * sin(r * 30.0 - uTime * 1.2) * sin(atan(p.y, p.x) * 3.0 + uTime * 0.3);
+            float a = smoothstep(0.6, 0.15, r) * (0.3 + 0.55 * ripple) * uOn;
+            gl_FragColor = vec4(mix(vec3(0.85, 0.6, 1.0), vec3(0.55, 0.95, 1.0), ripple) * a * 1.5, 1.0); }`,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
+    [],
+  );
+  const g = useRef<THREE.Group>(null);
+  const rise = useRef(-1);
+  useFrame(({ clock }, dt) => {
+    if (rise.current < 0) rise.current = bloomed ? 1 : 0;
+    rise.current += ((bloomed ? 1 : 0) - rise.current) * (1 - Math.exp(-0.6 * Math.min(dt, 0.1)));
+    seal.uniforms.uTime.value = clock.elapsedTime;
+    seal.uniforms.uOn.value = rise.current;
+    if (g.current) {
+      g.current.visible = rise.current > 0.01;
+      g.current.position.y = -6 * (1 - smooth(0, 1, rise.current));
+    }
+  });
+  useEffect(() => {
+    if (!bloomed || !worldAvailable("mind")) return;
+    interactables.set("dreams-gate", {
+      id: "dreams-gate",
+      label: "היכנסו להיכל ההשתקפויות",
+      x: DREAMS_GATE.x + 2,
+      y: 0,
+      z: DREAMS_GATE.z,
+      radius: 2.4,
+      onContact: () => void goToWorld("mind", { style: "resonance" }),
+    });
+    return () => void interactables.delete("dreams-gate");
+  }, [bloomed]);
+  return (
+    <group position={[DREAMS_GATE.x, 0, DREAMS_GATE.z]} userData={{ noBatch: true }}>
+      {bloomed && (
+        <RigidBody type="fixed" colliders={false}>
+          <CuboidCollider args={[0.65, 2.2, 2.6]} position={[0, 2.2, 0]} />
+        </RigidBody>
+      )}
+      <group ref={g} rotation-y={Math.PI / 2} scale={0.6}>
+        <mesh geometry={kit.arch_gate} material={stone} castShadow receiveShadow />
+        <mesh material={seal} position={[0, 2.4, 0]}>
+          <planeGeometry args={[3.6, 5.2]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export function HealthScene({ quality }: { quality: Quality }) {
   return (
     <group>
@@ -613,6 +679,7 @@ export function HealthScene({ quality }: { quality: Quality }) {
       ))}
       <Flora />
       <EchoInGrove />
+      <DreamsGate />
       <Waystone />
       <Story />
       <Arrival world="health" />
