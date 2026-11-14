@@ -388,3 +388,55 @@ describe("The Kingdom of Social", () => {
     expect(Math.hypot(HEARTH_GATE.x - TW.x, HEARTH_GATE.z - TW.z)).toBeLessThan(TW.r - 1);
   });
 });
+
+import { WEALTH_QUEST, FINALE_QUEST, W as WK, PLINTHS, plinthSite, VAULT_SITE, ORIGIN_SITE, onEnterVault, onShard, onReturnToOrigin } from "../aetheria/content/wealthKingdom";
+import { K as KK } from "../aetheria/content/knowledgeKingdom";
+import { M as MK } from "../aetheria/content/mindKingdom";
+import { TERRACE, VAULT as VT, SCALE as SC, PLINTH_SPOTS, SHARD as SH, SPAWN as WSPAWN, WAYSTONE as WWS } from "../aetheria/scenes/wealth/layout";
+import { GOLD_GATE, GOLD_GATE_ARRIVAL } from "../aetheria/scenes/social/layout";
+import { ORIGIN_ARRIVAL, insideObservatory } from "../aetheria/scenes/sanctuary/layout";
+describe("The Kingdom of Wealth and the finale", () => {
+  const start = () => run(initialWorldState(), [{ type: "setFlag", flag: SK.flame }, ...FORCES.map((f) => ({ type: "learnPower", force: f }) as Action)]);
+  it("refine (CHANGE) before carrying (CONNECTION); the vault refuses until the scale balances", () => {
+    expect(validateQuest(WEALTH_QUEST)).toEqual([]);
+    expect(WEALTH_QUEST.essential).toBe(true);
+    let s = run(start(), onEnterVault());
+    expect(res(s, plinthSite("west"), "connection")).toMatchObject({ ok: false });
+    expect(res(s, VAULT_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (const p of PLINTHS) s = run(s, [{ type: "resonate", site: plinthSite(p), force: "change" }]);
+    expect(res(s, VAULT_SITE, "form")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    for (const p of PLINTHS) s = run(s, [{ type: "resonate", site: plinthSite(p), force: "connection" }]);
+    expect(s.memory["world.ingots_weighed"]).toBe(3);
+    s = run(s, [{ type: "resonate", site: VAULT_SITE, force: "form" }]);
+    s = run(s, onShard());
+    expect(s.flags).toContain(WK.shard);
+    expect(questStatus(WEALTH_QUEST, s).state).toBe("complete");
+  });
+  it("the finale joins only when all six kingdoms are restored", () => {
+    let s = run(start(), [...onShard(), ...onReturnToOrigin()]);
+    expect(validateQuest(FINALE_QUEST)).toEqual([]);
+    expect(res(s, ORIGIN_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    s = run(s, [KK.codex, H.bloomed, MK.awake].map((flag) => ({ type: "setFlag", flag }) as Action));
+    expect(res(s, ORIGIN_SITE, "connection")).toMatchObject({ ok: false, reason: RESONANCE_REJECT.notReady });
+    s = run(s, [{ type: "setFlag", flag: CK.blueprint }, { type: "resonate", site: ORIGIN_SITE, force: "connection" }]);
+    expect(s.flags).toContain(WK.restored);
+    expect(questStatus(FINALE_QUEST, s).state).toBe("complete");
+    expect(JOURNAL["j.restored"]).toBeTruthy();
+    expect(res(s, ORIGIN_SITE, "connection")).toMatchObject({ ok: false });
+  });
+  it("layout: everything stands on the terrace, the shard inside the vault, arrivals land safely", () => {
+    const onTerrace = (p: { x: number; z: number }, m = 1.5) => Math.hypot(p.x - TERRACE.x, p.z - TERRACE.z) < TERRACE.r - m;
+    for (const p of Object.values(PLINTH_SPOTS)) {
+      expect(onTerrace(p, 2.5)).toBe(true);
+      expect(Math.hypot(p.x - SC.x, p.z - SC.z)).toBeGreaterThan(SC.beam / 2 + SC.panR + 1.5);
+    }
+    expect(onTerrace(WSPAWN)).toBe(true);
+    expect(onTerrace(WWS)).toBe(true);
+    expect(SH.z).toBeLessThan(VT.z - 3); // behind the 3 m facade
+    expect(Math.abs(SH.x - VT.x)).toBeLessThan(VT.doorR);
+    expect(Math.hypot(GOLD_GATE.x, GOLD_GATE.z)).toBeLessThan(PLAZA.r - 1.5);
+    expect(Math.hypot(GOLD_GATE_ARRIVAL.x, GOLD_GATE_ARRIVAL.z)).toBeLessThan(Math.hypot(GOLD_GATE.x, GOLD_GATE.z));
+    expect(Math.hypot(GOLD_GATE.x - HH.x, GOLD_GATE.z - HH.z)).toBeGreaterThan(7);
+    expect(insideObservatory(ORIGIN_ARRIVAL.x, ORIGIN_ARRIVAL.z)).toBe(true);
+  });
+});

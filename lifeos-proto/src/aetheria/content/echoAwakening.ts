@@ -124,6 +124,10 @@ export const ECHO_TALK: DialogueDef = {
       actions: [{ type: "count", key: MEM.talks }],
       lines: [
         // optional real-life flavour (never required): a verified milestone left a memory here
+        // the end of the first chapter, and the Vault of Value
+        { text: "שש ממלכות, שלושה כוחות, ושנינו. זה לא הסוף. זו הפעם הראשונה שאני יודע מה יבוא אחר כך, ואני רוצה לגלות את זה איתך.", when: { flag: "creation.restored" } },
+        { text: "הרסיס השישי… אני שומע אותו. חמשת האחרים מחכים לו במקדש, ליד השבר.", when: { flag: "wealth.shard" } },
+        { text: "ערך לא נמצא באדמה. הוא נוצר כשמישהו משנה משהו ונותן אותו הלאה.", when: { flag: "wealth.entered" } },
         // the Village of the Hearth
         { text: "תראה אותם. הם זכרו אחד את השני כשהאש נדלקה. גם אני זוכר אותך.", when: { flag: "social.flame" } },
         { text: "אני עומד ליד האש. אני לא הולך לשום מקום.", when: { memory: "echo.helping", equals: true } },
