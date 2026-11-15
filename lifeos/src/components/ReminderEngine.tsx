@@ -35,6 +35,22 @@ export function snooze(r: { key: string; title: string; body: string; href: stri
   const list = loadSnoozed().filter((s) => s.key !== r.key);
   list.push({ key: r.key, title: r.title, body: r.body, href: r.href, instanceKey: r.instanceKey, at: Date.now() + minutes * 60_000 });
   localStorage.setItem(SNOOZE_KEY, JSON.stringify(list));
+  // with background push on this device, the server also keeps it — so it arrives when the app is closed
+  let pushOn = false;
+  try {
+    pushOn = localStorage.getItem("lifeos:push:on") === "1";
+  } catch {
+    /* ignore */
+  }
+  const toast = useStore.getState().toast;
+  if (!pushOn) return toast(`נודניק ל-${minutes} דק׳ — יופיע כשהאפליקציה פתוחה`, "info");
+  void fetch("/api/reminders/snooze", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, reminderKey: r.key, instanceKey: r.instanceKey ?? null, title: r.title, body: `נודניק · ${r.body}`.slice(0, 500), href: r.href, minutes }),
+  })
+    .then((res) => toast(res.ok ? `נודניק ל-${minutes} דק׳ — יגיע גם כשהאפליקציה סגורה` : `נודניק ל-${minutes} דק׳ — יופיע רק כשהאפליקציה פתוחה`, "info"))
+    .catch(() => toast(`נודניק ל-${minutes} דק׳ — יופיע רק כשהאפליקציה פתוחה`, "info"));
 }
 
 function loadSent(): Record<string, number> {

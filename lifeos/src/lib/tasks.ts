@@ -314,3 +314,28 @@ export function weekStats(db: DB, weekStartDate: string, today: string) {
 export function currentWeekStart(today: string, weekStartsOn = 0) {
   return startOfWeek(today, weekStartsOn);
 }
+
+/** Resolve a task instance key (`taskId` or `taskId:YYYY-MM-DD` for a recurring occurrence). */
+export function instanceFromKey(db: DB, key: string): TaskInstance | null {
+  if (db.tasks[key]) {
+    const t = db.tasks[key];
+    return { key, task: t, occurrence: null, recurring: false, originalDate: t.date, date: t.date, startTime: t.startTime, title: t.title, notes: t.notes, status: t.status };
+  }
+  const original = key.slice(-10);
+  const taskId = key.slice(0, -11);
+  const t = db.tasks[taskId];
+  if (!t) return null;
+  const occ = db.occurrences[key] ?? null;
+  return {
+    key,
+    task: t,
+    occurrence: occ,
+    recurring: true,
+    originalDate: original,
+    date: occ?.date ?? original,
+    startTime: occ?.startTime ?? t.startTime,
+    title: occ?.title ?? t.title,
+    notes: occ?.notes ?? t.notes,
+    status: occ?.status ?? "planned",
+  };
+}

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { VAPID_PUBLIC_KEY } from "@/lib/push/config";
 import { useStore } from "@/lib/store/store";
 import { Button, Badge, Details } from "./ui";
+import { DeliveryLog } from "./DeliveryLog";
 
 const FLAG = "lifeos:push:on";
 
@@ -136,6 +137,7 @@ export function PushToggle() {
           הפעלה במכשיר הזה
         </Button>
       )}
+      {on && <DeliveryLog />}
       {on && (
         <p className="w-full text-footnote text-ink-3">
           ההתראה מגיעה בתוך דקה-שתיים מהזמן, לא בדיוק של שעון מעורר. תזכורות מתוזמנות נשלחות רק כשהמתזמן בשרת פועל.

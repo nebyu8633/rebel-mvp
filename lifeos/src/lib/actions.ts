@@ -202,29 +202,9 @@ export async function deleteTask(taskId: string) {
 }
 
 /** Find a task instance by its key (task id, or `${taskId}:${originalDate}`). */
-export function instanceFromKey(db: DB, key: string): TaskInstance | null {
-  if (db.tasks[key]) {
-    const t = db.tasks[key];
-    return { key, task: t, occurrence: null, recurring: false, originalDate: t.date, date: t.date, startTime: t.startTime, title: t.title, notes: t.notes, status: t.status };
-  }
-  const original = key.slice(-10);
-  const taskId = key.slice(0, -11);
-  const t = db.tasks[taskId];
-  if (!t) return null;
-  const occ = db.occurrences[key] ?? null;
-  return {
-    key,
-    task: t,
-    occurrence: occ,
-    recurring: true,
-    originalDate: original,
-    date: occ?.date ?? original,
-    startTime: occ?.startTime ?? t.startTime,
-    title: occ?.title ?? t.title,
-    notes: occ?.notes ?? t.notes,
-    status: occ?.status ?? "planned",
-  };
-}
+/** Pure; lives in tasks.ts so server code can use it too. */
+import { instanceFromKey } from "./tasks";
+export { instanceFromKey };
 
 export async function applyRecovery(actions: RecoveryAction[]) {
   const db = S().db;

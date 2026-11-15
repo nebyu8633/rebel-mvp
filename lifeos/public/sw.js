@@ -5,7 +5,10 @@ self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const href = (event.notification.data && event.notification.data.href) || "/today";
-  const url = new URL(href, self.location.origin).href;
+  // only ever open LifeOS itself
+  let url = new URL(href, self.location.origin);
+  if (url.origin !== self.location.origin) url = new URL("/today", self.location.origin);
+  url = url.href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (list) => {
       // reuse an open LifeOS window (on iPhone: the installed app), else open one
