@@ -10,6 +10,7 @@ import { TaskEditorHost } from "./TaskEditor";
 import { RescheduleHost } from "./TaskRow";
 import { ReminderEngine, ReminderCards } from "./ReminderEngine";
 import { TaskDeepLink } from "./TaskDeepLink";
+import { QuickAddHost, useQuickAdd } from "./QuickAdd";
 import { GameSync, CelebrationLayer } from "./game/GameSync";
 import { FocusHost } from "./game/FocusMode";
 import { EvidenceHost } from "./game/EvidenceModal";
@@ -117,7 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? "/";
   const mode = useStore((s) => s.mode);
   const saving = useStore((s) => s.saving);
-  const openEditor = useUI((s) => s.openEditor);
+  const quickAdd = useQuickAdd((s) => s.show);
   const moreOpen = useUI((s) => s.moreOpen);
   const setMoreOpen = useUI((s) => s.setMoreOpen);
   if (path.startsWith("/login")) return <>{children}</>;
@@ -150,7 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </nav>
         <div className="space-y-3 p-4">
-          <button onClick={() => openEditor()} className={cx("flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium", dark ? "gold-btn" : "bg-accent-600 text-white hover:bg-accent-700")}>
+          <button onClick={() => quickAdd()} className={cx("flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium", dark ? "gold-btn" : "bg-accent-600 text-white hover:bg-accent-700")}>
             <Plus size={16} /> משימה חדשה
           </button>
           <ModeBadge mode={mode} saving={saving} />
@@ -165,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <div className="flex items-center gap-1">
             {saving > 0 && <span className="text-xs text-stone-400">שומר…</span>}
-            <button onClick={() => openEditor()} className={cx("rounded-xl p-2", dark ? "text-slate-300 hover:bg-white/10" : "text-stone-600 hover:bg-stone-100 dark:text-stone-300")} aria-label="משימה חדשה">
+            <button onClick={() => quickAdd()} className={cx("rounded-xl p-2", dark ? "text-slate-300 hover:bg-white/10" : "text-stone-600 hover:bg-stone-100 dark:text-stone-300")} aria-label="משימה חדשה">
               <Plus size={20} />
             </button>
             <Link href="/assistant" className={cx("rounded-xl p-2", dark ? "text-slate-300 hover:bg-white/10" : "text-stone-600 hover:bg-stone-100 dark:text-stone-300")} aria-label="עוזר תכנון">
@@ -179,7 +180,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* mobile quick add (hidden where a page has its own action bar, and in the game screens) */}
       {!dark && !/^\/goals\/(new|[^/]+\/(plan|chat))/.test(path) && (
         <button
-          onClick={() => openEditor()}
+          onClick={() => quickAdd()}
           aria-label="הוספת משימה"
           className="fixed bottom-20 start-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent-600 text-white shadow-lg shadow-accent-600/30 active:scale-95 lg:hidden"
         >
@@ -255,6 +256,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ConfirmHost />
       <ReminderEngine />
       <TaskDeepLink />
+      <QuickAddHost />
       <ReminderCards />
       <GameSync />
       <FocusHost />
