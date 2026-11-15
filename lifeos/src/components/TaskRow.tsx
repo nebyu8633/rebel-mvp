@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Check, Clock, CalendarClock, Repeat, AlertCircle, MoreHorizontal, Lock, Bell } from "lucide-react";
+import { Check, CalendarClock, Repeat, AlertCircle, MoreHorizontal, Lock, Bell } from "lucide-react";
 import type { TaskInstance } from "@/lib/tasks";
 import { blockingDependencies } from "@/lib/tasks";
 import { useStore } from "@/lib/store/store";
@@ -39,33 +39,33 @@ export function TaskRow({
   const c = goal ? goalColor(goal.color) : null;
 
   return (
-    <div className={cx("group relative flex items-start gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-stone-50 dark:hover:bg-white/[0.03]", (done || skipped) && "opacity-60")}>
+    <div className={cx("group relative flex min-h-[52px] items-center gap-2 px-2 transition-colors", (done || skipped) && "opacity-55")}>
+      {/* 44×44 hit area around a 22px circle */}
       <button
         type="button"
         onClick={() => void toggleComplete(inst)}
         aria-label={done ? `סמן כלא הושלם: ${inst.title}` : `סמן כהושלם: ${inst.title}`}
         aria-pressed={done}
-        className={cx(
-          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all",
-          done ? "border-accent-600 bg-accent-600 text-white" : "border-stone-300 hover:border-accent-500 dark:border-stone-600",
-          t.priority === "high" && !done && "border-amber-500",
-        )}
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-accent"
       >
-        {done && <Check size={14} strokeWidth={3} />}
+        <span
+          className={cx(
+            "grid h-[22px] w-[22px] place-items-center rounded-full border-[1.5px] transition-colors",
+            done ? "border-accent bg-accent text-white dark:text-[#06201c]" : t.priority === "high" ? "border-warn" : "border-line-strong group-hover:border-accent",
+          )}
+        >
+          {done && <Check size={14} strokeWidth={3} />}
+        </span>
       </button>
 
-      <button type="button" className="min-w-0 flex-1 text-start" onClick={() => openEditor({ instance: inst })}>
-        <div className={cx("text-[15px] leading-snug text-stone-900 dark:text-stone-100", done && "line-through")}>{inst.title}</div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500">
+      <button type="button" className="min-w-0 flex-1 py-2.5 text-start" onClick={() => openEditor({ instance: inst })}>
+        <div className={cx("text-body text-ink", done && "text-ink-3 line-through decoration-ink-3/50")}>{inst.title}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-footnote text-ink-2 empty:hidden">
           {showDate && inst.date && (
-            <span className={cx(overdue && "font-medium text-rose-600")}>{relativeDayLabel(inst.date, today)}</span>
+            <span className={cx(overdue && "font-medium text-warn")}>{relativeDayLabel(inst.date, today)}</span>
           )}
-          {!showDate && overdue && <span className="font-medium text-rose-600">מ{relativeDayLabel(inst.date!, today)}</span>}
-          {inst.startTime && (
-            <span className="inline-flex items-center gap-0.5 ltr-nums">
-              <Clock size={12} /> {inst.startTime}
-            </span>
-          )}
+          {!showDate && overdue && <span className="font-medium text-warn">מ{relativeDayLabel(inst.date!, today)}</span>}
+          {inst.startTime && <span className="tnum font-medium text-ink">{inst.startTime}</span>}
           {t.estimatedMinutes ? <span>{formatDuration(t.estimatedMinutes)}</span> : null}
           {inst.recurring && (
             <span className="inline-flex items-center gap-0.5" title="משימה חוזרת">
@@ -74,37 +74,37 @@ export function TaskRow({
             </span>
           )}
           {inst.movedToBackup && <Badge tone="amber">הועבר ליום הגיבוי</Badge>}
-          {((t.reminderMinutes != null && inst.startTime) || Object.values(db.reminders).some((r) => r.taskId === t.id && r.enabled)) && <Bell size={12} aria-label="יש תזכורת" />}
+          {((t.reminderMinutes != null && inst.startTime) || Object.values(db.reminders).some((r) => r.taskId === t.id && r.enabled)) && <Bell size={12} className="text-ink-3" aria-label="יש תזכורת" />}
           {goal && !compact && (
-            <span className={cx("inline-flex items-center gap-1", c!.text)}>
-              <span className={cx("h-1.5 w-1.5 rounded-full", c!.dot)} />
+            <span className="inline-flex min-w-0 items-center gap-1 text-ink-3">
+              <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", c!.dot)} />
               {goal.title}
             </span>
           )}
           {t.deadline && !done && (
-            <span className={cx("inline-flex items-center gap-0.5", t.deadline <= today ? "text-rose-600" : t.deadline <= addDays(today, 3) ? "text-amber-700" : "")}>
+            <span className={cx("inline-flex items-center gap-0.5", t.deadline <= addDays(today, 3) ? "text-warn" : "")}>
               <AlertCircle size={12} /> עד {formatHebDate(t.deadline)}
             </span>
           )}
           {blockers.length > 0 && !done && (
-            <span className="inline-flex items-center gap-0.5 text-amber-700">
+            <span className="inline-flex items-center gap-0.5 text-ink-3">
               <Lock size={12} /> ממתינה ל{blockers[0].title}
             </span>
           )}
           {inst.status === "in_progress" && <Badge tone="sky">בתהליך</Badge>}
           {skipped && <Badge>דילגתי</Badge>}
         </div>
-        {showWhy && t.rationale && !done && <p className="mt-1 text-xs leading-relaxed text-stone-500">{t.rationale}</p>}
+        {showWhy && t.rationale && !done && <p className="mt-1 text-footnote leading-relaxed text-ink-3">{t.rationale}</p>}
       </button>
 
       <div className="relative shrink-0">
-        <Button variant="ghost" size="icon" aria-label="פעולות" aria-expanded={menu} onClick={() => setMenu((m) => !m)} className="h-8 w-8 opacity-70 group-hover:opacity-100">
+        <Button variant="ghost" size="icon" aria-label={`פעולות: ${inst.title}`} aria-expanded={menu} onClick={() => setMenu((m) => !m)} className="text-ink-3">
           <MoreHorizontal size={18} />
         </Button>
         {menu && (
           <>
             <div className="fixed inset-0 z-30" onClick={() => setMenu(false)} />
-            <div className="surface animate-in absolute end-0 top-9 z-40 w-48 overflow-hidden rounded-xl border py-1 text-sm shadow-lg" role="menu">
+            <div className="animate-in absolute end-0 top-11 z-40 w-52 overflow-hidden rounded-panel border border-line bg-surface py-1 text-body shadow-float sm:top-9" role="menu">
               {[
                 { label: "דחייה / תזמון מחדש", run: () => openReschedule(inst), icon: <CalendarClock size={14} /> },
                 ...(inst.date !== today ? [{ label: "להעביר להיום", run: () => void rescheduleInstance(inst, today) }] : []),
@@ -116,7 +116,7 @@ export function TaskRow({
                 <button
                   key={a.label}
                   role="menuitem"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-start hover:bg-stone-50 dark:hover:bg-white/5"
+                  className="flex min-h-11 w-full items-center gap-2 px-3 text-start text-ink hover:bg-surface-2 sm:min-h-9"
                   onClick={() => {
                     setMenu(false);
                     a.run();
