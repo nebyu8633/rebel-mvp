@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { Sun, CalendarDays, Target, ListChecks, Repeat, UtensilsCrossed, TrendingUp, Settings as Cog, Plus, Sparkles, MoreHorizontal, X, HardDrive, Cloud, Globe2, Map as MapIcon, UserRound, Swords, Gift, Landmark, Crosshair } from "lucide-react";
+import { Sun, CalendarDays, Target, ListChecks, Repeat, UtensilsCrossed, TrendingUp, Settings as Cog, Plus, Sparkles, MoreHorizontal, X, HardDrive, Cloud, Globe2, Map as MapIcon, UserRound, Swords, Gift, Landmark, Crosshair, Castle } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { useUI } from "@/lib/store/ui";
 import { cx, ConfirmHost } from "./ui";
@@ -25,6 +25,7 @@ export const GAME_NAV = [
   { href: "/challenges", label: "אתגרים", icon: Swords },
   { href: "/rewards", label: "פרסים", icon: Gift },
   { href: "/legacy", label: "מורשת", icon: Landmark },
+  { href: "/aetheria", label: "AETHERIA", icon: Castle },
 ];
 /** Everyday tools (the real plan the game is built on). */
 export const NAV = [
@@ -38,7 +39,8 @@ export const NAV = [
   { href: "/settings", label: "הגדרות", icon: Cog },
 ];
 const ALL_NAV = [...GAME_NAV, ...NAV];
-const MOBILE_MAIN = ["/", "/today", "/quests", "/challenges"];
+/** Phone tab bar: Today · Calendar · [+] · Goals · More (the game lives under More). */
+const MOBILE_MAIN = ["/today", "/calendar", "/goals"];
 const GAME_PATHS = GAME_NAV.map((n) => n.href);
 
 function isActive(path: string, href: string) {
@@ -114,6 +116,20 @@ function NavLink({ href, label, icon: Icon, path, dark }: { href: string; label:
   );
 }
 
+function TabLink({ href, label, icon: Icon, path, dark }: { href: string; label: string; icon: typeof Sun; path: string; dark: boolean }) {
+  const on = isActive(path, href);
+  return (
+    <Link
+      href={href}
+      aria-current={on ? "page" : undefined}
+      className={cx("flex flex-col items-center justify-center gap-0.5 text-[11px]", on ? (dark ? "font-semibold text-amber-200" : "font-semibold text-accent-ink") : dark ? "text-slate-400" : "text-ink-2")}
+    >
+      <Icon size={22} strokeWidth={on ? 2.2 : 1.8} />
+      {label === "היום שלי" ? "היום" : label === "המטרות שלי" ? "מטרות" : label}
+    </Link>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname() ?? "/";
   const mode = useStore((s) => s.mode);
@@ -131,23 +147,22 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* desktop sidebar (right side in RTL) */}
       <aside className={cx("sticky top-0 hidden h-dvh w-60 shrink-0 flex-col overflow-y-auto border-e lg:flex", dark ? "border-white/10 bg-[#0a0f1c]" : "surface")}>
         <div className="px-5 pb-3 pt-6">
-          <Link href="/" className={cx("text-xl font-bold tracking-tight", dark && "text-white")}>
+          <Link href="/today" className={cx("text-xl font-bold tracking-tight", dark && "text-white")}>
             Life<span className={dark ? "gold-text" : "text-accent-600"}>OS</span>
           </Link>
         </div>
         <nav className="flex-1 px-3" aria-label="ניווט ראשי">
-          <div className={cx("px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider", dark ? "text-amber-200/70" : "text-stone-400")}>המשחק</div>
-          <div className="space-y-0.5">
-            {GAME_NAV.map((n) => (
-              <NavLink key={n.href} {...n} path={path} dark={dark} />
-            ))}
-          </div>
-          <div className={cx("mt-4 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider", dark ? "text-slate-500" : "text-stone-400")}>כלים</div>
           <div className="space-y-0.5">
             {NAV.map((n) => (
               <NavLink key={n.href} {...n} path={path} dark={dark} />
             ))}
             <NavLink href="/assistant" label="עוזר תכנון" icon={Sparkles} path={path} dark={dark} />
+          </div>
+          <div className={cx("mt-6 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider", dark ? "text-amber-200/70" : "text-ink-3")}>AETHERIA והמשחק</div>
+          <div className="space-y-0.5">
+            {GAME_NAV.map((n) => (
+              <NavLink key={n.href} {...n} path={path} dark={dark} />
+            ))}
           </div>
         </nav>
         <div className="space-y-3 p-4">
@@ -161,15 +176,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
         {/* mobile header */}
         <header className={cx("sticky top-0 z-30 flex h-[3.4rem] items-center justify-between border-b px-4 lg:hidden", dark ? "border-white/10 bg-[#0a0f1c]/95 text-white backdrop-blur" : "surface")}>
-          <Link href="/" className="text-lg font-bold">
+          <Link href="/today" className="text-lg font-bold">
             Life<span className={dark ? "gold-text" : "text-accent-600"}>OS</span>
           </Link>
           <div className="flex items-center gap-1">
             {saving > 0 && <span className="text-xs text-stone-400">שומר…</span>}
-            <button onClick={() => quickAdd()} className={cx("rounded-xl p-2", dark ? "text-slate-300 hover:bg-white/10" : "text-stone-600 hover:bg-stone-100 dark:text-stone-300")} aria-label="משימה חדשה">
-              <Plus size={20} />
-            </button>
-            <Link href="/assistant" className={cx("rounded-xl p-2", dark ? "text-slate-300 hover:bg-white/10" : "text-stone-600 hover:bg-stone-100 dark:text-stone-300")} aria-label="עוזר תכנון">
+            <Link href="/assistant" className={cx("grid h-11 w-11 place-items-center rounded-full", dark ? "text-slate-300 hover:bg-white/10" : "text-ink-2 hover:bg-surface-2")} aria-label="עוזר תכנון">
               <Sparkles size={20} />
             </Link>
           </div>
@@ -177,39 +189,31 @@ export function AppShell({ children }: { children: ReactNode }) {
         {isWorld ? <main>{children}</main> : <main className="mx-auto w-full max-w-5xl px-4 pb-32 pt-5 sm:px-6 lg:pb-12 lg:pt-8">{children}</main>}
       </div>
 
-      {/* mobile quick add (hidden where a page has its own action bar, and in the game screens) */}
-      {!dark && !/^\/goals\/(new|[^/]+\/(plan|chat))/.test(path) && (
-        <button
-          onClick={() => quickAdd()}
-          aria-label="הוספת משימה"
-          className="fixed bottom-20 start-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-accent-600 text-white shadow-lg shadow-accent-600/30 active:scale-95 lg:hidden"
-        >
-          <Plus size={26} />
-        </button>
-      )}
-
       {/* mobile bottom nav */}
       <nav className={cx("pb-safe fixed inset-x-0 bottom-0 z-40 border-t lg:hidden", dark ? "border-white/10 bg-[#0a0f1c]/95 backdrop-blur" : "surface")} aria-label="ניווט ראשי">
         <div className="grid h-[4.1rem] grid-cols-5">
-          {mobileMain.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={isActive(path, href) ? "page" : undefined}
-              className={cx(
-                "flex flex-col items-center justify-center gap-0.5 text-[11px]",
-                isActive(path, href) ? (dark ? "font-semibold text-amber-200" : "font-semibold text-accent-700 dark:text-accent-200") : dark ? "text-slate-400" : "text-stone-500",
-              )}
+          {mobileMain.slice(0, 2).map((n) => (
+            <TabLink key={n.href} {...n} path={path} dark={dark} />
+          ))}
+          {/* the one primary action, always in the same place */}
+          <div className="grid place-items-center">
+            <button
+              type="button"
+              onClick={() => quickAdd()}
+              aria-label="הוספה מהירה"
+              className={cx("grid h-12 w-12 place-items-center rounded-full shadow-float transition-transform active:scale-95", dark ? "gold-btn" : "bg-accent text-white dark:text-[#06201c]")}
             >
-              <Icon size={22} />
-              {label === "העולם שלי" ? "עולם" : label === "מפת המסעות" ? "מסעות" : label === "היום שלי" ? "היום" : label}
-            </Link>
+              <Plus size={24} />
+            </button>
+          </div>
+          {mobileMain.slice(2).map((n) => (
+            <TabLink key={n.href} {...n} path={path} dark={dark} />
           ))}
           <button
             onClick={() => setMoreOpen(true)}
             className={cx(
               "flex flex-col items-center justify-center gap-0.5 text-[11px]",
-              ALL_NAV.some((n) => !MOBILE_MAIN.includes(n.href) && isActive(path, n.href)) ? (dark ? "font-semibold text-amber-200" : "font-semibold text-accent-700") : dark ? "text-slate-400" : "text-stone-500",
+              ALL_NAV.some((n) => !MOBILE_MAIN.includes(n.href) && isActive(path, n.href)) ? (dark ? "font-semibold text-amber-200" : "font-semibold text-accent-ink") : dark ? "text-slate-400" : "text-ink-2",
             )}
             aria-haspopup="dialog"
           >
@@ -222,21 +226,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       {moreOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="עוד">
           <div className="absolute inset-0 bg-stone-900/40" onClick={() => setMoreOpen(false)} />
-          <div className="surface animate-sheet pb-safe absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t p-4">
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-stone-300" />
+          <div className="animate-sheet absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-sheet border-t border-line bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line-strong" />
             {[
-              { title: "המשחק", items: GAME_NAV.filter((n) => !MOBILE_MAIN.includes(n.href)) },
-              { title: "כלים", items: [...NAV.filter((n) => !MOBILE_MAIN.includes(n.href)), { href: "/assistant", label: "עוזר תכנון", icon: Sparkles }] },
+              { title: "LifeOS", items: [...NAV.filter((n) => !MOBILE_MAIN.includes(n.href) && n.href !== "/today"), { href: "/assistant", label: "עוזר תכנון", icon: Sparkles }] },
+              { title: "AETHERIA והמשחק", items: GAME_NAV },
             ].map((g) => (
               <div key={g.title} className="mb-3">
-                <div className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-stone-400">{g.title}</div>
+                <div className="mb-1.5 px-1 text-caption text-ink-3">{g.title}</div>
                 <div className="grid grid-cols-3 gap-2">
                   {g.items.map(({ href, label, icon: Icon }) => (
                     <Link
                       key={href}
                       href={href}
                       onClick={() => setMoreOpen(false)}
-                      className={cx("flex flex-col items-center gap-1.5 rounded-2xl p-3 text-center text-sm", isActive(path, href) ? "bg-accent-50 text-accent-800" : "bg-stone-50 dark:bg-white/5")}
+                      className={cx("flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-panel p-3 text-center text-footnote", isActive(path, href) ? "bg-accent-soft font-semibold text-accent-ink" : "bg-surface-2 text-ink")}
                     >
                       <Icon size={22} />
                       {label}
