@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState, type DragEvent } from "react";
-import { ChevronRight, ChevronLeft, Plus, Flag, Repeat, AlertTriangle, CalendarPlus } from "lucide-react";
+import { ChevronRight, ChevronLeft, Plus, Flag, Repeat, AlertTriangle, CalendarPlus, CalendarDays } from "lucide-react";
 import { useStore } from "@/lib/store/store";
 import { useUI } from "@/lib/store/ui";
 import { useToday } from "@/hooks/useToday";
@@ -25,8 +25,12 @@ import { goalColor } from "@/lib/goals";
 import { Badge, Button, Details, PageHeader, Segmented, cx } from "@/components/ui";
 import { EventEditor, blankEvent } from "@/components/EventEditor";
 import type { CalendarEvent, Habit } from "@/lib/types";
+import { TaskRow } from "@/components/TaskRow";
+import { useQuickAdd } from "@/components/QuickAdd";
+import { relativeDayLabel } from "@/lib/dates";
 
-type View = "day" | "week" | "month";
+type View = "agenda" | "day" | "week" | "month";
+const AGENDA_DAYS = 14;
 
 interface DayData {
   tasks: TaskInstance[];
@@ -41,13 +45,16 @@ export default function CalendarPage() {
   const toast = useStore((s) => s.toast);
   const today = useToday();
   const openEditor = useUI((s) => s.openEditor);
-  const [view, setView] = useState<View>(() => (typeof window !== "undefined" && window.innerWidth < 640 ? "day" : "week"));
+  const [view, setView] = useState<View>(() => (typeof window !== "undefined" && window.innerWidth < 640 ? "agenda" : "week"));
+  // month view: the tapped day's items are listed under the grid
+  const [picked, setPicked] = useState<string | null>(null);
   const [cursor, setCursor] = useState(today);
   const [eventEdit, setEventEdit] = useState<CalendarEvent | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   const range = useMemo(() => {
     if (view === "day") return { from: cursor, to: cursor };
+    if (view === "agenda") return { from: cursor, to: addDays(cursor, AGENDA_DAYS - 1) };
     if (view === "week") {
       const s = startOfWeek(cursor);
       return { from: s, to: addDays(s, 6) };
@@ -80,7 +87,7 @@ export default function CalendarPage() {
     return set;
   }, [db, range]);
 
-  const step = (dir: 1 | -1) => setCursor((c) => (view === "day" ? addDays(c, dir) : view === "week" ? addDays(c, 7 * dir) : addMonths(c, dir)));
+  const step = (dir: 1 | -1) => setCursor((c) => (view === "day" ? addDays(c, dir) : view === "week" || view === "agenda" ? addDays(c, 7 * dir) : addMonths(c, dir)));
 
   async function onDrop(e: DragEvent, date: string, time?: string) {
     e.preventDefault();
@@ -118,7 +125,7 @@ export default function CalendarPage() {
   const title =
     view === "month"
       ? `${MONTHS_HE[parseDate(cursor).getUTCMonth()]} ${parseDate(cursor).getUTCFullYear()}`
-      : view === "week"
+      : view === "week" || view === "agenda"
         ? `${formatHebDate(range.from)} – ${formatHebDate(range.to, { year: true })}`
         : formatHebDate(cursor, { weekday: true, year: true });
 
@@ -154,6 +161,7 @@ export default function CalendarPage() {
           value={view}
           onChange={setView}
           options={[
+            { value: "agenda", label: "רשימה" },
             { value: "day", label: "יום" },
             { value: "week", label: "שבוע" },
             { value: "month", label: "חודש" },
@@ -186,13 +194,11 @@ export default function CalendarPage() {
                   )}
                 >
                   <button
-                    onClick={() => {
-                      setCursor(d);
-                      setView("day");
-                    }}
+                    onClick={() => setPicked(d)}
+                    aria-pressed={(picked ?? today) === d}
                     className={cx(
-                      "mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                      d === today ? "bg-accent-600 font-bold text-white" : inMonth ? "text-stone-700 dark:text-stone-200" : "text-stone-400",
+                      "mb-1 flex h-8 w-8 items-center justify-center rounded-full text-footnote sm:h-6 sm:w-6",
+                      d === today ? "bg-accent font-bold text-white dark:text-[#06201c]" : (picked ?? today) === d ? "bg-accent-soft font-semibold text-accent-ink" : inMonth ? "text-ink" : "text-ink-3",
                     )}
                     aria-label={formatHebDate(d, { weekday: true })}
                   >
@@ -225,6 +231,23 @@ export default function CalendarPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {view === "month" && (
+        <div className="mt-4">
+          <AgendaDay date={picked ?? (cursor.slice(0, 7) === today.slice(0, 7) ? today : startOfMonth(cursor))} today={today} data={byDay.get(picked ?? (cursor.slice(0, 7) === today.slice(0, 7) ? today : startOfMonth(cursor)))} onEvent={setEventEdit} expanded />
+        </div>
+      )}
+
+      {view === "agenda" && (
+        <div className="space-y-5">
+          {[...byDay.entries()].map(([d, data]) => (
+            <AgendaDay key={d} date={d} today={today} data={data} onEvent={setEventEdit} />
+          ))}
+          <Button variant="ghost" className="w-full" onClick={() => step(1)}>
+            השבוע הבא
+          </Button>
         </div>
       )}
 
@@ -306,6 +329,67 @@ export default function CalendarPage() {
   );
 }
 
+/** One day as a list (agenda / month): events, tasks (with their full menu: move, tomorrow, skip…), habits. */
+function AgendaDay({ date, today, data, onEvent, expanded }: { date: string; today: string; data?: DayData; onEvent: (e: CalendarEvent) => void; expanded?: boolean }) {
+  const quickAdd = useQuickAdd((s) => s.show);
+  const db = useStore((s) => s.db);
+  if (!data) return null;
+  const empty = !data.events.length && !data.tasks.length && !data.deadlines.length;
+  const head = (
+    <div className="mb-1.5 flex min-h-9 items-center justify-between gap-2 px-1">
+      <h3 className={cx("text-footnote font-semibold", date === today ? "text-accent-ink" : "text-ink-2")}>
+        {date === today || date === addDays(today, 1) ? `${relativeDayLabel(date, today)} · ` : ""}
+        {formatHebDate(date, { weekday: true })}
+      </h3>
+      <button type="button" onClick={() => quickAdd(date)} aria-label={`הוספה ל${formatHebDate(date)}`} className="grid h-9 w-9 place-items-center rounded-full text-ink-3 hover:bg-surface-2 hover:text-ink">
+        <Plus size={18} />
+      </button>
+    </div>
+  );
+  if (empty && !expanded)
+    return (
+      <section>
+        {head}
+        <p className="px-1 text-footnote text-ink-3">{data.habits.length ? `פנוי · ${data.habits.length} הרגלים` : "פנוי"}</p>
+      </section>
+    );
+  return (
+    <section>
+      {head}
+      <div className="overflow-hidden rounded-panel border border-line bg-surface">
+        {empty && <p className="px-4 py-3 text-body text-ink-3">אין משימות או אירועים.</p>}
+        <div className="divide-y divide-line">
+          {[...data.events]
+            .sort((a, b) => (a.event.startTime ?? "") < (b.event.startTime ?? "") ? -1 : 1)
+            .map((e) => (
+              <button key={e.key} type="button" onClick={() => onEvent(e.event)} className="flex min-h-[52px] w-full items-center gap-3 px-4 text-start">
+                <CalendarDays size={16} className="shrink-0 text-sky-600 dark:text-sky-400" aria-label="אירוע" />
+                <span className="min-w-0 flex-1 truncate text-body text-ink">{e.event.title}</span>
+                <span className="tnum shrink-0 text-footnote text-ink-2">{e.event.startTime ? `${e.event.startTime}${e.event.endTime ? `–${e.event.endTime}` : ""}` : "כל היום"}</span>
+                {e.event.recurrence && <Repeat size={12} className="shrink-0 text-ink-3" aria-label="חוזר" />}
+              </button>
+            ))}
+          {[...data.tasks]
+            .sort((a, b) => (a.startTime ?? "99") < (b.startTime ?? "99") ? -1 : 1)
+            .map((t) => (
+              <TaskRow key={t.key} inst={t} />
+            ))}
+          {data.deadlines.map((t) => (
+            <div key={t.key} className="flex min-h-11 items-center gap-3 px-4 text-footnote text-warn">
+              <Flag size={14} /> דדליין: {t.title}
+            </div>
+          ))}
+        </div>
+        {data.habits.length > 0 && (
+          <p className="border-t border-line px-4 py-2.5 text-footnote text-ink-2">
+            הרגלים: {data.habits.map((h) => `${db.habitLogs[`${h.id}:${date}`]?.status === "done" ? "✓ " : ""}${h.title}`).join(" · ")}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function Legend() {
   return (
     <Details className="mb-3" label="מקרא">
@@ -326,7 +410,7 @@ function Legend() {
         <AlertTriangle size={12} /> התנגשות בזמנים
       </span>
     </div>
-    <p className="mt-2">גוררים משימות ואירועים בין ימים ושעות. במגע — ״תזמון מחדש״ בתפריט המשימה.</p>
+    <p className="mt-2">להזזת משימה: בתפריט ⋯ שלה — ״למחר״ או ״דחייה / תזמון מחדש״. במחשב אפשר גם לגרור בין ימים ושעות.</p>
     </Details>
   );
 }
