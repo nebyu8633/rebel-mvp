@@ -11,15 +11,16 @@ export function cx(...c: Array<string | false | null | undefined>) {
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 const btnBase =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500 disabled:opacity-50 disabled:pointer-events-none select-none";
+  "inline-flex items-center justify-center gap-1.5 rounded-field font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50 disabled:pointer-events-none select-none";
 const btnVariants: Record<BtnVariant, string> = {
-  primary: "bg-accent-600 text-white hover:bg-accent-700 active:bg-accent-800",
-  secondary: "surface border text-stone-800 hover:bg-stone-50 dark:text-stone-100 dark:hover:bg-white/5",
-  ghost: "text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-white/5",
-  subtle: "bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-white/5 dark:text-stone-200 dark:hover:bg-white/10",
-  danger: "bg-rose-600 text-white hover:bg-rose-700",
+  primary: "bg-accent text-white hover:brightness-[1.05] dark:text-[#06201c]",
+  secondary: "bg-surface border border-line text-ink hover:bg-surface-2",
+  ghost: "text-ink-2 hover:bg-surface-2 hover:text-ink",
+  subtle: "bg-surface-2 text-ink hover:bg-line",
+  danger: "bg-danger text-white hover:brightness-[1.05]",
 };
-const btnSizes = { sm: "h-8 px-2.5 text-sm", md: "h-10 px-4 text-sm", lg: "h-12 px-5 text-base", icon: "h-9 w-9" };
+// touch-first: md/icon reach 44px on phones, a little denser with a pointer (sm+)
+const btnSizes = { sm: "h-9 px-3 text-footnote sm:h-8", md: "h-11 px-4 text-body sm:h-10 sm:text-sm", lg: "h-12 px-5 text-base", icon: "h-11 w-11 sm:h-9 sm:w-9" };
 
 export const Button = forwardRef<
   HTMLButtonElement,
@@ -30,7 +31,7 @@ export const Button = forwardRef<
 
 export function Card({ className, children, ...p }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cx("surface rounded-2xl border p-4 sm:p-5", className)} {...p}>
+    <div className={cx("rounded-panel border border-line bg-surface p-4 sm:p-5", className)} {...p}>
       {children}
     </div>
   );
@@ -40,8 +41,8 @@ export function SectionTitle({ children, action, hint }: { children: ReactNode; 
   return (
     <div className="mb-3 flex items-end justify-between gap-2">
       <div>
-        <h2 className="text-[15px] font-semibold text-stone-900 dark:text-stone-100">{children}</h2>
-        {hint && <p className="text-xs text-stone-500 dark:text-stone-400">{hint}</p>}
+        <h2 className="text-body font-semibold text-ink">{children}</h2>
+        {hint && <p className="text-footnote text-ink-3">{hint}</p>}
       </div>
       {action}
     </div>
@@ -52,16 +53,17 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-50">{title}</h1>
-        {subtitle && <div className="mt-0.5 text-sm text-stone-500 dark:text-stone-400">{subtitle}</div>}
+        <h1 className="text-display text-ink">{title}</h1>
+        {subtitle && <div className="mt-0.5 text-footnote text-ink-2">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>
   );
 }
 
+// 16px on phones: iOS Safari zooms into any focused field smaller than that
 const inputCls =
-  "w-full rounded-xl border hairline bg-white px-3 py-2 text-[15px] text-stone-900 placeholder:text-stone-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 dark:bg-stone-900 dark:text-stone-100 disabled:opacity-60";
+  "w-full rounded-field border border-line bg-surface px-3 py-2.5 text-base text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60 sm:py-2 sm:text-[15px]";
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...p },
@@ -97,14 +99,14 @@ export function Field({
 }) {
   return (
     <label className={cx("block", className)}>
-      <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">{label}</span>
+      <span className="mb-1 block text-footnote font-medium text-ink-2">{label}</span>
       {children}
       {error ? (
-        <span role="alert" className="mt-1 block text-xs text-rose-600">
+        <span role="alert" className="mt-1 block text-footnote text-danger">
           {error}
         </span>
       ) : hint ? (
-        <span className="mt-1 block text-xs text-stone-500">{hint}</span>
+        <span className="mt-1 block text-footnote text-ink-3">{hint}</span>
       ) : null}
     </label>
   );
@@ -112,17 +114,17 @@ export function Field({
 
 export function Badge({ children, tone = "stone", className }: { children: ReactNode; tone?: "stone" | "accent" | "amber" | "rose" | "indigo" | "sky"; className?: string }) {
   const tones = {
-    stone: "bg-stone-100 text-stone-600 dark:bg-white/5 dark:text-stone-300",
-    accent: "bg-accent-50 text-accent-700 dark:bg-accent-800/30 dark:text-accent-200",
-    amber: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    rose: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+    stone: "bg-surface-2 text-ink-2",
+    accent: "bg-accent-soft text-accent-ink",
+    amber: "bg-warn-soft text-warn",
+    rose: "bg-danger-soft text-danger",
     indigo: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
     sky: "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
   };
   return <span className={cx("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium", tones[tone], className)}>{children}</span>;
 }
 
-export function ProgressBar({ value, className, barClass = "bg-accent-600", label }: { value: number | null; className?: string; barClass?: string; label?: string }) {
+export function ProgressBar({ value, className, barClass = "bg-accent", label }: { value: number | null; className?: string; barClass?: string; label?: string }) {
   const pct = value == null ? 0 : Math.round(Math.min(1, Math.max(0, value)) * 100);
   return (
     <div
@@ -131,7 +133,7 @@ export function ProgressBar({ value, className, barClass = "bg-accent-600", labe
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label}
-      className={cx("h-2 w-full overflow-hidden rounded-full bg-stone-100 dark:bg-white/10", className)}
+      className={cx("h-1.5 w-full overflow-hidden rounded-full bg-surface-2", className)}
     >
       {value != null && <div className={cx("h-full rounded-full transition-[width] duration-500", barClass)} style={{ width: `${pct}%` }} />}
     </div>
@@ -140,10 +142,10 @@ export function ProgressBar({ value, className, barClass = "bg-accent-600", labe
 
 export function EmptyState({ icon, title, children, action }: { icon?: ReactNode; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed hairline px-4 py-8 text-center">
-      {icon && <div className="text-stone-400">{icon}</div>}
-      <p className="font-medium text-stone-700 dark:text-stone-200">{title}</p>
-      {children && <div className="max-w-sm text-sm text-stone-500">{children}</div>}
+    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+      {icon && <div className="text-ink-3">{icon}</div>}
+      <p className="text-headline text-ink">{title}</p>
+      {children && <div className="max-w-sm text-body text-ink-2">{children}</div>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );
@@ -163,7 +165,7 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
 }) {
   return (
-    <div role="radiogroup" className={cx("inline-flex rounded-xl bg-stone-100 p-1 dark:bg-white/5", className)}>
+    <div role="radiogroup" className={cx("inline-flex rounded-field bg-surface-2 p-0.5", className)}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -172,9 +174,9 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cx(
-            "rounded-lg font-medium transition-colors",
-            size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
-            value === o.value ? "surface text-stone-900 shadow-sm dark:text-stone-50" : "text-stone-500 hover:text-stone-800 dark:hover:text-stone-200",
+            "rounded-[8px] font-medium transition-colors",
+            size === "sm" ? "px-2.5 py-1 text-footnote" : "min-h-9 px-3 py-1.5 text-footnote sm:text-sm",
+            value === o.value ? "bg-surface text-ink shadow-sm" : "text-ink-2 hover:text-ink",
           )}
         >
           {o.label}
@@ -188,7 +190,7 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
   const id = useId();
   return (
     <label htmlFor={id} className={cx("flex cursor-pointer items-center justify-between gap-3 py-1.5", disabled && "opacity-50")}>
-      <span className="text-sm text-stone-700 dark:text-stone-300">{label}</span>
+      <span className="text-body text-ink">{label}</span>
       <button
         id={id}
         type="button"
@@ -196,12 +198,34 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={cx("relative h-6 w-11 shrink-0 rounded-full transition-colors", checked ? "bg-accent-600" : "bg-stone-300 dark:bg-stone-600")}
+        className={cx("relative h-[30px] w-[50px] shrink-0 rounded-full transition-colors", checked ? "bg-accent" : "bg-line-strong")}
       >
-        <span className={cx("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", checked ? "start-[22px]" : "start-0.5")} />
+        <span className={cx("absolute top-[3px] h-6 w-6 rounded-full bg-white shadow transition-all", checked ? "start-[23px]" : "start-[3px]")} />
       </button>
     </label>
   );
+}
+
+/**
+ * Height of the on-screen keyboard (iOS Safari doesn't shrink the layout viewport for it), so
+ * bottom sheets can sit above it instead of hiding the focused field and the save button.
+ */
+export function useKeyboardInset(active = true) {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!active || !vv) return;
+    const update = () => setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setInset(0);
+    };
+  }, [active]);
+  return inset > 80 ? inset : 0; // ignore toolbar wobble
 }
 
 export function Modal({
@@ -220,6 +244,7 @@ export function Modal({
   wide?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const kb = useKeyboardInset(open);
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
@@ -243,22 +268,24 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/35" onClick={onClose} />
       <div
         ref={panel}
+        style={{ marginBottom: kb, maxHeight: kb ? `calc(100dvh - ${kb}px - 12px)` : undefined }}
         className={cx(
-          "surface animate-sheet relative flex max-h-[92dvh] w-full flex-col rounded-t-3xl border shadow-xl sm:rounded-3xl",
+          "animate-sheet relative flex max-h-[92dvh] w-full flex-col rounded-t-sheet border border-line bg-surface shadow-float sm:rounded-sheet",
           wide ? "sm:max-w-2xl" : "sm:max-w-lg",
         )}
       >
-        <div className="flex items-center justify-between gap-2 border-b hairline px-5 py-3.5">
-          <h2 className="text-base font-semibold">{title}</h2>
+        <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-line-strong sm:hidden" aria-hidden />
+        <div className="flex items-center justify-between gap-2 px-5 pb-2 pt-2 sm:pt-4">
+          <h2 className="text-headline text-ink">{title}</h2>
           <Button data-close variant="ghost" size="icon" onClick={onClose} aria-label="סגירה">
             <X size={18} />
           </Button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex flex-wrap justify-end gap-2 border-t hairline px-5 py-3 pb-safe">{footer}</div>}
+        <div className="overflow-y-auto overscroll-contain px-5 pb-4 pt-1">{children}</div>
+        {footer && <div className={cx("flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3", !kb && "pb-[max(0.75rem,env(safe-area-inset-bottom))]")}>{footer}</div>}
       </div>
     </div>
   );
@@ -299,7 +326,7 @@ export function ConfirmHost() {
         </>
       }
     >
-      <div className="text-sm text-stone-600 dark:text-stone-300">{req?.message}</div>
+      <div className="text-body text-ink-2">{req?.message}</div>
     </Modal>
   );
 }
@@ -309,7 +336,7 @@ export function Spinner({ className }: { className?: string }) {
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cx("animate-pulse rounded-xl bg-stone-200/70 dark:bg-white/5", className)} />;
+  return <div className={cx("animate-pulse rounded-field bg-surface-2", className)} />;
 }
 
 // ───────── Progressive disclosure ─────────
@@ -371,12 +398,12 @@ export function Disclosure({
           onClick={toggle}
           aria-expanded={open}
           aria-controls={contentId}
-          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-start transition-colors hover:bg-stone-50/70 dark:hover:bg-white/[0.02]"
+          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-start transition-colors hover:bg-surface-2/60"
         >
-          {icon && <span className="shrink-0 text-stone-400">{icon}</span>}
-          <span className="shrink-0 text-[15px] font-semibold text-stone-900 dark:text-stone-100">{title}</span>
-          {summary != null && <span className="min-w-0 flex-1 truncate text-sm text-stone-500">{summary}</span>}
-          <ChevronDown size={18} className={cx("ms-auto shrink-0 text-stone-400 transition-transform duration-200", open && "rotate-180")} aria-hidden />
+          {icon && <span className="shrink-0 text-ink-3">{icon}</span>}
+          <span className="shrink-0 text-body font-semibold text-ink">{title}</span>
+          {summary != null && <span className="min-w-0 flex-1 truncate text-footnote text-ink-2">{summary}</span>}
+          <ChevronDown size={18} className={cx("ms-auto shrink-0 text-ink-3 transition-transform duration-200", open && "rotate-180")} aria-hidden />
         </button>
         {action}
       </div>
@@ -394,10 +421,10 @@ export function Details({ label = "פרטים", children, className }: { label?:
   const [open, setOpen] = useState(false);
   return (
     <div className={cx("text-xs", className)}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-1 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-1 text-ink-2 hover:text-ink">
         <Info size={13} /> {open ? "הסתרה" : label}
       </button>
-      {open && <div className="animate-in mt-1.5 rounded-xl bg-stone-50 p-2.5 leading-relaxed text-stone-600 dark:bg-white/[0.03] dark:text-stone-300">{children}</div>}
+      {open && <div className="animate-in mt-1.5 rounded-field bg-surface-2 p-2.5 leading-relaxed text-ink-2">{children}</div>}
     </div>
   );
 }
@@ -405,23 +432,23 @@ export function Details({ label = "פרטים", children, className }: { label?:
 /** Compact number + label tile. */
 export function Stat({ label, value, tone, sub }: { label: string; value: ReactNode; tone?: "pos" | "neg" | "warn"; sub?: ReactNode }) {
   return (
-    <div className="min-w-0 rounded-xl bg-stone-50 px-3 py-2.5 dark:bg-white/[0.03]">
-      <div className="truncate text-[11px] text-stone-500">{label}</div>
-      <div className={cx("ltr-nums truncate text-start text-base font-semibold", tone === "pos" && "text-accent-700", tone === "neg" && "text-rose-600", tone === "warn" && "text-amber-700")}>{value}</div>
-      {sub && <div className="truncate text-[11px] text-stone-500">{sub}</div>}
+    <div className="min-w-0 rounded-field bg-surface-2 px-3 py-2.5">
+      <div className="truncate text-caption text-ink-2">{label}</div>
+      <div className={cx("ltr-nums truncate text-start text-base font-semibold", tone === "pos" && "text-accent-ink", tone === "neg" && "text-danger", tone === "warn" && "text-warn")}>{value}</div>
+      {sub && <div className="truncate text-caption text-ink-3">{sub}</div>}
     </div>
   );
 }
 
 /** Small circular progress (for compact cards). value 0..1 or null (no data). */
-export function Ring({ value, size = 44, stroke = 5, colorClass = "text-accent-600", label }: { value: number | null; size?: number; stroke?: number; colorClass?: string; label: string }) {
+export function Ring({ value, size = 44, stroke = 5, colorClass = "text-accent", label }: { value: number | null; size?: number; stroke?: number; colorClass?: string; label: string }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const pct = value == null ? null : Math.round(Math.min(1, Math.max(0, value)) * 100);
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={pct == null ? `${label}: אין נתונים` : `${label}: ${pct}%`}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-stone-200 dark:text-white/10" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-surface-2" />
         {pct != null && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} className={cx("transition-[stroke-dashoffset] duration-500", colorClass)} />}
       </svg>
       <span className="ltr-nums absolute inset-0 flex items-center justify-center text-[11px] font-semibold">{pct == null ? "—" : `${pct}%`}</span>
