@@ -146,7 +146,7 @@ export default function MyDay() {
 
       {/* habits: one tap to mark; no streak pressure here */}
       {habits.length > 0 && (
-        <Section title="הרגלים" flush action={<Link href="/habits" className="text-footnote font-medium text-accent-ink">הכול</Link>}>
+        <Section title="הרגלים" flush action={<Link href="/habits" className="inline-flex min-h-9 items-center px-1 text-footnote font-medium text-accent-ink">הכול</Link>}>
           <div className="flex flex-wrap gap-2">
             {habits.map((h) => {
               const isDone = db.habitLogs[`${h.id}:${today}`]?.status === "done";
@@ -168,7 +168,7 @@ export default function MyDay() {
 
       {/* later: events and upcoming reminders, in time order */}
       {(later.length > 0 || isGroceryToday || mealsToPrep.length > 0) && (
-        <Section title="בהמשך" action={<Link href="/calendar" className="text-footnote font-medium text-accent-ink">יומן</Link>}>
+        <Section title="בהמשך" action={<Link href="/calendar" className="inline-flex min-h-9 items-center px-1 text-footnote font-medium text-accent-ink">יומן</Link>}>
           <ul className="divide-y divide-line">
             {later.map((l) => (
               <li key={l.key} className="flex min-h-11 items-center gap-3 px-4">
@@ -197,7 +197,7 @@ export default function MyDay() {
 
       {/* goals: the next step, not a dashboard */}
       {goals.length > 0 && (
-        <Section title="מטרות" action={<Link href="/goals" className="text-footnote font-medium text-accent-ink">הכול</Link>}>
+        <Section title="מטרות" action={<Link href="/goals" className="inline-flex min-h-9 items-center px-1 text-footnote font-medium text-accent-ink">הכול</Link>}>
           <ul className="divide-y divide-line">
             {goals.map((g) => {
               const snap = goalSnapshot(db, g, today);

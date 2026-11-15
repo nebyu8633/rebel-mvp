@@ -59,7 +59,7 @@ export function TaskRow({
       </button>
 
       <button type="button" className="min-w-0 flex-1 py-2.5 text-start" onClick={() => openEditor({ instance: inst })}>
-        <div className={cx("text-body text-ink", done && "text-ink-3 line-through decoration-ink-3/50")}>{inst.title}</div>
+        <div className={cx("line-clamp-3 text-body text-ink", done && "text-ink-3 line-through decoration-ink-3/50")}>{inst.title}</div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-footnote text-ink-2 empty:hidden">
           {showDate && inst.date && (
             <span className={cx(overdue && "font-medium text-warn")}>{relativeDayLabel(inst.date, today)}</span>

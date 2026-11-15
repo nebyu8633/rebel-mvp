@@ -421,7 +421,7 @@ export function Details({ label = "פרטים", children, className }: { label?:
   const [open, setOpen] = useState(false);
   return (
     <div className={cx("text-xs", className)}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-1 text-ink-2 hover:text-ink">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex min-h-9 items-center gap-1 text-ink-2 hover:text-ink">
         <Info size={13} /> {open ? "הסתרה" : label}
       </button>
       {open && <div className="animate-in mt-1.5 rounded-field bg-surface-2 p-2.5 leading-relaxed text-ink-2">{children}</div>}

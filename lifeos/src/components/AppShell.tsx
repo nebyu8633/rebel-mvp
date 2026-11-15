@@ -176,7 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
         {/* mobile header */}
         <header className={cx("sticky top-0 z-30 flex h-[3.4rem] items-center justify-between border-b px-4 lg:hidden", dark ? "border-white/10 bg-[#0a0f1c]/95 text-white backdrop-blur" : "surface")}>
-          <Link href="/today" className="text-lg font-bold">
+          <Link href="/today" dir="ltr" className="flex h-11 items-center text-lg font-bold">
             Life<span className={dark ? "gold-text" : "text-accent-600"}>OS</span>
           </Link>
           <div className="flex items-center gap-1">
