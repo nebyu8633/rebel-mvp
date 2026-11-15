@@ -41,8 +41,33 @@ function inQuiet(at: number, p: GameProfile | null): boolean {
   return a <= b ? at >= a && at < b : at >= a || at < b;
 }
 
+/** Task ids that already have a reminder the user chose (minutes before start, or explicit reminders). */
+function withChosenReminder(db: DB): Set<string> {
+  const ids = new Set<string>();
+  for (const t of Object.values(db.tasks)) if (t.reminderMinutes != null) ids.add(t.id);
+  for (const r of Object.values(db.reminders ?? {})) if (r.enabled) ids.add(r.taskId);
+  return ids;
+}
+
+/**
+ * LifeOS default (game reminders off): a timed task the user set no reminder for still gets ONE calm
+ * notification at its start time — the same key the game "start" reminder used, so a reminder already
+ * delivered is never sent again after switching modes. Tasks with a chosen reminder get only that one.
+ */
+function calmStartReminders(db: DB, date: string): GameReminder[] {
+  const chosen = withChosenReminder(db);
+  const out: GameReminder[] = [];
+  for (const i of instancesInRange(db, date, date)) {
+    if (!i.startTime || !isOpen(i.status) || i.date !== date || chosen.has(i.task.id)) continue;
+    const high = i.task.priority === "high";
+    out.push({ key: `g:start:${i.key}:${date}:${i.startTime}`, date, at: timeToMinutes(i.startTime), time: i.startTime, title: i.title, body: `עכשיו · ${i.startTime}`, kind: "task", href: "/today", instanceKey: i.key, category: high ? "high" : "standard", urgent: high, stage: "start" });
+  }
+  return out;
+}
+
 export function gameReminders(db: DB, date: string): GameReminder[] {
   const p = profileOf(db);
+  if (!p?.notify.gameReminders) return calmStartReminders(db, date);
   const out: GameReminder[] = [];
   const prepOn = p?.notify.prepAndFollowUp ?? true;
   const prep = p?.notify.prepMinutes ?? 15;
@@ -80,6 +105,11 @@ export function gameReminders(db: DB, date: string): GameReminder[] {
   return out;
 }
 
+/** Deep link: a task reminder opens that task's sheet on Today (`/today?task=<instanceKey>`). */
+export function taskLink(href: string, instanceKey?: string): string {
+  return href === "/today" && instanceKey ? `/today?task=${encodeURIComponent(instanceKey)}` : href;
+}
+
 export interface ScheduledReminder extends GameReminder {
   /** Why it will not be delivered (category off / quiet hours), or null. */
   muted: null | "category" | "quiet";
@@ -97,6 +127,7 @@ export function scheduledReminders(db: DB, date: string): ScheduledReminder[] {
   const all = [...regular, ...gameReminders(db, date)].sort((a, b) => a.at - b.at);
   return all.map((r) => ({
     ...r,
+    href: taskLink(r.href, r.instanceKey),
     muted: p && !p.notify.categories[r.category] ? "category" : !r.urgent && inQuiet(r.at, p) ? "quiet" : null,
   }));
 }

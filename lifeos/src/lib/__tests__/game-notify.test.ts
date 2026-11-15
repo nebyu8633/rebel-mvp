@@ -12,19 +12,26 @@ const settings = (db: DB, av: number | null = null) => {
   db.settings.settings = { id: "settings", displayName: "", timezone: "Asia/Jerusalem", weekStartsOn: 0, availability: [av, av, av, av, av, av, av], mealReminders: [], notifyInApp: true, notifyBrowser: false, defaultReminderMinutes: 15, mealPrepDay: 2, mealPrepBackupDay: 6, onboarded: true, createdAt: T0, updatedAt: T0 };
   return db;
 };
+/** the game-style reminders are opt-in (LifeOS default: one calm notification) */
+const withGame = (db: DB) => {
+  const p = defaultProfile(D, T0);
+  p.notify.gameReminders = true;
+  db.gameProfile = { profile: p };
+  return db;
+};
 const goal = (id: string): Goal => ({ id, title: id, description: "", why: "", kind: "learning", status: "active", startDate: "2026-11-01", startConfirmed: true, targetDate: "2027-11-01", unit: "", startValue: null, targetValue: null, manualValue: null, financeAccountId: null, info: {}, region: null, color: "teal", order: 0, createdAt: T0, updatedAt: T0 });
 const ms = (id: string, order: number, status: Milestone["status"] = "pending", updatedAt = T0): Milestone => ({ id, goalId: "g", title: id, description: "", targetDate: "2027-01-01", status, order, planVersionId: null, createdAt: T0, updatedAt });
 
 describe("game reminders", () => {
   it("prep / start / follow-up at 17:45, 18:00, 18:15 for an 18:00 task", () => {
-    const db = settings(dbWith([task({ id: "w", title: "אימון", date: D, startTime: "18:00", estimatedMinutes: 45 })]));
+    const db = withGame(settings(dbWith([task({ id: "w", title: "אימון", date: D, startTime: "18:00", estimatedMinutes: 45 })])));
     const r = scheduledReminders(db, D).filter((x) => x.instanceKey === "w");
     expect(r.map((x) => `${x.time} ${x.stage}`)).toEqual(["17:45 prep", "18:00 start", "18:15 follow"]);
     expect(r[0].title).toContain("בעוד 15 דק׳");
     expect(r[2].category).toBe("repeat");
   });
   it("follow-up disappears once the task is done; an explicit reminder replaces the prep message", () => {
-    const db = settings(dbWith([task({ id: "w", date: D, startTime: "18:00", status: "completed" }), task({ id: "x", date: D, startTime: "09:00", reminderMinutes: 15 })]));
+    const db = withGame(settings(dbWith([task({ id: "w", date: D, startTime: "18:00", status: "completed" }), task({ id: "x", date: D, startTime: "09:00", reminderMinutes: 15 })])));
     const r = scheduledReminders(db, D);
     expect(r.some((x) => x.instanceKey === "w")).toBe(false);
     expect(r.filter((x) => x.instanceKey === "x").map((x) => x.time)).toEqual(["08:45", "09:00", "09:15"]);
@@ -35,6 +42,7 @@ describe("game reminders", () => {
     p.notify.quietStart = "22:00";
     p.notify.quietEnd = "07:00";
     p.notify.categories.repeat = false;
+    p.notify.gameReminders = true;
     db.gameProfile = { profile: p };
     const r = scheduledReminders(db, D);
     expect(r.find((x) => x.key.startsWith("g:start:a"))!.muted).toBe("quiet");
@@ -44,7 +52,7 @@ describe("game reminders", () => {
     expect(dueScheduled(r, 23 * 60 + 31, new Set()).map((x) => x.key.split(":")[1])).toEqual(["start"]);
   });
   it("server selection uses the same schedule and never sends twice", () => {
-    const db = settings(dbWith([task({ id: "w", date: D, startTime: "18:00" })]));
+    const db = withGame(settings(dbWith([task({ id: "w", date: D, startTime: "18:00" })])));
     const at = new Date("2026-11-03T15:46:00Z"); // 17:46 Israel
     const due = dueForUser(db, at, new Set());
     expect(due.map((d) => d.time)).toEqual(["17:45"]);
@@ -56,6 +64,30 @@ describe("game reminders", () => {
     const b = scheduledReminders(db, "2026-11-04").filter((x) => x.instanceKey?.startsWith("r"));
     expect(a[0].instanceKey).toBe("r:2026-11-03");
     expect(new Set([...a, ...b].map((x) => x.key)).size).toBe(a.length + b.length);
+  });
+});
+
+describe("LifeOS default reminders (game reminders off)", () => {
+  it("one calm notification at the start time when the user chose no reminder", () => {
+    const db = settings(dbWith([task({ id: "w", title: "אימון", date: D, startTime: "18:00" })]));
+    const r = scheduledReminders(db, D);
+    expect(r.map((x) => `${x.time} ${x.title}`)).toEqual(["18:00 אימון"]);
+    expect(r[0].body).not.toContain("XP");
+    expect(r[0].href).toBe("/today?task=w");
+  });
+  it("a chosen reminder replaces it — never two for the same moment, nothing for done tasks", () => {
+    const db = settings(dbWith([task({ id: "x", date: D, startTime: "09:00", reminderMinutes: 15 }), task({ id: "d", date: D, startTime: "10:00", status: "completed" })]));
+    expect(scheduledReminders(db, D).map((x) => x.time)).toEqual(["08:45"]);
+  });
+  it("no overdue nudges, challenges or milestone pings by default", () => {
+    const db = settings(dbWith([task({ id: "old", date: "2026-11-01" })]));
+    expect(scheduledReminders(db, D)).toEqual([]);
+  });
+  it("keeps the game start key, so a reminder already delivered is not re-sent after switching", () => {
+    const db = settings(dbWith([task({ id: "w", date: D, startTime: "18:00" })]));
+    const calm = scheduledReminders(db, D)[0].key;
+    const game = scheduledReminders(withGame(db), D).find((x) => x.stage === "start")!.key;
+    expect(calm).toBe(game);
   });
 });
 

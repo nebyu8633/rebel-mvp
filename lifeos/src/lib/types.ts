@@ -565,6 +565,9 @@ export const GameProfile = z.object({
       prepMinutes: z.number().int().min(0).max(240).default(15),
       followUpMinutes: z.number().int().min(0).max(240).default(15),
       prepAndFollowUp: z.boolean().default(true),
+      /** Game-style extra notifications (prep / start / follow-up with XP, overdue nudge, challenges,
+       *  milestones). Off by default: LifeOS sends one calm notification per reminder. jsonb field → no migration. */
+      gameReminders: z.boolean().default(false),
       categories: z
         .object({
           standard: z.boolean().default(true),
@@ -576,7 +579,7 @@ export const GameProfile = z.object({
         })
         .default({ standard: true, high: true, repeat: true, challenge: true, achievement: true, milestone: true }),
     })
-    .default({ sound: "chime", quietStart: null, quietEnd: null, prepMinutes: 15, followUpMinutes: 15, prepAndFollowUp: true, categories: { standard: true, high: true, repeat: true, challenge: true, achievement: true, milestone: true } }),
+    .default({ sound: "chime", quietStart: null, quietEnd: null, prepMinutes: 15, followUpMinutes: 15, prepAndFollowUp: true, gameReminders: false, categories: { standard: true, high: true, repeat: true, challenge: true, achievement: true, milestone: true } }),
   ...timestamps,
 });
 export type GameProfile = z.infer<typeof GameProfile>;
