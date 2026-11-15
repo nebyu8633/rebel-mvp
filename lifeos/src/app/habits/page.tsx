@@ -6,7 +6,7 @@ import { useToday } from "@/hooks/useToday";
 import { Habit } from "@/lib/types";
 import { addDays, startOfWeek, WEEKDAYS_HE, WEEKDAYS_SHORT_HE, weekday, formatHebDate } from "@/lib/dates";
 import { habitDueOn } from "@/lib/tasks";
-import { describeFrequency, streak, weekCompletion } from "@/lib/habits";
+import { describeFrequency, recentDone, weekCompletion } from "@/lib/habits";
 import { deleteHabit, nowIso, setHabitLog, uid } from "@/lib/actions";
 import { Button, Card, Details, EmptyState, Field, Input, Modal, PageHeader, Select, confirmDialog, cx } from "@/components/ui";
 
@@ -36,24 +36,32 @@ export default function HabitsPage() {
           למשל: שקילה שבועית, אימון כוח 3 פעמים בשבוע, ארוחת בוקר.
         </EmptyState>
       ) : (
-        <div className="space-y-3">
+        <div className="overflow-hidden rounded-panel border border-line bg-surface">
           {habits.map((h) => {
             const wc = weekCompletion(h, db.habitLogs, ws, today);
-            const st = streak(h, db.habitLogs, today);
+            const month = recentDone(h, db.habitLogs, today);
             const goal = h.goalId ? db.goals[h.goalId] : null;
             return (
-              <Card key={h.id} className={cx("py-3", h.paused && "opacity-60")}>
-                <div className="flex flex-wrap items-center gap-3">
+              <div key={h.id} className={cx("border-b border-line px-4 py-3 last:border-b-0", h.paused && "opacity-60")}>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium">{h.title}</div>
-                    <div className="text-xs text-stone-500">
+                    <div className="text-body font-medium text-ink">{h.title}</div>
+                    <div className="text-footnote text-ink-2">
                       {describeFrequency(h)}
                       {h.reminderTime && ` · תזכורת ${h.reminderTime}`}
                       {goal && ` · ${goal.title}`}
                       {h.paused && " · מושהה"}
                     </div>
                   </div>
-                  <div className="flex gap-1" role="group" aria-label={`7 הימים האחרונים: ${h.title}`}>
+                  <div className="flex">
+                    <Button size="icon" variant="ghost" aria-label={h.paused ? `חידוש: ${h.title}` : `השהיה: ${h.title}`} onClick={() => void put("habits", { ...h, paused: !h.paused, updatedAt: nowIso() })}>
+                      {h.paused ? <Play size={16} /> : <Pause size={16} />}
+                    </Button>
+                    <Button size="icon" variant="ghost" aria-label={`עריכה: ${h.title}`} onClick={() => setEditing(h)}>
+                      <Pencil size={16} />
+                    </Button>
+                  </div>
+                  <div className="flex w-full items-center justify-between gap-1 sm:w-auto" role="group" aria-label={`7 הימים האחרונים: ${h.title}`}>
                     {days.map((d) => {
                       const log = db.habitLogs[`${h.id}:${d}`];
                       const due = habitDueOn(h, d) || !!log;
@@ -66,9 +74,9 @@ export default function HabitsPage() {
                           title={`${formatHebDate(d, { weekday: true })}: ${!log ? "לא סומן" : log.status === "done" ? "בוצע" : "דילוג"} (לחיצה: ${next === "done" ? "בוצע" : next === "skipped" ? "דילוג" : "ניקוי"})`}
                           aria-label={`${WEEKDAYS_HE[weekday(d)]} ${formatHebDate(d)}: ${!log ? "לא סומן" : log.status === "done" ? "בוצע" : "דילוג"}`}
                           className={cx(
-                            "flex h-8 w-8 flex-col items-center justify-center rounded-lg text-[10px] transition-colors",
-                            log?.status === "done" ? "bg-accent-600 text-white" : log?.status === "skipped" ? "bg-stone-200 text-stone-500 dark:bg-white/10" : due ? "border hairline text-stone-500" : "text-stone-300",
-                            d === today && "ring-2 ring-accent-500/40",
+                            "flex h-10 w-10 flex-col items-center justify-center rounded-field text-caption transition-colors",
+                            log?.status === "done" ? "bg-accent text-white dark:text-[#06201c]" : log?.status === "skipped" ? "bg-surface-2 text-ink-3" : due ? "border border-line text-ink-2" : "text-ink-3/60",
+                            d === today && "ring-2 ring-accent/40",
                           )}
                         >
                           {WEEKDAYS_SHORT_HE[weekday(d)]}
@@ -76,26 +84,18 @@ export default function HabitsPage() {
                       );
                     })}
                   </div>
-                  <div className="w-24 text-xs text-stone-500">
-                    <div>
-                      השבוע: <b className="text-stone-800 dark:text-stone-100">{wc.done}/{wc.due}</b>
-                    </div>
-                    {st > 0 && <div>רצף: {st} {h.frequency.type === "times_per_week" ? "שבועות" : "ימים"}</div>}
-                  </div>
-                  <div className="flex">
-                    <Button size="icon" variant="ghost" aria-label={h.paused ? "חידוש" : "השהיה"} onClick={() => void put("habits", { ...h, paused: !h.paused, updatedAt: nowIso() })}>
-                      {h.paused ? <Play size={16} /> : <Pause size={16} />}
-                    </Button>
-                    <Button size="icon" variant="ghost" aria-label="עריכה" onClick={() => setEditing(h)}>
-                      <Pencil size={16} />
-                    </Button>
+                  <div className="tnum w-full text-footnote text-ink-2 sm:w-28">
+                    השבוע {wc.done} מתוך {wc.due}
+                    {month > 0 && <span className="text-ink-3"> · {month} בחודש האחרון</span>}
                   </div>
                 </div>
-              </Card>
+              </div>
             );
           })}
-          <Details label="איך מסמנים">לחיצה על יום: בוצע ← דילוג ← ניקוי. דילוג לא שובר רצף.</Details>
         </div>
+      )}
+      {habits.length > 0 && (
+        <Details className="mt-3" label="איך מסמנים">לחיצה על יום: בוצע ← דילוג ← ניקוי. דילוג הוא בסדר — הוא לא נספר כהחמצה.</Details>
       )}
       {editing && <HabitForm habit={editing} onClose={() => setEditing(null)} />}
     </div>
