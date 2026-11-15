@@ -1,280 +1,231 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, Sparkles, CalendarDays, Bell, ShoppingCart, ChefHat, Check, Star, AlertCircle, Send, Moon } from "lucide-react";
+import { Plus, Sparkles, Bell, ShoppingCart, ChefHat, Check, ChevronLeft, CalendarDays } from "lucide-react";
 import { useStore, useSettings } from "@/lib/store/store";
-import { useUI } from "@/lib/store/ui";
 import { useNow } from "@/hooks/useToday";
-import { addDays, addMonths, formatHebDate, formatJewishDate, formatDuration, greetingFor, relativeDayLabel } from "@/lib/dates";
-import { dayLoad, eventsInRange, habitDueOn, instancesInRange, isOpen, mostImportant, overdueInstances } from "@/lib/tasks";
-import { remindersForDate } from "@/lib/reminders";
-import { setHabitLog, toggleComplete, updateSettings, nowIso } from "@/lib/actions";
-import { Badge, Button, Card, Details, Disclosure, Field, Input, Ring, SectionTitle, cx } from "@/components/ui";
+import { addDays, addMonths, formatHebDate, formatJewishDate, greetingFor, relativeDayLabel } from "@/lib/dates";
+import { eventsInRange, habitDueOn, instancesInRange, isOpen, mostImportant, overdueInstances } from "@/lib/tasks";
+import { scheduledReminders } from "@/lib/game/notify";
+import { goalSnapshot } from "@/lib/goals";
+import { setHabitLog, updateSettings, nowIso } from "@/lib/actions";
+import { Button, Card, Details, Field, Input, Ring, SectionTitle, cx } from "@/components/ui";
+import { Section } from "@/components/ds";
 import { TaskRow } from "@/components/TaskRow";
 import { RecoveryModal } from "@/components/RecoveryModal";
-import { GoalCard } from "@/components/GoalCard";
+import { useQuickAdd } from "@/components/QuickAdd";
 
-const AI_PROMPTS = ["על מה להתמקד היום?", "לסדר מחדש את השבוע", "איך אני מתקדם?"];
-
+/**
+ * Today — one column, in the order the day is used: what's next, what's waiting, habits, what's
+ * coming later. Completed items fold away; nothing here punishes an empty or missed day.
+ */
 export default function MyDay() {
   const db = useStore((s) => s.db);
   const settings = useSettings();
   const now = useNow();
   const today = now.date;
   const tomorrow = addDays(today, 1);
-  const router = useRouter();
-  const openEditor = useUI((s) => s.openEditor);
+  const quickAdd = useQuickAdd((s) => s.show);
   const [recovery, setRecovery] = useState(false);
-  const [ask, setAsk] = useState("");
+  const [showDone, setShowDone] = useState(false);
 
   const todayList = useMemo(() => instancesInRange(db, today, today, today), [db, today]);
   const overdue = useMemo(() => overdueInstances(db, today), [db, today]);
-  const top = useMemo(() => mostImportant(db, [...overdue, ...todayList], today), [db, overdue, todayList, today]);
-  const load = dayLoad(db, today, todayList);
-  const upcoming = eventsInRange(db, today, addDays(today, 2)).filter((e) => e.date > today || !e.event.startTime || e.event.startTime >= now.time.slice(0, 5)).slice(0, 4);
-  const habits = Object.values(db.habits).filter((h) => habitDueOn(h, today)).sort((a, b) => a.order - b.order);
-  const reminders = remindersForDate(db, today).filter((r) => r.at >= now.minutes);
-  const goals = Object.values(db.goals).filter((g) => g.status !== "done").sort((a, b) => a.order - b.order);
   const open = todayList.filter((i) => isOpen(i.status));
-  const doneCount = todayList.filter((i) => i.status === "completed").length;
-  const rest = [...open.filter((i) => i.key !== top?.key), ...todayList.filter((i) => !isOpen(i.status))];
-  const tomorrowList = instancesInRange(db, tomorrow, tomorrow, today);
-  const tomorrowEvents = eventsInRange(db, tomorrow, tomorrow);
+  const done = todayList.filter((i) => !isOpen(i.status));
+  // the most important open task first, then by time (untimed after timed)
+  const top = useMemo(() => mostImportant(db, open, today), [db, open, today]);
+  const ordered = useMemo(
+    () => [...open].sort((a, b) => (a.key === top?.key ? -1 : b.key === top?.key ? 1 : (a.startTime ?? "99") < (b.startTime ?? "99") ? -1 : (a.startTime ?? "99") > (b.startTime ?? "99") ? 1 : 0)),
+    [open, top],
+  );
+  const habits = Object.values(db.habits).filter((h) => !h.paused && habitDueOn(h, today)).sort((a, b) => a.order - b.order);
+  const later = useMemo(() => {
+    const ev = eventsInRange(db, today, tomorrow)
+      .filter((e) => e.date > today || !e.event.startTime || e.event.startTime >= now.time.slice(0, 5))
+      .slice(0, 5)
+      .map((e) => ({ key: e.key, kind: "event" as const, title: e.event.title, when: `${e.date === today ? "" : `${relativeDayLabel(e.date, today)} · `}${e.event.startTime ?? "כל היום"}`, sort: `${e.date} ${e.event.startTime ?? "00:00"}` }));
+    const rem = scheduledReminders(db, today)
+      // task reminders already show on their row (bell); here: habits, meals, events
+      .filter((r) => r.at >= now.minutes && !r.muted && r.kind !== "task")
+      .slice(0, 5)
+      .map((r) => ({ key: r.key, kind: "reminder" as const, title: r.title, when: r.time, sort: `${today} ${r.time}` }));
+    return [...ev, ...rem].sort((a, b) => (a.sort < b.sort ? -1 : 1)).slice(0, 6);
+  }, [db, today, tomorrow, now.minutes, now.time]);
+  const tomorrowCount = instancesInRange(db, tomorrow, tomorrow, today).length;
+  const goals = Object.values(db.goals).filter((g) => g.status !== "done").sort((a, b) => a.order - b.order).slice(0, 2);
   const mealsToPrep = Object.values(db.mealPlan).filter((m) => m.prepDate === today && !m.prepared);
   const isGroceryToday = todayList.some((i) => i.task.routine === "grocery" && isOpen(i.status));
-  const goAsk = (q: string) => q.trim() && router.push(`/assistant?q=${encodeURIComponent(q.trim())}`);
 
   return (
-    <div className="space-y-4">
-      {/* Header: greeting + today's completion ring */}
-      <header className="animate-in flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-2xl space-y-6">
+      {/* header: date, greeting, today's progress */}
+      <header className="animate-in flex items-end justify-between gap-4 px-1">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50">
+          <p className="text-footnote font-medium text-ink-2">
+            {formatHebDate(today, { weekday: true })} · {formatJewishDate(today)}
+          </p>
+          <h1 className="mt-0.5 text-display text-ink">
             {greetingFor(now.minutes)}
             {settings?.displayName ? `, ${settings.displayName}` : ""}
           </h1>
-          <p className="mt-0.5 text-sm text-stone-500">
-            {formatHebDate(today, { weekday: true })} · {formatJewishDate(today)}
-          </p>
         </div>
         {todayList.length > 0 && (
-          <div className="flex items-center gap-2 text-end">
-            <div className="hidden text-xs text-stone-500 sm:block">
-              <div>
-                {doneCount}/{todayList.length} הושלמו
-              </div>
-              {load.availableMinutes != null && (
-                <div className={cx(load.over && "font-medium text-amber-700")}>
-                  {formatDuration(load.plannedMinutes) || "0"} / {formatDuration(load.availableMinutes)}
-                </div>
-              )}
-            </div>
-            <Ring value={doneCount / todayList.length} size={52} label="משימות היום" />
-          </div>
+          <span className="tnum shrink-0 pb-1 text-footnote text-ink-2" aria-label={`הושלמו ${done.length} מתוך ${todayList.length}`}>
+            {done.length} מתוך {todayList.length}
+          </span>
         )}
       </header>
 
       {settings && !settings.onboarded && <Onboarding />}
 
-      {/* 1. Most important + today's tasks */}
-      {top && (
-        <Card className="animate-in border-accent-200 bg-gradient-to-l from-accent-50/70 to-transparent p-4 dark:border-accent-800/50 dark:from-accent-800/10">
-          <div className="flex items-center gap-3">
-            <Star size={18} className="shrink-0 text-accent-600" aria-label="הכי חשוב" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-semibold">{top.title}</p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
-                {top.task.goalId && db.goals[top.task.goalId] && <span>{db.goals[top.task.goalId].title}</span>}
-                {top.date && top.date < today && <Badge tone="rose">באיחור</Badge>}
-                {top.startTime && <span className="ltr-nums">{top.startTime}</span>}
-                {top.task.estimatedMinutes ? <span>{formatDuration(top.task.estimatedMinutes)}</span> : null}
-              </div>
-            </div>
-            <Button variant="primary" size="sm" onClick={() => void toggleComplete(top)} aria-label={`סיום: ${top.title}`}>
-              <Check size={16} /> בוצע
-            </Button>
-          </div>
-          {top.task.rationale && <Details label="למה זה חשוב" className="mt-2">{top.task.rationale}</Details>}
-        </Card>
+      {/* quick capture: looks like a field, opens the parser sheet */}
+      <button
+        type="button"
+        onClick={() => quickAdd(today)}
+        className="animate-in flex h-12 w-full items-center gap-2 rounded-panel border border-line bg-surface px-4 text-start text-body text-ink-3 transition-colors hover:border-line-strong"
+      >
+        <Plus size={18} className="text-accent" />
+        <span className="truncate">מה צריך לעשות?</span>
+      </button>
+
+      {/* waiting from earlier days — one calm line, the user decides */}
+      {overdue.length > 0 && (
+        <button type="button" onClick={() => setRecovery(true)} className="animate-in flex min-h-11 w-full items-center gap-2 rounded-panel bg-warn-soft px-4 text-start text-body text-ink">
+          <span className="flex-1">
+            {overdue.length === 1 ? "משימה אחת מחכה מימים קודמים" : `${overdue.length} משימות מחכות מימים קודמים`}
+          </span>
+          <span className="text-footnote font-medium text-warn">לבחור מה לעשות</span>
+          <ChevronLeft size={16} className="text-warn" />
+        </button>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 space-y-4">
-          <Card className="animate-in p-3 sm:p-4">
-            <SectionTitle
-              action={
-                <Button size="sm" variant="ghost" onClick={() => openEditor({ defaults: { date: today } })}>
-                  <Plus size={16} /> משימה
-                </Button>
-              }
-            >
-              היום
-            </SectionTitle>
-
-            {overdue.length > 0 && (
-              <div className="mb-2 flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-sm dark:bg-rose-900/15">
-                <AlertCircle size={16} className="shrink-0 text-rose-600" />
-                <Link href="/tasks?view=overdue" className="flex-1 text-rose-800 dark:text-rose-200">
-                  {overdue.length} באיחור
-                </Link>
-                <Button size="sm" variant="subtle" onClick={() => setRecovery(true)}>
-                  <Sparkles size={14} /> לסדר מחדש
-                </Button>
-              </div>
-            )}
-
-            {todayList.length === 0 ? (
-              <p className="py-6 text-center text-sm text-stone-500">אין משימות להיום.</p>
-            ) : rest.length === 0 ? (
-              <p className="py-3 text-center text-sm text-stone-500">זה הכול להיום ✓</p>
-            ) : (
-              <div className="-mx-2">
-                {rest.map((i) => (
-                  <TaskRow key={i.key} inst={i} />
-                ))}
-              </div>
-            )}
-
-            {(isGroceryToday || mealsToPrep.length > 0) && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {isGroceryToday && (
-                  <Link href="/meals?tab=groceries" className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-sm dark:bg-white/5">
-                    <ShoppingCart size={14} /> רשימת קניות
-                  </Link>
-                )}
-                {mealsToPrep.length > 0 && (
-                  <Link href="/meals?tab=prep" className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-sm dark:bg-white/5">
-                    <ChefHat size={14} /> {mealsToPrep.length} להכנה
-                  </Link>
-                )}
-              </div>
-            )}
-          </Card>
-
-          {/* 3–4. Active goals + progress */}
-          {goals.length > 0 && (
-            <section className="animate-in">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-[15px] font-semibold">המטרות שלי</h2>
-                <Link href="/goals" className="text-sm text-accent-700 dark:text-accent-200">
-                  הכול
-                </Link>
-              </div>
-              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-3">
-                {goals.map((g) => (
-                  <div key={g.id} className="w-[78%] shrink-0 snap-start sm:w-auto">
-                    <GoalCard goal={g} today={today} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        <div className="min-w-0 space-y-4">
-          {/* 2. Upcoming events */}
-          <Card className="animate-in p-3 sm:p-4">
-            <SectionTitle action={<Link href="/calendar" className="text-sm text-accent-700 dark:text-accent-200">יומן</Link>}>אירועים קרובים</SectionTitle>
-            {upcoming.length === 0 ? (
-              <p className="text-sm text-stone-500">אין אירועים ביומיים הקרובים.</p>
-            ) : (
-              <ol className="relative space-y-3 border-s-2 border-sky-100 ps-4 dark:border-sky-900/40">
-                {upcoming.map((e) => (
-                  <li key={e.key} className="relative">
-                    <span className="absolute -start-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-sky-500" />
-                    <div className="text-sm font-medium">{e.event.title}</div>
-                    <div className="text-xs text-stone-500">
-                      {relativeDayLabel(e.date, today)}
-                      {e.event.startTime && (
-                        <>
-                          {" · "}
-                          <span className="ltr-nums">{e.event.startTime}</span>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Card>
-
-          {habits.length > 0 && (
-            <Card className="animate-in p-3 sm:p-4">
-              <SectionTitle>הרגלים</SectionTitle>
-              <div className="flex flex-wrap gap-2">
-                {habits.map((h) => {
-                  const isDone = db.habitLogs[`${h.id}:${today}`]?.status === "done";
-                  return (
-                    <button
-                      key={h.id}
-                      onClick={() => void setHabitLog(h, today, isDone ? null : "done")}
-                      aria-pressed={isDone}
-                      className={cx("flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors", isDone ? "border-accent-600 bg-accent-600 text-white" : "hairline hover:border-accent-500")}
-                    >
-                      {isDone && <Check size={14} />}
-                      {h.title}
-                    </button>
-                  );
-                })}
-              </div>
-            </Card>
-          )}
-
-          {/* 5. Quick access to AI */}
-          <Card className="animate-in p-3 sm:p-4">
-            <form
-              className="flex items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                goAsk(ask);
-              }}
-            >
-              <Sparkles size={18} className="shrink-0 text-accent-600" />
-              <Input className="border-0 bg-transparent px-1 focus:ring-0 dark:bg-transparent" placeholder="לשאול את העוזר…" value={ask} onChange={(e) => setAsk(e.target.value)} aria-label="שאלה לעוזר" />
-              <Button type="submit" size="icon" variant="ghost" aria-label="שליחה" disabled={!ask.trim()}>
-                <Send size={16} />
-              </Button>
-            </form>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {AI_PROMPTS.map((p) => (
-                <button key={p} onClick={() => goAsk(p)} className="rounded-full border hairline px-2.5 py-1 text-xs text-stone-600 hover:border-accent-500 dark:text-stone-300">
-                  {p}
-                </button>
+      {/* today's tasks */}
+      {todayList.length === 0 ? (
+        <section className="animate-in rounded-panel border border-dashed border-line px-6 py-10 text-center">
+          <p className="text-headline text-ink">יום פנוי.</p>
+          <p className="mt-1 text-body text-ink-2">רוצה לתכנן אותו, או להשאיר אותו פתוח?</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button variant="primary" onClick={() => quickAdd(today)}>
+              <Plus size={16} /> להוסיף משימה
+            </Button>
+            <Link href={`/assistant?q=${encodeURIComponent("עזור לי לתכנן את היום")}`} className="inline-flex h-11 items-center gap-1.5 rounded-field px-4 text-body font-medium text-accent-ink hover:bg-surface-2 sm:h-10">
+              <Sparkles size={16} /> לתכנן עם העוזר
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <Section title="היום">
+          {ordered.length === 0 ? (
+            <p className="flex items-center gap-2 px-4 py-4 text-body text-ink-2">
+              <Check size={16} className="text-accent" /> הכול בוצע להיום.
+            </p>
+          ) : (
+            <div className="divide-y divide-line">
+              {ordered.map((i) => (
+                <TaskRow key={i.key} inst={i} />
               ))}
             </div>
-          </Card>
+          )}
+          {done.length > 0 && (
+            <>
+              <button type="button" onClick={() => setShowDone((v) => !v)} aria-expanded={showDone} className="flex min-h-11 w-full items-center border-t border-line px-4 text-start text-footnote font-medium text-ink-2">
+                {showDone ? "הסתרת" : "הצגת"} {done.length} שהושלמו
+              </button>
+              {showDone && (
+                <div className="divide-y divide-line border-t border-line">
+                  {done.map((i) => (
+                    <TaskRow key={i.key} inst={i} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Section>
+      )}
 
-          <Disclosure
-            id="day-tomorrow"
-            icon={<Moon size={16} />}
-            title="מחר ותזכורות"
-            summary={`${tomorrowList.length} משימות${tomorrowEvents.length ? ` · ${tomorrowEvents.length} אירועים` : ""}${reminders.length ? ` · ${reminders.length} תזכורות` : ""}`}
-          >
-            <ul className="space-y-1.5 text-sm">
-              {tomorrowList.slice(0, 5).map((i) => (
-                <li key={i.key} className="truncate">
-                  • {i.title}
-                </li>
-              ))}
-              {tomorrowList.length === 0 && <li className="text-stone-500">אין משימות למחר</li>}
-            </ul>
-            {reminders.length > 0 && (
-              <ul className="mt-3 space-y-1 border-t hairline pt-2 text-sm">
-                {reminders.slice(0, 5).map((r) => (
-                  <li key={r.key} className="flex items-center gap-2">
-                    <Bell size={13} className="text-stone-400" />
-                    <span className="ltr-nums w-11 text-stone-500">{r.time}</span>
-                    <span className="truncate">{r.title}</span>
-                  </li>
-                ))}
-              </ul>
+      {/* habits: one tap to mark; no streak pressure here */}
+      {habits.length > 0 && (
+        <Section title="הרגלים" flush action={<Link href="/habits" className="inline-flex min-h-9 items-center px-1 text-footnote font-medium text-accent-ink">הכול</Link>}>
+          <div className="flex flex-wrap gap-2">
+            {habits.map((h) => {
+              const isDone = db.habitLogs[`${h.id}:${today}`]?.status === "done";
+              return (
+                <button
+                  key={h.id}
+                  onClick={() => void setHabitLog(h, today, isDone ? null : "done")}
+                  aria-pressed={isDone}
+                  className={cx("inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3.5 text-footnote font-medium transition-colors", isDone ? "border-accent bg-accent text-white dark:text-[#06201c]" : "border-line bg-surface text-ink hover:border-line-strong")}
+                >
+                  {isDone && <Check size={14} strokeWidth={3} />}
+                  {h.title}
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
+      {/* later: events and upcoming reminders, in time order */}
+      {(later.length > 0 || isGroceryToday || mealsToPrep.length > 0) && (
+        <Section title="בהמשך" action={<Link href="/calendar" className="inline-flex min-h-9 items-center px-1 text-footnote font-medium text-accent-ink">יומן</Link>}>
+          <ul className="divide-y divide-line">
+            {later.map((l) => (
+              <li key={l.key} className="flex min-h-11 items-center gap-3 px-4">
+                {l.kind === "event" ? <CalendarDays size={15} className="shrink-0 text-ink-3" aria-label="אירוע" /> : <Bell size={15} className="shrink-0 text-ink-3" aria-label="תזכורת" />}
+                <span className="min-w-0 flex-1 truncate text-body text-ink">{l.title}</span>
+                <span className="tnum shrink-0 text-footnote text-ink-2">{l.when}</span>
+              </li>
+            ))}
+            {isGroceryToday && (
+              <li>
+                <Link href="/meals?tab=groceries" className="flex min-h-11 items-center gap-3 px-4 text-body text-ink">
+                  <ShoppingCart size={15} className="text-ink-3" /> רשימת הקניות
+                </Link>
+              </li>
             )}
-            <Button size="sm" variant="ghost" className="mt-2" onClick={() => openEditor({ defaults: { date: tomorrow } })}>
-              <Plus size={14} /> משימה למחר
-            </Button>
-          </Disclosure>
-        </div>
+            {mealsToPrep.length > 0 && (
+              <li>
+                <Link href="/meals?tab=prep" className="flex min-h-11 items-center gap-3 px-4 text-body text-ink">
+                  <ChefHat size={15} className="text-ink-3" /> {mealsToPrep.length} ארוחות להכנה
+                </Link>
+              </li>
+            )}
+          </ul>
+        </Section>
+      )}
+
+      {/* goals: the next step, not a dashboard */}
+      {goals.length > 0 && (
+        <Section title="מטרות" action={<Link href="/goals" className="inline-flex min-h-9 items-center px-1 text-footnote font-medium text-accent-ink">הכול</Link>}>
+          <ul className="divide-y divide-line">
+            {goals.map((g) => {
+              const snap = goalSnapshot(db, g, today);
+              return (
+                <li key={g.id}>
+                  <Link href={`/goals/${g.id}`} className="flex min-h-[52px] items-center gap-3 px-4 py-2.5">
+                    <Ring value={snap.progress.fraction} size={30} stroke={3.5} label={g.title} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-body text-ink">{g.title}</span>
+                      <span className="block truncate text-footnote text-ink-2">
+                        {snap.nextAction ? `הצעד הבא: ${snap.nextAction.title}` : snap.nextMilestone ? `אבן הדרך הבאה: ${snap.nextMilestone.title}` : "עוד אין תוכנית — לבנות אחת"}
+                      </span>
+                    </span>
+                    <ChevronLeft size={16} className="shrink-0 text-ink-3" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
+
+      {/* tomorrow, at a glance */}
+      <div className="flex items-center justify-between px-1 text-footnote text-ink-2">
+        <span>מחר: {tomorrowCount === 0 ? "עוד אין משימות" : tomorrowCount === 1 ? "משימה אחת" : `${tomorrowCount} משימות`}</span>
+        <button type="button" onClick={() => quickAdd(tomorrow)} className="inline-flex min-h-11 items-center gap-1 font-medium text-accent-ink">
+          <Plus size={14} /> משימה למחר
+        </button>
       </div>
 
       {recovery && <RecoveryModal open onClose={() => setRecovery(false)} />}

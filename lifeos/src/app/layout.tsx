@@ -10,7 +10,9 @@ export const metadata: Metadata = {
   title: "LifeOS — ניהול חיים ומטרות",
   description: "מערכת אישית לניהול מטרות, משימות, הרגלים, אוכל והתקדמות.",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/icons/apple-touch-icon.png" },
+  // installed to the iPhone Home Screen: full-screen app (required for Web Push on iOS)
+  appleWebApp: { capable: true, title: "LifeOS", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -26,7 +28,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="he" dir="rtl" className={heebo.variable}>
-      <body className="font-sans text-stone-800 antialiased dark:text-stone-200">
+      <body className="font-sans text-ink antialiased">
         <AppProvider>
           <AppShell>{children}</AppShell>
         </AppProvider>

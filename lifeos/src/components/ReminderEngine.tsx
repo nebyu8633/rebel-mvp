@@ -35,6 +35,22 @@ export function snooze(r: { key: string; title: string; body: string; href: stri
   const list = loadSnoozed().filter((s) => s.key !== r.key);
   list.push({ key: r.key, title: r.title, body: r.body, href: r.href, instanceKey: r.instanceKey, at: Date.now() + minutes * 60_000 });
   localStorage.setItem(SNOOZE_KEY, JSON.stringify(list));
+  // with background push on this device, the server also keeps it — so it arrives when the app is closed
+  let pushOn = false;
+  try {
+    pushOn = localStorage.getItem("lifeos:push:on") === "1";
+  } catch {
+    /* ignore */
+  }
+  const toast = useStore.getState().toast;
+  if (!pushOn) return toast(`נודניק ל-${minutes} דק׳ — יופיע כשהאפליקציה פתוחה`, "info");
+  void fetch("/api/reminders/snooze", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, reminderKey: r.key, instanceKey: r.instanceKey ?? null, title: r.title, body: `נודניק · ${r.body}`.slice(0, 500), href: r.href, minutes }),
+  })
+    .then((res) => toast(res.ok ? `נודניק ל-${minutes} דק׳ — יגיע גם כשהאפליקציה סגורה` : `נודניק ל-${minutes} דק׳ — יופיע רק כשהאפליקציה פתוחה`, "info"))
+    .catch(() => toast(`נודניק ל-${minutes} דק׳ — יופיע רק כשהאפליקציה פתוחה`, "info"));
 }
 
 function loadSent(): Record<string, number> {
@@ -142,29 +158,29 @@ export function ReminderCards() {
   const router = useRouter();
   if (!cards.length) return null;
   return (
-    <div className="fixed inset-x-0 top-3 z-[62] flex flex-col items-center gap-2 px-3" aria-live="assertive">
+    <div className="fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-[62] flex flex-col items-center gap-2 px-3" aria-live="assertive">
       {cards.map((c) => {
         const db = useStore.getState().db;
         const inst = c.instanceKey ? instanceFromKey(db, c.instanceKey) : null;
         const open = inst && inst.status !== "completed" && inst.status !== "skipped" ? inst : null;
-        const btn = "flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium hover:bg-white/10";
+        const btn = "flex min-h-10 items-center gap-1 rounded-field px-2.5 text-footnote font-medium text-ink hover:bg-surface-2";
         return (
-          <div key={c.key} role="alert" className="glass animate-sheet w-full max-w-md rounded-2xl p-3 shadow-2xl" data-testid="reminder-card">
+          <div key={c.key} role="alert" className="animate-sheet w-full max-w-md rounded-panel border border-line bg-surface p-3 shadow-float" data-testid="reminder-card">
             <div className="flex items-start gap-2.5">
-              <Bell size={17} className="gold-text mt-0.5 shrink-0" />
+              <Bell size={17} className="mt-0.5 shrink-0 text-accent" />
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-white">{c.title}</div>
-                <div className="text-[12px] text-slate-300">{c.body}</div>
+                <div className="text-body font-semibold text-ink">{c.title}</div>
+                <div className="tnum text-footnote text-ink-2">{c.body}</div>
               </div>
-              <button onClick={() => drop(c.key)} className="rounded-lg p-1 text-slate-400 hover:bg-white/10" aria-label="סגירה">
+              <button onClick={() => drop(c.key)} className="-m-1 grid h-10 w-10 place-items-center rounded-full text-ink-3 hover:bg-surface-2" aria-label="סגירה">
                 <X size={16} />
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1 border-t border-white/10 pt-2 text-slate-100">
+            <div className="mt-2 flex flex-wrap gap-1 border-t border-line pt-2">
               {open ? (
                 <>
                   <button
-                    className={`${btn} text-amber-200`}
+                    className={`${btn} text-accent-ink`}
                     onClick={() => {
                       drop(c.key);
                       useGameUI.getState().openFocus(open.key);
@@ -203,7 +219,7 @@ export function ReminderCards() {
               ) : (
                 <>
                   <button
-                    className={`${btn} text-amber-200`}
+                    className={`${btn} text-accent-ink`}
                     onClick={() => {
                       drop(c.key);
                       router.push(c.href);
@@ -222,7 +238,7 @@ export function ReminderCards() {
                       <Clock size={13} /> נודניק 10 דק׳
                     </button>
                   )}
-                  {c.instanceKey && <span className="px-2 py-1.5 text-[12px] text-emerald-300">כבר בוצע ✓</span>}
+                  {c.instanceKey && <span className="px-2 py-1.5 text-footnote text-accent-ink">כבר בוצע ✓</span>}
                 </>
               )}
             </div>

@@ -13,21 +13,108 @@
 
 :root {
   color-scheme: light dark;
-  --bg: #f6f5f2;
+  /* ───────── LifeOS design tokens (one place; light + dark) ───────── */
+  --bg: #f7f6f3;
   --surface: #ffffff;
-  --border: #e7e5e0;
+  --surface-2: #f1f0ec; /* quiet fills: chips, segmented, pressed rows */
+  --border: #e6e4df; /* hairlines */
+  --line-strong: #d6d3cc;
+  --ink: #1c1b19; /* primary text */
+  --ink-2: #5f5c56; /* secondary text */
+  --ink-3: #8f8b84; /* tertiary / placeholders */
+  --accent: #13806f;
+  --accent-ink: #0e6b5d; /* accent text on light surfaces (AA) */
+  --accent-soft: #e7f4f1;
+  --warn: #a15c07;
+  --warn-soft: #fbf1e2;
+  --danger: #c0352b;
+  --danger-soft: #fbe9e7;
+  --radius-field: 10px;
+  --radius-panel: 14px;
+  --radius-sheet: 22px;
+  --shadow-float: 0 10px 30px -12px rgb(20 18 14 / 0.28), 0 2px 6px -2px rgb(20 18 14 / 0.08);
+  --tap: 44px; /* minimum touch target */
   /* validated categorical chart slots (dataviz reference palette) */
   --series-1: #2a78d6;
   --series-2: #eb6834;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111312;
-    --surface: #1a1d1c;
-    --border: #2a2e2c;
+    --bg: #0f1011;
+    --surface: #17181a;
+    --surface-2: #202124;
+    --border: #2a2b2e;
+    --line-strong: #3a3b3f;
+    --ink: #eeece8;
+    --ink-2: #a9a6a0;
+    --ink-3: #75726d;
+    --accent: #3fb3a0;
+    --accent-ink: #7fd3c4;
+    --accent-soft: rgb(63 179 160 / 0.14);
+    --warn: #e2a34a;
+    --warn-soft: rgb(226 163 74 / 0.14);
+    --danger: #ef7a6f;
+    --danger-soft: rgb(239 122 111 / 0.14);
+    --shadow-float: 0 12px 32px -10px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.4);
     --series-1: #3987e5;
     --series-2: #d95926;
   }
+}
+
+/* semantic utilities: bg-surface, text-ink-2, border-line, bg-accent, text-accent-ink … */
+@theme inline {
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --radius-field: var(--radius-field);
+  --radius-panel: var(--radius-panel);
+  --radius-sheet: var(--radius-sheet);
+  --shadow-float: var(--shadow-float);
+}
+
+/* type scale: display 28 · title 22 · headline 17 · body 15 · footnote 13 · caption 11 */
+@utility text-display {
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+@utility text-title {
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility text-headline {
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+@utility text-body {
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+@utility text-footnote {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+@utility text-caption {
+  font-size: 0.6875rem;
+  line-height: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 html,
@@ -36,7 +123,9 @@ body {
 }
 
 body {
+  color: var(--ink);
   -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
   text-rendering: optimizeLegibility;
 }
 
@@ -89,6 +178,14 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+/* tabular time/number columns (09:30 lines up with 18:00) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: plaintext;
 }
 
 input[type="date"],

@@ -51,6 +51,13 @@ export function streak(h: Habit, logs: LogIndex, today: string, weekStartsOn = 0
   return n;
 }
 
+/** How many times it was done in the last `days` days (a positive count — nothing is "lost"). */
+export function recentDone(h: Habit, logs: LogIndex, today: string, days = 28): number {
+  let n = 0;
+  for (let i = 0; i < days; i++) if (done(logs, h, addDays(today, -i))) n++;
+  return n;
+}
+
 export function describeFrequency(h: Habit): string {
   const WD = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
   if (h.frequency.type === "daily") return "כל יום";

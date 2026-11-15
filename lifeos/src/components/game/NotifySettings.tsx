@@ -89,6 +89,14 @@ export function NotifySettings() {
       </div>
 
       <div>
+        <Toggle checked={n.gameReminders} onChange={(v) => setN({ gameReminders: v })} label="תזכורות נוספות בסגנון המשחק" />
+        <p className="mt-1 text-xs text-stone-500">
+          כבוי: תזכורת אחת לכל משימה — מה שבחרת, או בשעת ההתחלה אם לא בחרת. מופעל: גם הכנה ומעקב, תזכורת למשימות מימים קודמים, אתגרים ואבני דרך.
+        </p>
+      </div>
+
+      {n.gameReminders && (
+      <div>
         <Toggle checked={n.prepAndFollowUp} onChange={(v) => setN({ prepAndFollowUp: v })} label="הכנה, התחלה ומעקב למשימות עם שעה" />
         {n.prepAndFollowUp && (
           <div className="mt-2 grid max-w-md grid-cols-2 gap-3">
@@ -102,6 +110,7 @@ export function NotifySettings() {
         )}
         <p className="mt-1 text-xs text-stone-500">למשל אימון ב-18:00: הכנה ב-17:45, „הגיע הזמן” ב-18:00, ו„התחלת?” ב-18:15 — רק אם עוד לא סומן.</p>
       </div>
+      )}
 
       <div>
         <span className="mb-1 block text-sm font-medium text-stone-700 dark:text-stone-300">סוגי תזכורות</span>

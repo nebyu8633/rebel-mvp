@@ -39,6 +39,7 @@ export function defaultProfile(today: string, now: string): GameProfile {
       prepMinutes: 15,
       followUpMinutes: 15,
       prepAndFollowUp: true,
+      gameReminders: false,
       categories: { standard: true, high: true, repeat: true, challenge: true, achievement: true, milestone: true },
     },
     createdAt: now,

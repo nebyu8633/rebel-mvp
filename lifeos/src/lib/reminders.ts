@@ -34,7 +34,7 @@ export function remindersForDate(db: DB, date: string): Reminder[] {
       body: i.task.reminderMinutes ? `מתחיל בעוד ${i.task.reminderMinutes} דק׳ (${i.startTime})` : `עכשיו (${i.startTime})`,
       kind: "task",
       instanceKey: i.key,
-      href: i.task.routine === "grocery" ? "/meals?tab=groceries" : i.task.routine === "meal_prep" ? "/meals?tab=prep" : i.task.routine === "weekly_review" ? "/progress?review=1" : "/",
+      href: i.task.routine === "grocery" ? "/meals?tab=groceries" : i.task.routine === "meal_prep" ? "/meals?tab=prep" : i.task.routine === "weekly_review" ? "/progress?review=1" : "/today",
     });
   }
   // explicit reminders (one or more per task)
